@@ -1,0 +1,10 @@
+src/
+.github/
+.gitignore
+.npmignore
+tsconfig.json
+CONTRIBUTING.md
+*.spec.ts
+*.test.ts
+node_modules/
+dist/**/*.map
