@@ -1,31 +1,41 @@
 {
-  "name": "@mattermost/llm-testing-providers",
+  "name": "@yasserkhan/e2e-agents",
   "version": "0.1.0",
-  "description": "Framework-agnostic LLM provider library for autonomous testing. Supports Anthropic Claude, Ollama, and custom providers.",
+  "description": "Framework-agnostic LLM provider library for autonomous E2E testing. Integrates with Playwright test agents for AI-powered test discovery, generation, and healing.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "license": "Apache-2.0",
+  "bin": {
+    "e2e-agents": "dist/cli.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "require": "./dist/index.js",
       "import": "./dist/index.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp-server.d.ts",
+      "require": "./dist/mcp-server.js"
     }
   },
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    ".mcp.json"
   ],
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
     "prebuild": "npm run clean",
     "test": "echo 'No tests yet'",
-    "lint": "echo 'Linting...'"
+    "lint": "echo 'Linting...'",
+    "mcp:server": "node dist/mcp-server.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.28.0",
+    "glob": "^10.0.0",
     "openai": "^4.52.0"
   },
   "devDependencies": {
@@ -34,7 +44,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/mattermost/mattermost-llm-testing-providers.git"
+    "url": "https://github.com/yasserfaraazkhan/e2e-agents.git"
   },
   "keywords": [
     "llm",
@@ -44,13 +54,16 @@
     "ollama",
     "autonomous-testing",
     "e2e",
+    "playwright",
     "ai",
     "provider",
-    "framework-agnostic"
+    "framework-agnostic",
+    "mcp",
+    "test-agents"
   ],
   "engines": {
     "node": ">=18.0.0"
   },
-  "author": "Mattermost, Inc.",
-  "homepage": "https://github.com/mattermost/mattermost-llm-testing-providers"
+  "author": "Yasser Khan",
+  "homepage": "https://github.com/yasserfaraazkhan/e2e-agents"
 }
