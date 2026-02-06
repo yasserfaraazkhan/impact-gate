@@ -1,6 +1,6 @@
 {
-  "name": "@yasserkhanorg/e2e-agents",
-  "version": "0.1.0",
+  "name": "e2e-ai-agents",
+  "version": "0.2.0",
   "description": "Framework-agnostic LLM provider library for autonomous E2E testing. Integrates with Playwright test agents for AI-powered test discovery, generation, and healing.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
