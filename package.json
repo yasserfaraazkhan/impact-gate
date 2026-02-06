@@ -5,9 +5,6 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "license": "Apache-2.0",
-  "bin": {
-    "e2e-agents": "dist/cli.js"
-  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -65,5 +62,8 @@
     "node": ">=18.0.0"
   },
   "author": "Yasser Khan",
-  "homepage": "https://github.com/yasserfaraazkhan/e2e-agents"
+  "homepage": "https://github.com/yasserfaraazkhan/e2e-agents",
+  "publishConfig": {
+    "access": "public"
+  }
 }
