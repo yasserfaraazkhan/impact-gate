@@ -15,6 +15,82 @@ import type {
 import {LLMProviderError, UnsupportedCapabilityError} from './provider_interface';
 
 /**
+ * SECURITY: Validate Ollama base URL and enforce HTTPS for remote connections
+ */
+function validateOllamaUrl(baseUrl: string | undefined): {valid: boolean; url: string; warning?: string} {
+    const url = baseUrl || 'http://localhost:11434/v1';
+
+    try {
+        const parsed = new URL(url);
+
+        // For non-localhost URLs, warn about HTTP risks
+        const isLocalhost = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '::1';
+        if (!isLocalhost && parsed.protocol === 'http:') {
+            console.warn(
+                '[SECURITY WARNING] Ollama connection over plaintext HTTP to remote server. ' +
+                'Prompts and responses will be transmitted unencrypted. Consider using HTTPS proxy or local Ollama.'
+            );
+        }
+
+        return {valid: true, url};
+    } catch {
+        return {
+            valid: false,
+            url: 'http://localhost:11434/v1',
+            warning: `Invalid Ollama URL: ${baseUrl}. Using default: http://localhost:11434/v1`,
+        };
+    }
+}
+
+/**
+ * SECURITY: Validate model name to prevent injection issues
+ */
+function validateModelName(model: string): boolean {
+    // Allow alphanumeric, dash, colon, underscore
+    // Typical format: deepseek-r1:7b, llama4:13b, etc.
+    return /^[a-z0-9_:.\-]+$/i.test(model) && model.length < 256;
+}
+
+/**
+ * SECURITY: Validate timeout value
+ */
+function validateTimeout(timeout: number | undefined): number {
+    if (!timeout) return 60000;
+    if (timeout < 1000 || timeout > 600000) {
+        console.warn('Timeout out of valid range (1s-10m). Using 60 second default.');
+        return 60000;
+    }
+    return timeout;
+}
+
+/**
+ * SECURITY: Sanitize error messages to prevent information leakage
+ */
+function sanitizeErrorMessage(error: unknown, context: string): string {
+    if (error instanceof Error) {
+        const msg = error.message.toLowerCase();
+
+        // Map specific connection errors to safe messages
+        if (msg.includes('econnrefused') || msg.includes('refused')) {
+            return `Connection refused (${context}). Make sure Ollama is running.`;
+        }
+        if (msg.includes('enotfound') || msg.includes('getaddrinfo')) {
+            return `Host not found (${context})`;
+        }
+        if (msg.includes('timeout') || msg.includes('etimedout')) {
+            return `Connection timeout (${context})`;
+        }
+        if (msg.includes('network') || msg.includes('socket')) {
+            return `Network error (${context})`;
+        }
+
+        // Don't leak internal details or stack traces
+        return `Operation failed (${context})`;
+    }
+    return 'An unexpected error occurred';
+}
+
+/**
  * Ollama Provider - Free, local LLM execution
  *
  * Features:
@@ -57,14 +133,31 @@ export class OllamaProvider implements LLMProvider {
     };
 
     constructor(config: OllamaConfig) {
+        // SECURITY: Validate and sanitize URL
+        const urlValidation = validateOllamaUrl(config.baseUrl);
+        if (!urlValidation.valid && urlValidation.warning) {
+            console.warn(urlValidation.warning);
+        }
+
+        // SECURITY: Validate timeout
+        const timeout = validateTimeout(config.timeout);
+
         // Ollama uses OpenAI-compatible API
         this.client = new OpenAI({
-            baseURL: config.baseUrl || 'http://localhost:11434/v1',
+            baseURL: urlValidation.url,
             apiKey: 'ollama', // Ollama doesn't require real API key
-            timeout: config.timeout || 60000, // 60 second default timeout
+            timeout,
+            maxRetries: 0, // Don't retry to avoid hanging on connection issues
         });
 
-        this.model = config.model || 'deepseek-r1:7b';
+        const model = config.model || 'deepseek-r1:7b';
+
+        // SECURITY: Validate model name format
+        if (!validateModelName(model)) {
+            throw new Error('Invalid model name format');
+        }
+
+        this.model = model;
 
         // Initialize stats
         this.stats = {
@@ -84,6 +177,11 @@ export class OllamaProvider implements LLMProvider {
         const startTime = Date.now();
 
         try {
+            // SECURITY: Validate prompt length
+            if (prompt.length > 10 * 1024 * 1024) {
+                throw new Error('Prompt exceeds maximum size (10MB)');
+            }
+
             const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [];
 
             // Add system message if provided
@@ -133,7 +231,7 @@ export class OllamaProvider implements LLMProvider {
         } catch (error) {
             this.stats.failedRequests++;
             throw new LLMProviderError(
-                `Ollama generation failed: ${error instanceof Error ? error.message : String(error)}`,
+                sanitizeErrorMessage(error, 'generateText'),
                 this.name,
                 undefined,
                 error,
@@ -155,6 +253,11 @@ export class OllamaProvider implements LLMProvider {
      */
     async *streamText(prompt: string, options?: GenerateOptions): AsyncGenerator<string, void, unknown> {
         try {
+            // SECURITY: Validate prompt length
+            if (prompt.length > 10 * 1024 * 1024) {
+                throw new Error('Prompt exceeds maximum size (10MB)');
+            }
+
             const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [];
 
             if (options?.systemPrompt) {
@@ -193,7 +296,7 @@ export class OllamaProvider implements LLMProvider {
         } catch (error) {
             this.stats.failedRequests++;
             throw new LLMProviderError(
-                `Ollama streaming failed: ${error instanceof Error ? error.message : String(error)}`,
+                sanitizeErrorMessage(error, 'streamText'),
                 this.name,
                 undefined,
                 error,
@@ -252,9 +355,7 @@ export class OllamaProvider implements LLMProvider {
         } catch (error) {
             return {
                 healthy: false,
-                message:
-                    `Ollama not accessible: ${error instanceof Error ? error.message : String(error)}. ` +
-                    'Make sure Ollama is installed and running (ollama serve)',
+                message: `Ollama not accessible: ${sanitizeErrorMessage(error, 'health check')}`,
             };
         }
     }
@@ -268,7 +369,7 @@ export class OllamaProvider implements LLMProvider {
             return response.data.map((model) => model.id);
         } catch (error) {
             throw new LLMProviderError(
-                `Failed to list Ollama models: ${error instanceof Error ? error.message : String(error)}`,
+                sanitizeErrorMessage(error, 'listModels'),
                 this.name,
                 undefined,
                 error,

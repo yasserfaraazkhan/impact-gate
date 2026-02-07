@@ -15,6 +15,78 @@ import type {
 import {LLMProviderError} from './provider_interface';
 
 /**
+ * SECURITY: Type-safe response handling
+ * Prevents type confusion from unsafe casts
+ */
+interface AnthropicUsage {
+    input_tokens: number;
+    output_tokens: number;
+    cache_read_input_tokens?: number;
+    cache_creation_input_tokens?: number;
+}
+
+/**
+ * SECURITY: Validate API key format
+ */
+function validateApiKey(apiKey: string): boolean {
+    // Anthropic API keys start with sk-ant- and are at least 32 chars
+    return /^sk-ant-[a-zA-Z0-9_\-]{20,}$/.test(apiKey);
+}
+
+/**
+ * SECURITY: Validate and enforce HTTPS for remote URLs
+ */
+function validateAndSanitizeUrl(baseUrl: string | undefined): {valid: boolean; url?: string; warning?: string} {
+    if (!baseUrl) {
+        return {valid: true};
+    }
+
+    try {
+        const url = new URL(baseUrl);
+
+        // For non-localhost URLs, require HTTPS
+        const isLocalhost = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '::1';
+        if (!isLocalhost && url.protocol !== 'https:') {
+            return {
+                valid: false,
+                warning: `HTTPS required for remote URLs. Got: ${url.protocol}//${url.hostname}`,
+            };
+        }
+
+        return {valid: true, url: baseUrl};
+    } catch {
+        return {valid: false};
+    }
+}
+
+/**
+ * SECURITY: Sanitize error messages to prevent information leakage
+ */
+function sanitizeErrorMessage(error: unknown, context: string): string {
+    if (error instanceof Error) {
+        const msg = error.message.toLowerCase();
+
+        // Map specific API errors to safe messages
+        if (msg.includes('401') || msg.includes('authentication')) {
+            return `Authentication failed (${context})`;
+        }
+        if (msg.includes('429') || msg.includes('rate')) {
+            return `Rate limit exceeded (${context})`;
+        }
+        if (msg.includes('timeout')) {
+            return `Request timeout (${context})`;
+        }
+        if (msg.includes('network') || msg.includes('econnrefused')) {
+            return `Connection failed (${context})`;
+        }
+
+        // Don't leak stack traces, API keys, or internal details
+        return `Operation failed (${context})`;
+    }
+    return 'An unexpected error occurred';
+}
+
+/**
  * Anthropic Provider - Claude AI models
  *
  * Features:
@@ -59,6 +131,22 @@ export class AnthropicProvider implements LLMProvider {
     };
 
     constructor(config: AnthropicConfig) {
+        // SECURITY: Validate API key format
+        if (!validateApiKey(config.apiKey)) {
+            throw new Error('Invalid API key format. Expected sk-ant-* format.');
+        }
+
+        // SECURITY: Validate and enforce HTTPS for remote connections
+        if (config.baseUrl) {
+            const validation = validateAndSanitizeUrl(config.baseUrl);
+            if (!validation.valid) {
+                throw new Error(`Invalid base URL: ${validation.warning}`);
+            }
+            if (validation.warning) {
+                console.warn(`[SECURITY WARNING] ${validation.warning}`);
+            }
+        }
+
         this.client = new Anthropic({
             apiKey: config.apiKey,
             baseURL: config.baseUrl,
@@ -84,6 +172,11 @@ export class AnthropicProvider implements LLMProvider {
         const startTime = Date.now();
 
         try {
+            // SECURITY: Validate prompt length to prevent resource exhaustion
+            if (prompt.length > 10 * 1024 * 1024) {
+                throw new Error('Prompt exceeds maximum size (10MB)');
+            }
+
             const response = await this.client.messages.create({
                 model: this.model,
                 max_tokens: options?.maxTokens || 4000,
@@ -101,13 +194,9 @@ export class AnthropicProvider implements LLMProvider {
 
             const responseTime = Date.now() - startTime;
             const text = this.extractTextFromResponse(response);
-            const usage = {
-                inputTokens: response.usage.input_tokens,
-                outputTokens: response.usage.output_tokens,
-                totalTokens: response.usage.input_tokens + response.usage.output_tokens,
-                cachedTokens: (response.usage as any).cache_read_input_tokens, // API may include this
-            };
 
+            // SECURITY: Type-safe usage extraction
+            const usage = this.extractUsageFromResponse(response.usage);
             const cost = this.calculateCost(usage);
 
             // Update stats
@@ -127,9 +216,9 @@ export class AnthropicProvider implements LLMProvider {
         } catch (error) {
             this.stats.failedRequests++;
             throw new LLMProviderError(
-                `Anthropic generation failed: ${error instanceof Error ? error.message : String(error)}`,
+                sanitizeErrorMessage(error, 'generateText'),
                 this.name,
-                (error as any)?.status,
+                this.extractStatusCode(error),
                 error,
             );
         }
@@ -139,6 +228,16 @@ export class AnthropicProvider implements LLMProvider {
         const startTime = Date.now();
 
         try {
+            // SECURITY: Validate image array size
+            if (images.length === 0 || images.length > 20) {
+                throw new Error('Image count must be between 1 and 20');
+            }
+
+            // SECURITY: Validate prompt length
+            if (prompt.length > 10 * 1024 * 1024) {
+                throw new Error('Prompt exceeds maximum size (10MB)');
+            }
+
             // Build content array with text and images
             const content: Anthropic.MessageParam['content'] = [];
 
@@ -150,13 +249,23 @@ export class AnthropicProvider implements LLMProvider {
 
             // Add each image
             for (const image of images) {
-                // Support both mimeType (PDFs) and mediaType (images) for backward compatibility
+                // Validate media type
                 const mediaType = (image.mimeType || image.mediaType || 'image/png') as
                     | 'image/png'
                     | 'image/jpeg'
                     | 'image/webp'
                     | 'image/gif';
+
+                if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(mediaType)) {
+                    throw new Error(`Unsupported image type: ${mediaType}`);
+                }
+
                 const data = image.data || image.base64 || '';
+
+                // SECURITY: Validate base64 data size (limit to 20MB per image)
+                if (data.length > 20 * 1024 * 1024) {
+                    throw new Error('Image data exceeds maximum size (20MB)');
+                }
 
                 content.push({
                     type: 'image',
@@ -193,13 +302,9 @@ export class AnthropicProvider implements LLMProvider {
 
             const responseTime = Date.now() - startTime;
             const text = this.extractTextFromResponse(response);
-            const usage = {
-                inputTokens: response.usage.input_tokens,
-                outputTokens: response.usage.output_tokens,
-                totalTokens: response.usage.input_tokens + response.usage.output_tokens,
-                cachedTokens: (response.usage as any).cache_read_input_tokens,
-            };
 
+            // SECURITY: Type-safe usage extraction
+            const usage = this.extractUsageFromResponse(response.usage);
             const cost = this.calculateCost(usage);
 
             // Update stats
@@ -219,9 +324,9 @@ export class AnthropicProvider implements LLMProvider {
         } catch (error) {
             this.stats.failedRequests++;
             throw new LLMProviderError(
-                `Anthropic vision analysis failed: ${error instanceof Error ? error.message : String(error)}`,
+                sanitizeErrorMessage(error, 'analyzeImage'),
                 this.name,
-                (error as any)?.status,
+                this.extractStatusCode(error),
                 error,
             );
         }
@@ -229,6 +334,11 @@ export class AnthropicProvider implements LLMProvider {
 
     async *streamText(prompt: string, options?: GenerateOptions): AsyncGenerator<string, void, unknown> {
         try {
+            // SECURITY: Validate prompt length
+            if (prompt.length > 10 * 1024 * 1024) {
+                throw new Error('Prompt exceeds maximum size (10MB)');
+            }
+
             const stream = await this.client.messages.create({
                 model: this.model,
                 max_tokens: options?.maxTokens || 4000,
@@ -258,9 +368,9 @@ export class AnthropicProvider implements LLMProvider {
         } catch (error) {
             this.stats.failedRequests++;
             throw new LLMProviderError(
-                `Anthropic streaming failed: ${error instanceof Error ? error.message : String(error)}`,
+                sanitizeErrorMessage(error, 'streamText'),
                 this.name,
-                (error as any)?.status,
+                this.extractStatusCode(error),
                 error,
             );
         }
@@ -286,7 +396,44 @@ export class AnthropicProvider implements LLMProvider {
 
     private extractTextFromResponse(response: Anthropic.Message): string {
         const textBlocks = response.content.filter((block) => block.type === 'text');
-        return textBlocks.map((block) => (block as any).text).join('\n');
+        return textBlocks.map((block) => {
+            if (block.type === 'text') {
+                return block.text;
+            }
+            return '';
+        }).join('\n');
+    }
+
+    /**
+     * SECURITY: Type-safe usage extraction
+     * Avoids unsafe `as any` casts
+     */
+    private extractUsageFromResponse(usage: AnthropicUsage): {
+        inputTokens: number;
+        outputTokens: number;
+        totalTokens: number;
+        cachedTokens?: number;
+    } {
+        return {
+            inputTokens: usage.input_tokens || 0,
+            outputTokens: usage.output_tokens || 0,
+            totalTokens: (usage.input_tokens || 0) + (usage.output_tokens || 0),
+            cachedTokens: usage.cache_read_input_tokens,
+        };
+    }
+
+    /**
+     * SECURITY: Extract status code safely
+     */
+    private extractStatusCode(error: unknown): number | undefined {
+        if (error && typeof error === 'object') {
+            const err = error as Record<string, unknown>;
+            const status = err.status;
+            if (typeof status === 'number') {
+                return status;
+            }
+        }
+        return undefined;
     }
 
     private calculateCost(usage: {inputTokens: number; outputTokens: number; cachedTokens?: number}): number {
@@ -347,14 +494,12 @@ export class AnthropicProvider implements LLMProvider {
 
             return {
                 healthy: true,
-                message: `Anthropic API is accessible with model: ${this.model}`,
+                message: `Anthropic API is accessible`,
             };
         } catch (error) {
             return {
                 healthy: false,
-                message:
-                    `Anthropic API error: ${error instanceof Error ? error.message : String(error)}. ` +
-                    'Check your API key and model name.',
+                message: `Anthropic API error: ${sanitizeErrorMessage(error, 'health check')}`,
             };
         }
     }
@@ -388,7 +533,7 @@ export async function checkAnthropicSetup(apiKey: string): Promise<{
     } catch (error) {
         return {
             valid: false,
-            message: `Setup check failed: ${error instanceof Error ? error.message : String(error)}`,
+            message: `Setup check failed: ${sanitizeErrorMessage(error, 'setup check')}`,
             estimatedMonthlyCost: 'N/A',
         };
     }

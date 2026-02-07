@@ -2,13 +2,13 @@
 // See LICENSE.txt for license information.
 
 /**
- * MCP Server for E2E Agents
+ * MCP Server for E2E Agents - SECURITY HARDENED
  * Exposes tools for Claude and Playwright agents to discover, generate, and heal tests
  */
 
 import {spawnSync} from 'child_process';
-import {readFileSync, writeFileSync, existsSync} from 'fs';
-import {join} from 'path';
+import {readFileSync, writeFileSync, existsSync, realpathSync} from 'fs';
+import {join, resolve} from 'path';
 import {globSync} from 'glob';
 
 interface Tool {
@@ -18,16 +18,124 @@ interface Tool {
 }
 
 /**
+ * SECURITY: Path validation helper
+ * Prevents directory traversal attacks
+ */
+function validatePathIsWithinRoot(filePath: string, rootPath: string): boolean {
+    try {
+        const normalized = resolve(filePath);
+        const normalizedRoot = resolve(rootPath);
+        return normalized.startsWith(normalizedRoot + '/') || normalized === normalizedRoot;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * SECURITY: Input validation for shell arguments
+ * Prevents command injection attacks
+ */
+function validatePlaywrightPattern(pattern: string): boolean {
+    // Allow alphanumeric, dots, dashes, slashes, asterisks, underscores only
+    return /^[a-zA-Z0-9_\-.*\/]+$/.test(pattern) && !pattern.includes('..') && pattern.length < 512;
+}
+
+/**
+ * SECURITY: Validate git refs to prevent argument injection
+ */
+function validateGitRef(ref: string): boolean {
+    // Allow standard git ref patterns: branches, tags, commit hashes
+    // Blocks patterns that start with -- (options) or contain spaces
+    return (
+        /^[a-zA-Z0-9_\-./~^]+$/.test(ref) &&
+        !ref.startsWith('--') &&
+        ref.length < 256 &&
+        !ref.includes('\n') &&
+        !ref.includes('\0')
+    );
+}
+
+/**
+ * SECURITY: Validate browser names against allowlist
+ */
+function validateBrowsers(browsers: string[]): boolean {
+    const allowedBrowsers = new Set(['chromium', 'firefox', 'webkit']);
+    return browsers.length > 0 && browsers.length <= 3 && browsers.every((b) => allowedBrowsers.has(b));
+}
+
+/**
+ * SECURITY: Glob pattern validation
+ * Restricts to test-related patterns to prevent enumeration of sensitive files
+ */
+function validateGlobPattern(pattern: string): boolean {
+    // Block attempts to enumerate sensitive patterns
+    const blockedPatterns = [/\*\*\/\*\*/, /\.env/, /\.pem/, /\.key/, /aws|credentials|secret|password/i];
+
+    if (pattern.length > 256) return false;
+    if (blockedPatterns.some((p) => p.test(pattern))) return false;
+    if (pattern.includes('..')) return false;
+    return /^[a-zA-Z0-9_\-.*\/]+$/.test(pattern);
+}
+
+/**
+ * SECURITY: Sanitize error messages to prevent information leakage
+ */
+function sanitizeError(error: unknown, operation: string): string {
+    if (error instanceof Error) {
+        // Only return safe error message, hide internal details
+        if (error.message.includes('ENOENT')) {
+            return `File not found (${operation})`;
+        }
+        if (error.message.includes('EACCES')) {
+            return `Permission denied (${operation})`;
+        }
+        if (error.message.includes('EISDIR')) {
+            return `Is a directory (${operation})`;
+        }
+        return `Operation failed: ${operation}`;
+    }
+    return 'An unexpected error occurred';
+}
+
+/**
+ * SECURITY: Rate limiter helper
+ */
+class RateLimiter {
+    private requests: number[] = [];
+    private maxRequests: number;
+    private windowMs: number;
+
+    constructor(maxRequests: number = 100, windowMs: number = 60000) {
+        this.maxRequests = maxRequests;
+        this.windowMs = windowMs;
+    }
+
+    isAllowed(): boolean {
+        const now = Date.now();
+        this.requests = this.requests.filter((time) => now - time < this.windowMs);
+
+        if (this.requests.length >= this.maxRequests) {
+            return false;
+        }
+
+        this.requests.push(now);
+        return true;
+    }
+}
+
+/**
  * MCP Server for autonomous test discovery, generation, and healing
  * Provides tools for Claude to interact with test framework
  */
 export class E2EAgentsMCPServer {
     private repoRoot: string;
     private tools: Tool[];
+    private rateLimiter: RateLimiter;
 
     constructor(repoRoot: string = process.cwd()) {
         this.repoRoot = repoRoot;
         this.tools = this.defineTools();
+        this.rateLimiter = new RateLimiter(100, 60000); // 100 requests per minute
     }
 
     private defineTools(): Tool[] {
@@ -121,8 +229,7 @@ export class E2EAgentsMCPServer {
                         include: {
                             type: 'array',
                             items: {type: 'string'},
-                            description:
-                                'What to include (package.json, tsconfig, playwright.config, tests)',
+                            description: 'What to include (package.json, tsconfig, playwright.config, tests)',
                         },
                     },
                 },
@@ -132,8 +239,14 @@ export class E2EAgentsMCPServer {
 
     /**
      * Handle tool calls from Claude/Playwright agents
+     * SECURITY: Rate limiting enforced
      */
     async callTool(name: string, args: Record<string, unknown>): Promise<string> {
+        // SECURITY: Rate limiting
+        if (!this.rateLimiter.isAllowed()) {
+            return JSON.stringify({error: 'Rate limit exceeded. Too many requests.'});
+        }
+
         switch (name) {
             case 'discover_tests':
                 return this.discoverTests(args as {since?: string; pattern?: string});
@@ -148,7 +261,7 @@ export class E2EAgentsMCPServer {
             case 'get_repository_context':
                 return this.getRepositoryContext(args as {include?: string[]});
             default:
-                throw new Error(`Unknown tool: ${name}`);
+                return JSON.stringify({error: 'Unknown tool'});
         }
     }
 
@@ -156,6 +269,14 @@ export class E2EAgentsMCPServer {
         try {
             const since = args.since || 'HEAD~5';
             const pattern = args.pattern || '**/*.spec.ts';
+
+            // SECURITY: Validate inputs
+            if (!validateGitRef(since)) {
+                return JSON.stringify({error: 'Invalid git reference format'});
+            }
+            if (!validateGlobPattern(pattern)) {
+                return JSON.stringify({error: 'Invalid pattern format'});
+            }
 
             // Get changed files
             const changedFiles = this.getChangedFiles(since);
@@ -169,57 +290,102 @@ export class E2EAgentsMCPServer {
                 recommendedTests: this.analyzeChangesForTests(changedFiles, testFiles),
             });
         } catch (error) {
-            return JSON.stringify({error: String(error)});
+            return JSON.stringify({error: sanitizeError(error, 'discover_tests')});
         }
     }
 
     private readFile(args: {path: string}): string {
         try {
-            const filePath = join(this.repoRoot, args.path);
-            if (!existsSync(filePath)) {
-                return JSON.stringify({error: `File not found: ${args.path}`});
+            // SECURITY: Path traversal prevention
+            const filePath = resolve(this.repoRoot, args.path);
+            if (!validatePathIsWithinRoot(filePath, this.repoRoot)) {
+                return JSON.stringify({error: 'Access denied'});
             }
+
+            if (!existsSync(filePath)) {
+                return JSON.stringify({error: 'File not found'});
+            }
+
             const content = readFileSync(filePath, 'utf-8');
             return JSON.stringify({path: args.path, content});
         } catch (error) {
-            return JSON.stringify({error: String(error)});
+            return JSON.stringify({error: sanitizeError(error, 'read_file')});
         }
     }
 
     private writeFile(args: {path: string; content: string}): string {
         try {
-            const filePath = join(this.repoRoot, args.path);
+            // SECURITY: Path traversal prevention
+            const filePath = resolve(this.repoRoot, args.path);
+            if (!validatePathIsWithinRoot(filePath, this.repoRoot)) {
+                return JSON.stringify({error: 'Access denied'});
+            }
+
+            // SECURITY: Size limit to prevent resource exhaustion
+            if (args.content.length > 10 * 1024 * 1024) {
+                // 10MB limit
+                return JSON.stringify({error: 'File too large'});
+            }
+
             writeFileSync(filePath, args.content, 'utf-8');
             return JSON.stringify({success: true, path: args.path});
         } catch (error) {
-            return JSON.stringify({error: String(error)});
+            return JSON.stringify({error: sanitizeError(error, 'write_file')});
         }
     }
 
     private runTests(args: {pattern?: string; browsers?: string[]}): string {
         try {
             const pattern = args.pattern || '**/*.spec.ts';
-            const browsers = args.browsers?.join(',') || 'chromium';
+            const browsers = args.browsers || ['chromium'];
 
-            const result = spawnSync('npx', ['playwright', 'test', pattern, `--project=${browsers}`], {
-                cwd: this.repoRoot,
-                encoding: 'utf-8',
-            });
+            // SECURITY: Validate inputs
+            if (!validatePlaywrightPattern(pattern)) {
+                return JSON.stringify({error: 'Invalid test pattern'});
+            }
+            if (!validateBrowsers(browsers as string[])) {
+                return JSON.stringify({error: 'Invalid browser specification'});
+            }
+
+            // SECURITY: Use -- to separate playwright options from test args
+            const result = spawnSync(
+                'npx',
+                [
+                    'playwright',
+                    'test',
+                    '--',
+                    pattern,
+                    `--project=${(browsers as string[]).join(',')}`,
+                ],
+                {
+                    cwd: this.repoRoot,
+                    encoding: 'utf-8',
+                    timeout: 300000, // 5 minute timeout
+                    maxBuffer: 1024 * 1024, // 1MB output limit
+                }
+            );
 
             if (result.error) {
-                return JSON.stringify({success: false, error: String(result.error)});
+                return JSON.stringify({
+                    success: false,
+                    error: 'Test execution failed',
+                });
             }
+
+            // SECURITY: Don't leak full stdout/stderr, summarize instead
+            const stdout = result.stdout ? result.stdout.substring(0, 5000) : '';
+            const stderr = result.stderr ? result.stderr.substring(0, 5000) : '';
 
             return JSON.stringify({
                 success: result.status === 0,
-                stdout: result.stdout,
-                stderr: result.stderr,
+                summary: `Exit code: ${result.status}`,
+                testsPassed: stdout.includes('passed'),
+                testsFailed: stdout.includes('failed'),
             });
         } catch (error) {
             return JSON.stringify({
                 success: false,
-                error: String(error),
-                hint: 'Make sure Playwright is installed',
+                error: 'Test execution error',
             });
         }
     }
@@ -227,49 +393,95 @@ export class E2EAgentsMCPServer {
     private getGitChanges(args: {since?: string}): string {
         try {
             const since = args.since || 'HEAD~5';
-            const result = spawnSync('git', ['diff', '--name-only', `${since}..HEAD`], {
+
+            // SECURITY: Validate git ref
+            if (!validateGitRef(since)) {
+                return JSON.stringify({error: 'Invalid git reference format'});
+            }
+
+            // SECURITY: Use -- to separate git options from refs
+            const result = spawnSync('git', ['diff', '--name-only', '--', `${since}..HEAD`], {
                 cwd: this.repoRoot,
                 encoding: 'utf-8',
+                timeout: 30000,
             });
 
             if (result.error) {
-                return JSON.stringify({error: String(result.error)});
+                return JSON.stringify({error: 'Git operation failed'});
             }
 
             const changedFiles = result.stdout.trim().split('\n').filter((f) => f);
             return JSON.stringify({changedFiles});
         } catch (error) {
-            return JSON.stringify({error: String(error), hint: 'Make sure you are in a git repository'});
+            return JSON.stringify({error: 'Git operation error'});
         }
     }
 
     private getRepositoryContext(args: {include?: string[]}): string {
         try {
-            const include = args.include || ['package.json', 'playwright.config'];
+            const defaultInclude = ['package.json', 'tsconfig.json', 'playwright.config'];
+            const include = args.include || defaultInclude;
+
+            // SECURITY: Limit to allowed filenames
+            const allowedFiles = new Set([
+                'package.json',
+                'tsconfig.json',
+                'tsconfig.base.json',
+                'playwright.config.ts',
+                'playwright.config.js',
+                'jest.config.js',
+                '.npmrc',
+                'README.md',
+            ]);
+
             const context: Record<string, unknown> = {};
 
             for (const file of include) {
-                const filePath = join(this.repoRoot, file);
+                // SECURITY: Validate each path
+                if (!allowedFiles.has(file)) {
+                    continue; // Skip non-allowed files
+                }
+
+                const filePath = resolve(this.repoRoot, file);
+                if (!validatePathIsWithinRoot(filePath, this.repoRoot)) {
+                    continue;
+                }
+
                 if (existsSync(filePath)) {
-                    context[file] = readFileSync(filePath, 'utf-8');
+                    try {
+                        context[file] = readFileSync(filePath, 'utf-8');
+                    } catch {
+                        // Ignore read errors for individual files
+                    }
                 }
             }
 
-            // Add test structure
-            const testFiles = globSync('**/*.spec.ts', {cwd: this.repoRoot, ignore: 'node_modules/**'});
-            context.testFiles = testFiles;
+            // Add test structure with safe globbing
+            const testFiles = globSync('**/*.spec.ts', {
+                cwd: this.repoRoot,
+                ignore: 'node_modules/**',
+                maxDepth: 5,
+            });
+            context.testFiles = testFiles.slice(0, 100); // Limit to 100 files
 
             return JSON.stringify(context);
         } catch (error) {
-            return JSON.stringify({error: String(error)});
+            return JSON.stringify({error: sanitizeError(error, 'get_repository_context')});
         }
     }
 
     private getChangedFiles(since: string): string[] {
         try {
-            const result = spawnSync('git', ['diff', '--name-only', `${since}..HEAD`], {
+            // SECURITY: Validate git ref before use
+            if (!validateGitRef(since)) {
+                return [];
+            }
+
+            // SECURITY: Use -- separator
+            const result = spawnSync('git', ['diff', '--name-only', '--', `${since}..HEAD`], {
                 cwd: this.repoRoot,
                 encoding: 'utf-8',
+                timeout: 30000,
             });
 
             if (result.error) {
@@ -286,6 +498,7 @@ export class E2EAgentsMCPServer {
         // Simple heuristic: if a source file changed, suggest a test for it
         return changedFiles
             .filter((f) => !f.endsWith('.spec.ts') && !f.endsWith('.test.ts'))
+            .slice(0, 10) // Limit results
             .map((f) => {
                 const testFile = f.replace(/\.(ts|js)$/, '.spec.ts');
                 return testFile;
