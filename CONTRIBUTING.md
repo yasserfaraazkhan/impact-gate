@@ -1,4 +1,4 @@
-# Contributing to @mattermost/llm-testing-providers
+# Contributing to e2e-ai-agents
 
 Thank you for your interest in contributing! This document provides guidelines and instructions for contributing to the project.
 
@@ -13,8 +13,8 @@ Thank you for your interest in contributing! This document provides guidelines a
 ### Setup for Development
 
 ```bash
-git clone https://github.com/mattermost/mattermost-llm-testing-providers
-cd mattermost-llm-testing-providers
+git clone https://github.com/yasserfaraazkhan/e2e-agents
+cd e2e-agents
 npm install
 npm run build
 ```
