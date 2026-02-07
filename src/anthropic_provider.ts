@@ -21,8 +21,8 @@ import {LLMProviderError} from './provider_interface';
 interface AnthropicUsage {
     input_tokens: number;
     output_tokens: number;
-    cache_read_input_tokens?: number;
-    cache_creation_input_tokens?: number;
+    cache_read_input_tokens?: number | null;
+    cache_creation_input_tokens?: number | null;
 }
 
 /**
@@ -418,7 +418,7 @@ export class AnthropicProvider implements LLMProvider {
             inputTokens: usage.input_tokens || 0,
             outputTokens: usage.output_tokens || 0,
             totalTokens: (usage.input_tokens || 0) + (usage.output_tokens || 0),
-            cachedTokens: usage.cache_read_input_tokens,
+            cachedTokens: usage.cache_read_input_tokens ?? undefined,
         };
     }
 
