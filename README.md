@@ -20,6 +20,14 @@ Pluggable LLM provider abstraction for test automation with:
 npm install e2e-ai-agents
 ```
 
+## Quick Links
+
+📖 **[Comprehensive Guide](E2E_AI_TESTING.md)** - In-depth documentation including:
+- How to use e2e-ai-agents in your projects
+- Real-world examples for Playwright, Cypress, Selenium
+- How Mattermost uses this package
+- Cost optimization and best practices
+
 ## Quick Start
 
 ### Use Claude
@@ -224,6 +232,27 @@ console.log(`Tokens: ${stats.totalTokens.toLocaleString()}`);
 console.log(`Cost: $${stats.totalCost.toFixed(2)}`);
 console.log(`Avg speed: ${stats.averageResponseTimeMs.toFixed(0)}ms`);
 ```
+
+## Learn More
+
+For comprehensive documentation on:
+- Real-world usage examples
+- Integration with different frameworks
+- How Mattermost uses e2e-ai-agents in production
+- Cost optimization strategies
+- Security features and best practices
+
+👉 **See [E2E_AI_TESTING.md](E2E_AI_TESTING.md)**
+
+## Production Usage
+
+This package is used in production by Mattermost for:
+- ✅ Automated test generation
+- ✅ Test validation and healing
+- ✅ UI screenshot analysis
+- ✅ Test data generation
+
+See the [Mattermost e2e-test-gen implementation](https://github.com/mattermost/mattermost/tree/master/e2e-tests/playwright) for a complete example.
 
 ## License
 
