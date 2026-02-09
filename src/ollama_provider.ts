@@ -6,14 +6,13 @@ import OpenAI from 'openai';
 import type {
     GenerateOptions,
     ImageInput,
-    LLMProvider,
     LLMResponse,
     OllamaConfig,
     ProviderCapabilities,
-    ProviderUsageStats,
 } from './provider_interface.js';
 import {LLMProviderError, UnsupportedCapabilityError} from './provider_interface.js';
 import {sanitizeErrorMessage, withTimeout} from './provider_utils.js';
+import {BaseProvider} from './base_provider.js';
 
 /**
  * SECURITY: Validate Ollama base URL and enforce HTTPS for remote connections
@@ -104,11 +103,10 @@ function validateTimeout(timeout: number | undefined): number {
  * 2. Pull model: ollama pull deepseek-r1:7b
  * 3. Start: ollama serve (runs on localhost:11434)
  */
-export class OllamaProvider implements LLMProvider {
+export class OllamaProvider extends BaseProvider {
     name = 'ollama';
     private client: OpenAI;
     private model: string;
-    private stats: ProviderUsageStats;
 
     capabilities: ProviderCapabilities = {
         vision: false, // Most Ollama models don't support vision
@@ -122,6 +120,8 @@ export class OllamaProvider implements LLMProvider {
     };
 
     constructor(config: OllamaConfig) {
+        super();
+
         // SECURITY: Validate and sanitize URL
         const urlValidation = validateOllamaUrl(config.baseUrl);
         if (!urlValidation.valid && urlValidation.warning) {
@@ -147,19 +147,6 @@ export class OllamaProvider implements LLMProvider {
         }
 
         this.model = model;
-
-        // Initialize stats
-        this.stats = {
-            requestCount: 0,
-            totalInputTokens: 0,
-            totalOutputTokens: 0,
-            totalTokens: 0,
-            totalCost: 0,
-            averageResponseTimeMs: 0,
-            failedRequests: 0,
-            startTime: new Date(),
-            lastUpdated: new Date(),
-        };
     }
 
     async generateText(prompt: string, options?: GenerateOptions): Promise<LLMResponse> {
@@ -291,43 +278,6 @@ export class OllamaProvider implements LLMProvider {
                 error,
             );
         }
-    }
-
-    getUsageStats(): ProviderUsageStats {
-        return {...this.stats};
-    }
-
-    resetUsageStats(): void {
-        this.stats = {
-            requestCount: 0,
-            totalInputTokens: 0,
-            totalOutputTokens: 0,
-            totalTokens: 0,
-            totalCost: 0,
-            averageResponseTimeMs: 0,
-            failedRequests: 0,
-            startTime: new Date(),
-            lastUpdated: new Date(),
-        };
-    }
-
-    private updateStats(
-        usage: {inputTokens: number; outputTokens: number; totalTokens: number},
-        responseTime: number,
-        cost: number,
-    ): void {
-        this.stats.requestCount++;
-        this.stats.totalInputTokens += usage.inputTokens;
-        this.stats.totalOutputTokens += usage.outputTokens;
-        this.stats.totalTokens += usage.totalTokens;
-        this.stats.totalCost += cost;
-
-        // Update rolling average response time
-        const totalRequests = this.stats.requestCount;
-        this.stats.averageResponseTimeMs =
-            (this.stats.averageResponseTimeMs * (totalRequests - 1) + responseTime) / totalRequests;
-
-        this.stats.lastUpdated = new Date();
     }
 
     /**

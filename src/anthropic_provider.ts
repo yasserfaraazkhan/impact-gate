@@ -7,13 +7,12 @@ import type {
     AnthropicConfig,
     GenerateOptions,
     ImageInput,
-    LLMProvider,
     LLMResponse,
     ProviderCapabilities,
-    ProviderUsageStats,
 } from './provider_interface.js';
 import {LLMProviderError} from './provider_interface.js';
 import {API_KEY_PATTERNS, sanitizeErrorMessage, withTimeout, validateAndSanitizeUrl} from './provider_utils.js';
+import {BaseProvider} from './base_provider.js';
 
 /**
  * SECURITY: Type-safe response handling
@@ -54,11 +53,10 @@ interface AnthropicUsage {
  * - claude-opus-4-5-20251101 (highest quality, slower, more expensive)
  * - claude-haiku-4-0-20250430 (fastest, cheapest, lower quality)
  */
-export class AnthropicProvider implements LLMProvider {
+export class AnthropicProvider extends BaseProvider {
     name = 'anthropic';
     private client: Anthropic;
     private model: string;
-    private stats: ProviderUsageStats;
 
     capabilities: ProviderCapabilities = {
         vision: true, // Full vision support
@@ -72,6 +70,8 @@ export class AnthropicProvider implements LLMProvider {
     };
 
     constructor(config: AnthropicConfig) {
+        super();
+
         // SECURITY: Validate API key format
         if (!API_KEY_PATTERNS.anthropic.test(config.apiKey)) {
             throw new Error('Invalid API key format. Expected sk-ant-* format.');
@@ -94,19 +94,6 @@ export class AnthropicProvider implements LLMProvider {
         });
 
         this.model = config.model || 'claude-sonnet-4-5-20250929';
-
-        // Initialize stats
-        this.stats = {
-            requestCount: 0,
-            totalInputTokens: 0,
-            totalOutputTokens: 0,
-            totalTokens: 0,
-            totalCost: 0,
-            averageResponseTimeMs: 0,
-            failedRequests: 0,
-            startTime: new Date(),
-            lastUpdated: new Date(),
-        };
     }
 
     async generateText(prompt: string, options?: GenerateOptions): Promise<LLMResponse> {
@@ -138,7 +125,11 @@ export class AnthropicProvider implements LLMProvider {
 
             // SECURITY: Type-safe usage extraction
             const usage = this.extractUsageFromResponse(response.usage);
-            const cost = this.calculateCost(usage);
+            const cost = this.calculateCost(
+                usage,
+                this.capabilities.costPer1MInputTokens,
+                this.capabilities.costPer1MOutputTokens,
+            );
 
             // Update stats
             this.updateStats(usage, responseTime, cost);
@@ -246,7 +237,11 @@ export class AnthropicProvider implements LLMProvider {
 
             // SECURITY: Type-safe usage extraction
             const usage = this.extractUsageFromResponse(response.usage);
-            const cost = this.calculateCost(usage);
+            const cost = this.calculateCost(
+                usage,
+                this.capabilities.costPer1MInputTokens,
+                this.capabilities.costPer1MOutputTokens,
+            );
 
             // Update stats
             this.updateStats(usage, responseTime, cost);
@@ -317,24 +312,6 @@ export class AnthropicProvider implements LLMProvider {
         }
     }
 
-    getUsageStats(): ProviderUsageStats {
-        return {...this.stats};
-    }
-
-    resetUsageStats(): void {
-        this.stats = {
-            requestCount: 0,
-            totalInputTokens: 0,
-            totalOutputTokens: 0,
-            totalTokens: 0,
-            totalCost: 0,
-            averageResponseTimeMs: 0,
-            failedRequests: 0,
-            startTime: new Date(),
-            lastUpdated: new Date(),
-        };
-    }
-
     private extractTextFromResponse(response: Anthropic.Message): string {
         const textBlocks = response.content.filter((block) => block.type === 'text');
         return textBlocks.map((block) => {
@@ -375,45 +352,6 @@ export class AnthropicProvider implements LLMProvider {
             }
         }
         return undefined;
-    }
-
-    private calculateCost(usage: {inputTokens: number; outputTokens: number; cachedTokens?: number}): number {
-        // Calculate input token cost
-        let inputCost = 0;
-
-        // Cached tokens cost 90% less
-        if (usage.cachedTokens) {
-            const cachedCost = (usage.cachedTokens / 1_000_000) * (this.capabilities.costPer1MInputTokens * 0.1);
-            const uncachedInputTokens = usage.inputTokens - usage.cachedTokens;
-            const uncachedCost = (uncachedInputTokens / 1_000_000) * this.capabilities.costPer1MInputTokens;
-            inputCost = cachedCost + uncachedCost;
-        } else {
-            inputCost = (usage.inputTokens / 1_000_000) * this.capabilities.costPer1MInputTokens;
-        }
-
-        // Calculate output token cost
-        const outputCost = (usage.outputTokens / 1_000_000) * this.capabilities.costPer1MOutputTokens;
-
-        return inputCost + outputCost;
-    }
-
-    private updateStats(
-        usage: {inputTokens: number; outputTokens: number; totalTokens: number},
-        responseTime: number,
-        cost: number,
-    ): void {
-        this.stats.requestCount++;
-        this.stats.totalInputTokens += usage.inputTokens;
-        this.stats.totalOutputTokens += usage.outputTokens;
-        this.stats.totalTokens += usage.totalTokens;
-        this.stats.totalCost += cost;
-
-        // Update rolling average response time
-        const totalRequests = this.stats.requestCount;
-        this.stats.averageResponseTimeMs =
-            (this.stats.averageResponseTimeMs * (totalRequests - 1) + responseTime) / totalRequests;
-
-        this.stats.lastUpdated = new Date();
     }
 
     /**

@@ -6,14 +6,13 @@ import OpenAI from 'openai';
 import type {
     GenerateOptions,
     ImageInput,
-    LLMProvider,
     LLMResponse,
     OpenAIConfig,
     ProviderCapabilities,
-    ProviderUsageStats,
 } from './provider_interface.js';
 import {LLMProviderError, UnsupportedCapabilityError} from './provider_interface.js';
 import {API_KEY_PATTERNS, sanitizeErrorMessage, withTimeout, validateAndSanitizeUrl} from './provider_utils.js';
+import {BaseProvider} from './base_provider.js';
 
 interface OpenAIUsage {
     prompt_tokens?: number | null;
@@ -27,15 +26,16 @@ function inferVisionSupport(model: string): boolean {
     return lower.includes('vision') || lower.includes('4o') || lower.includes('omni');
 }
 
-export class OpenAIProvider implements LLMProvider {
+export class OpenAIProvider extends BaseProvider {
     name = 'openai';
     private client: OpenAI;
     private model: string;
-    private stats: ProviderUsageStats;
 
     capabilities: ProviderCapabilities;
 
     constructor(config: OpenAIConfig) {
+        super();
+
         if (!API_KEY_PATTERNS.openai.test(config.apiKey)) {
             throw new Error('Invalid API key format. Expected sk-* format.');
         }
@@ -72,18 +72,6 @@ export class OpenAIProvider implements LLMProvider {
             supportsPromptCaching: false,
             typicalResponseTimeMs: 1200,
         };
-
-        this.stats = {
-            requestCount: 0,
-            totalInputTokens: 0,
-            totalOutputTokens: 0,
-            totalTokens: 0,
-            totalCost: 0,
-            averageResponseTimeMs: 0,
-            failedRequests: 0,
-            startTime: new Date(),
-            lastUpdated: new Date(),
-        };
     }
 
     async generateText(prompt: string, options?: GenerateOptions): Promise<LLMResponse> {
@@ -116,7 +104,11 @@ export class OpenAIProvider implements LLMProvider {
             const responseTime = Date.now() - startTime;
             const text = response.choices[0]?.message?.content || '';
             const usage = this.extractUsage(response.usage);
-            const cost = this.calculateCost(usage);
+            const cost = this.calculateCost(
+                usage,
+                this.capabilities.costPer1MInputTokens,
+                this.capabilities.costPer1MOutputTokens,
+            );
 
             this.updateStats(usage, responseTime, cost);
 
@@ -207,7 +199,11 @@ export class OpenAIProvider implements LLMProvider {
             const responseTime = Date.now() - startTime;
             const text = response.choices[0]?.message?.content || '';
             const usage = this.extractUsage(response.usage);
-            const cost = this.calculateCost(usage);
+            const cost = this.calculateCost(
+                usage,
+                this.capabilities.costPer1MInputTokens,
+                this.capabilities.costPer1MOutputTokens,
+            );
 
             this.updateStats(usage, responseTime, cost);
 
@@ -279,24 +275,6 @@ export class OpenAIProvider implements LLMProvider {
         }
     }
 
-    getUsageStats(): ProviderUsageStats {
-        return {...this.stats};
-    }
-
-    resetUsageStats(): void {
-        this.stats = {
-            requestCount: 0,
-            totalInputTokens: 0,
-            totalOutputTokens: 0,
-            totalTokens: 0,
-            totalCost: 0,
-            averageResponseTimeMs: 0,
-            failedRequests: 0,
-            startTime: new Date(),
-            lastUpdated: new Date(),
-        };
-    }
-
     private extractUsage(usage: OpenAIUsage | null | undefined): {
         inputTokens: number;
         outputTokens: number;
@@ -318,30 +296,6 @@ export class OpenAIProvider implements LLMProvider {
             }
         }
         return undefined;
-    }
-
-    private calculateCost(usage: {inputTokens: number; outputTokens: number}): number {
-        const inputCost = (usage.inputTokens / 1_000_000) * this.capabilities.costPer1MInputTokens;
-        const outputCost = (usage.outputTokens / 1_000_000) * this.capabilities.costPer1MOutputTokens;
-        return inputCost + outputCost;
-    }
-
-    private updateStats(
-        usage: {inputTokens: number; outputTokens: number; totalTokens: number},
-        responseTime: number,
-        cost: number,
-    ): void {
-        this.stats.requestCount++;
-        this.stats.totalInputTokens += usage.inputTokens;
-        this.stats.totalOutputTokens += usage.outputTokens;
-        this.stats.totalTokens += usage.totalTokens;
-        this.stats.totalCost += cost;
-
-        const totalRequests = this.stats.requestCount;
-        this.stats.averageResponseTimeMs =
-            (this.stats.averageResponseTimeMs * (totalRequests - 1) + responseTime) / totalRequests;
-
-        this.stats.lastUpdated = new Date();
     }
 
     async checkHealth(): Promise<{healthy: boolean; message: string}> {

@@ -5,13 +5,12 @@ import type {
     CustomConfig,
     GenerateOptions,
     ImageInput,
-    LLMProvider,
     LLMResponse,
     ProviderCapabilities,
-    ProviderUsageStats,
 } from './provider_interface.js';
 import {LLMProviderError, UnsupportedCapabilityError} from './provider_interface.js';
 import {sanitizeErrorMessage, validateAndSanitizeUrl} from './provider_utils.js';
+import {BaseProvider} from './base_provider.js';
 
 interface OpenAIResponse {
     choices?: Array<{message?: {content?: string}; finish_reason?: string}>;
@@ -71,14 +70,15 @@ async function postJson<T>(
     }
 }
 
-export class CustomProvider implements LLMProvider {
+export class CustomProvider extends BaseProvider {
     name = 'custom';
     private config: CustomConfig;
-    private stats: ProviderUsageStats;
 
     capabilities: ProviderCapabilities;
 
     constructor(config: CustomConfig) {
+        super();
+
         const validation = validateAndSanitizeUrl(config.baseUrl);
         if (!validation.valid) {
             throw new Error(`Invalid base URL: ${validation.warning}`);
@@ -98,18 +98,6 @@ export class CustomProvider implements LLMProvider {
             supportsTools: false,
             supportsPromptCaching: false,
             typicalResponseTimeMs: 0,
-        };
-
-        this.stats = {
-            requestCount: 0,
-            totalInputTokens: 0,
-            totalOutputTokens: 0,
-            totalTokens: 0,
-            totalCost: 0,
-            averageResponseTimeMs: 0,
-            failedRequests: 0,
-            startTime: new Date(),
-            lastUpdated: new Date(),
         };
     }
 
@@ -186,24 +174,6 @@ export class CustomProvider implements LLMProvider {
                 error,
             );
         }
-    }
-
-    getUsageStats(): ProviderUsageStats {
-        return {...this.stats};
-    }
-
-    resetUsageStats(): void {
-        this.stats = {
-            requestCount: 0,
-            totalInputTokens: 0,
-            totalOutputTokens: 0,
-            totalTokens: 0,
-            totalCost: 0,
-            averageResponseTimeMs: 0,
-            failedRequests: 0,
-            startTime: new Date(),
-            lastUpdated: new Date(),
-        };
     }
 
     private async dispatchRequest(
@@ -398,21 +368,17 @@ export class CustomProvider implements LLMProvider {
         };
     }
 
-    private updateStats(
-        usage: {inputTokens: number; outputTokens: number; totalTokens: number},
-        responseTime: number,
-        cost: number,
-    ): void {
-        this.stats.requestCount++;
-        this.stats.totalInputTokens += usage.inputTokens;
-        this.stats.totalOutputTokens += usage.outputTokens;
-        this.stats.totalTokens += usage.totalTokens;
-        this.stats.totalCost += cost;
-
-        const totalRequests = this.stats.requestCount;
-        this.stats.averageResponseTimeMs =
-            (this.stats.averageResponseTimeMs * (totalRequests - 1) + responseTime) / totalRequests;
-
-        this.stats.lastUpdated = new Date();
+    // CustomProvider doesn't support streaming
+    async *streamText(): AsyncGenerator<string, void, unknown> {
+        throw new Error('Streaming not supported for custom providers');
     }
+
+    // CustomProvider doesn't have built-in health checks
+    async checkHealth(): Promise<{healthy: boolean; message: string}> {
+        return {
+            healthy: true,
+            message: 'Custom provider configured',
+        };
+    }
+
 }
