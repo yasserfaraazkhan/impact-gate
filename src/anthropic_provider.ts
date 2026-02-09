@@ -13,6 +13,7 @@ import type {
     ProviderUsageStats,
 } from './provider_interface.js';
 import {LLMProviderError} from './provider_interface.js';
+import {API_KEY_PATTERNS, sanitizeErrorMessage, withTimeout, validateAndSanitizeUrl} from './provider_utils.js';
 
 /**
  * SECURITY: Type-safe response handling
@@ -25,86 +26,6 @@ interface AnthropicUsage {
     cache_creation_input_tokens?: number | null;
 }
 
-/**
- * SECURITY: Validate API key format
- */
-function validateApiKey(apiKey: string): boolean {
-    // Anthropic API keys start with sk-ant- and are at least 32 chars
-    return /^sk-ant-[a-zA-Z0-9_\-]{20,}$/.test(apiKey);
-}
-
-/**
- * SECURITY: Validate and enforce HTTPS for remote URLs
- */
-function validateAndSanitizeUrl(baseUrl: string | undefined): {valid: boolean; url?: string; warning?: string} {
-    if (!baseUrl) {
-        return {valid: true};
-    }
-
-    try {
-        const url = new URL(baseUrl);
-
-        // For non-localhost URLs, require HTTPS
-        const isLocalhost = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '::1';
-        if (!isLocalhost && url.protocol !== 'https:') {
-            return {
-                valid: false,
-                warning: `HTTPS required for remote URLs. Got: ${url.protocol}//${url.hostname}`,
-            };
-        }
-
-        return {valid: true, url: baseUrl};
-    } catch {
-        return {valid: false};
-    }
-}
-
-/**
- * SECURITY: Sanitize error messages to prevent information leakage
- */
-function sanitizeErrorMessage(error: unknown, context: string): string {
-    if (error instanceof Error) {
-        const msg = error.message.toLowerCase();
-
-        // Map specific API errors to safe messages
-        if (msg.includes('401') || msg.includes('authentication')) {
-            return `Authentication failed (${context})`;
-        }
-        if (msg.includes('429') || msg.includes('rate')) {
-            return `Rate limit exceeded (${context})`;
-        }
-        if (msg.includes('timeout')) {
-            return `Request timeout (${context})`;
-        }
-        if (msg.includes('network') || msg.includes('econnrefused')) {
-            return `Connection failed (${context})`;
-        }
-
-        // Don't leak stack traces, API keys, or internal details
-        return `Operation failed (${context})`;
-    }
-    return 'An unexpected error occurred';
-}
-
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number | undefined, context: string): Promise<T> {
-    if (!timeoutMs) {
-        return promise;
-    }
-
-    return new Promise<T>((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error(`Request timeout (${context})`)), timeoutMs);
-        promise.then(
-            (value) => {
-                clearTimeout(timer);
-                resolve(value);
-            },
-            (error) => {
-                clearTimeout(timer);
-                reject(error);
-            },
-        );
-    });
-}
 
 /**
  * Anthropic Provider - Claude AI models
@@ -152,7 +73,7 @@ export class AnthropicProvider implements LLMProvider {
 
     constructor(config: AnthropicConfig) {
         // SECURITY: Validate API key format
-        if (!validateApiKey(config.apiKey)) {
+        if (!API_KEY_PATTERNS.anthropic.test(config.apiKey)) {
             throw new Error('Invalid API key format. Expected sk-ant-* format.');
         }
 

@@ -13,6 +13,7 @@ import type {
     ProviderUsageStats,
 } from './provider_interface.js';
 import {LLMProviderError, UnsupportedCapabilityError} from './provider_interface.js';
+import {sanitizeErrorMessage, withTimeout} from './provider_utils.js';
 
 /**
  * SECURITY: Validate Ollama base URL and enforce HTTPS for remote connections
@@ -77,52 +78,6 @@ function validateTimeout(timeout: number | undefined): number {
     return timeout;
 }
 
-/**
- * SECURITY: Sanitize error messages to prevent information leakage
- */
-function sanitizeErrorMessage(error: unknown, context: string): string {
-    if (error instanceof Error) {
-        const msg = error.message.toLowerCase();
-
-        // Map specific connection errors to safe messages
-        if (msg.includes('econnrefused') || msg.includes('refused')) {
-            return `Connection refused (${context}). Make sure Ollama is running.`;
-        }
-        if (msg.includes('enotfound') || msg.includes('getaddrinfo')) {
-            return `Host not found (${context})`;
-        }
-        if (msg.includes('timeout') || msg.includes('etimedout')) {
-            return `Connection timeout (${context})`;
-        }
-        if (msg.includes('network') || msg.includes('socket')) {
-            return `Network error (${context})`;
-        }
-
-        // Don't leak internal details or stack traces
-        return `Operation failed (${context})`;
-    }
-    return 'An unexpected error occurred';
-}
-
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number | undefined, context: string): Promise<T> {
-    if (!timeoutMs) {
-        return promise;
-    }
-
-    return new Promise<T>((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error(`Request timeout (${context})`)), timeoutMs);
-        promise.then(
-            (value) => {
-                clearTimeout(timer);
-                resolve(value);
-            },
-            (error) => {
-                clearTimeout(timer);
-                reject(error);
-            },
-        );
-    });
-}
 
 /**
  * Ollama Provider - Free, local LLM execution

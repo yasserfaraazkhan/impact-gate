@@ -13,6 +13,7 @@ import type {
     ProviderUsageStats,
 } from './provider_interface.js';
 import {LLMProviderError, UnsupportedCapabilityError} from './provider_interface.js';
+import {API_KEY_PATTERNS, sanitizeErrorMessage, withTimeout, validateAndSanitizeUrl} from './provider_utils.js';
 
 interface OpenAIUsage {
     prompt_tokens?: number | null;
@@ -20,74 +21,6 @@ interface OpenAIUsage {
     total_tokens?: number | null;
 }
 
-function validateApiKey(apiKey: string): boolean {
-    // OpenAI API keys typically start with sk- and are reasonably long
-    return /^sk-[a-zA-Z0-9_\-]{20,}$/.test(apiKey);
-}
-
-function validateAndSanitizeUrl(baseUrl: string | undefined): {valid: boolean; url?: string; warning?: string} {
-    if (!baseUrl) {
-        return {valid: true};
-    }
-
-    try {
-        const url = new URL(baseUrl);
-        const isLocalhost = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '::1';
-
-        if (!isLocalhost && url.protocol !== 'https:') {
-            return {
-                valid: false,
-                warning: `HTTPS required for remote URLs. Got: ${url.protocol}//${url.hostname}`,
-            };
-        }
-
-        return {valid: true, url: baseUrl};
-    } catch {
-        return {valid: false};
-    }
-}
-
-function sanitizeErrorMessage(error: unknown, context: string): string {
-    if (error instanceof Error) {
-        const msg = error.message.toLowerCase();
-
-        if (msg.includes('401') || msg.includes('authentication')) {
-            return `Authentication failed (${context})`;
-        }
-        if (msg.includes('429') || msg.includes('rate')) {
-            return `Rate limit exceeded (${context})`;
-        }
-        if (msg.includes('timeout')) {
-            return `Request timeout (${context})`;
-        }
-        if (msg.includes('network') || msg.includes('econnrefused')) {
-            return `Connection failed (${context})`;
-        }
-
-        return `Operation failed (${context})`;
-    }
-    return 'An unexpected error occurred';
-}
-
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number | undefined, context: string): Promise<T> {
-    if (!timeoutMs) {
-        return promise;
-    }
-
-    return new Promise<T>((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error(`Request timeout (${context})`)), timeoutMs);
-        promise.then(
-            (value) => {
-                clearTimeout(timer);
-                resolve(value);
-            },
-            (error) => {
-                clearTimeout(timer);
-                reject(error);
-            },
-        );
-    });
-}
 
 function inferVisionSupport(model: string): boolean {
     const lower = model.toLowerCase();
@@ -103,7 +36,7 @@ export class OpenAIProvider implements LLMProvider {
     capabilities: ProviderCapabilities;
 
     constructor(config: OpenAIConfig) {
-        if (!validateApiKey(config.apiKey)) {
+        if (!API_KEY_PATTERNS.openai.test(config.apiKey)) {
             throw new Error('Invalid API key format. Expected sk-* format.');
         }
 

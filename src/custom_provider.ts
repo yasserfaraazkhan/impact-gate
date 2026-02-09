@@ -11,6 +11,7 @@ import type {
     ProviderUsageStats,
 } from './provider_interface.js';
 import {LLMProviderError, UnsupportedCapabilityError} from './provider_interface.js';
+import {sanitizeErrorMessage, validateAndSanitizeUrl} from './provider_utils.js';
 
 interface OpenAIResponse {
     choices?: Array<{message?: {content?: string}; finish_reason?: string}>;
@@ -23,45 +24,6 @@ interface AnthropicResponse {
     usage?: {input_tokens?: number; output_tokens?: number};
 }
 
-function sanitizeErrorMessage(error: unknown, context: string): string {
-    if (error instanceof Error) {
-        const msg = error.message.toLowerCase();
-
-        if (msg.includes('401') || msg.includes('authentication')) {
-            return `Authentication failed (${context})`;
-        }
-        if (msg.includes('429') || msg.includes('rate')) {
-            return `Rate limit exceeded (${context})`;
-        }
-        if (msg.includes('timeout') || msg.includes('abort')) {
-            return `Request timeout (${context})`;
-        }
-        if (msg.includes('network') || msg.includes('econnrefused')) {
-            return `Connection failed (${context})`;
-        }
-
-        return `Operation failed (${context})`;
-    }
-    return 'An unexpected error occurred';
-}
-
-function validateAndSanitizeUrl(baseUrl: string): {valid: boolean; warning?: string} {
-    try {
-        const url = new URL(baseUrl);
-        const isLocalhost = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '::1';
-
-        if (!isLocalhost && url.protocol !== 'https:') {
-            return {
-                valid: false,
-                warning: `HTTPS required for remote URLs. Got: ${url.protocol}//${url.hostname}`,
-            };
-        }
-
-        return {valid: true};
-    } catch {
-        return {valid: false};
-    }
-}
 
 function normalizeUrl(baseUrl: string, pathSuffix: string): string {
     const trimmed = baseUrl.replace(/\/+$/, '');
