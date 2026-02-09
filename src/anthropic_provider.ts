@@ -11,8 +11,8 @@ import type {
     LLMResponse,
     ProviderCapabilities,
     ProviderUsageStats,
-} from './provider_interface';
-import {LLMProviderError} from './provider_interface';
+} from './provider_interface.js';
+import {LLMProviderError} from './provider_interface.js';
 
 /**
  * SECURITY: Type-safe response handling
@@ -84,6 +84,26 @@ function sanitizeErrorMessage(error: unknown, context: string): string {
         return `Operation failed (${context})`;
     }
     return 'An unexpected error occurred';
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number | undefined, context: string): Promise<T> {
+    if (!timeoutMs) {
+        return promise;
+    }
+
+    return new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(`Request timeout (${context})`)), timeoutMs);
+        promise.then(
+            (value) => {
+                clearTimeout(timer);
+                resolve(value);
+            },
+            (error) => {
+                clearTimeout(timer);
+                reject(error);
+            },
+        );
+    });
 }
 
 /**
@@ -177,7 +197,7 @@ export class AnthropicProvider implements LLMProvider {
                 throw new Error('Prompt exceeds maximum size (10MB)');
             }
 
-            const response = await this.client.messages.create({
+            const response = await withTimeout(this.client.messages.create({
                 model: this.model,
                 max_tokens: options?.maxTokens || 4000,
                 temperature: options?.temperature,
@@ -190,7 +210,7 @@ export class AnthropicProvider implements LLMProvider {
                         content: prompt,
                     },
                 ],
-            });
+            }), options?.timeout, 'generateText');
 
             const responseTime = Date.now() - startTime;
             const text = this.extractTextFromResponse(response);
@@ -285,7 +305,7 @@ export class AnthropicProvider implements LLMProvider {
                 }
             }
 
-            const response = await this.client.messages.create({
+            const response = await withTimeout(this.client.messages.create({
                 model: this.model,
                 max_tokens: options?.maxTokens || 4000,
                 temperature: options?.temperature,
@@ -298,7 +318,7 @@ export class AnthropicProvider implements LLMProvider {
                         content,
                     },
                 ],
-            });
+            }), options?.timeout, 'analyzeImage');
 
             const responseTime = Date.now() - startTime;
             const text = this.extractTextFromResponse(response);
@@ -339,7 +359,7 @@ export class AnthropicProvider implements LLMProvider {
                 throw new Error('Prompt exceeds maximum size (10MB)');
             }
 
-            const stream = await this.client.messages.create({
+            const stream = await withTimeout(this.client.messages.create({
                 model: this.model,
                 max_tokens: options?.maxTokens || 4000,
                 temperature: options?.temperature,
@@ -353,7 +373,7 @@ export class AnthropicProvider implements LLMProvider {
                     },
                 ],
                 stream: true,
-            });
+            }), options?.timeout, 'streamText');
 
             for await (const event of stream) {
                 if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
@@ -481,7 +501,7 @@ export class AnthropicProvider implements LLMProvider {
     async checkHealth(): Promise<{healthy: boolean; message: string}> {
         try {
             // Try a minimal request to verify API key
-            await this.client.messages.create({
+            await withTimeout(this.client.messages.create({
                 model: this.model,
                 max_tokens: 10,
                 messages: [
@@ -490,7 +510,7 @@ export class AnthropicProvider implements LLMProvider {
                         content: 'Hi',
                     },
                 ],
-            });
+            }), 5000, 'health check');
 
             return {
                 healthy: true,

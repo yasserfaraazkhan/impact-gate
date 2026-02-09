@@ -8,7 +8,7 @@
  * Pluggable architecture supports multiple providers:
  * - Anthropic Claude (premium, vision support)
  * - Ollama (free, local)
- * - OpenAI (coming soon)
+ * - OpenAI (official API)
  * - Custom providers
  *
  * Switch between providers seamlessly without changing application code.
@@ -28,14 +28,16 @@ export type {
     OllamaConfig,
     OpenAIConfig,
     CustomConfig,
-} from './provider_interface';
+} from './provider_interface.js';
 
-export {LLMProviderError, UnsupportedCapabilityError} from './provider_interface';
+export {LLMProviderError, UnsupportedCapabilityError} from './provider_interface.js';
 
 // Provider implementations
-export {AnthropicProvider, checkAnthropicSetup} from './anthropic_provider';
-export {OllamaProvider, checkOllamaSetup} from './ollama_provider';
+export {AnthropicProvider, checkAnthropicSetup} from './anthropic_provider.js';
+export {OllamaProvider, checkOllamaSetup} from './ollama_provider.js';
+export {OpenAIProvider, checkOpenAISetup} from './openai_provider.js';
+export {CustomProvider} from './custom_provider.js';
 
 // Factory
-export {LLMProviderFactory, validateProviderSetup} from './provider_factory';
-export type {HybridConfig} from './provider_factory';
+export {LLMProviderFactory, validateProviderSetup} from './provider_factory.js';
+export type {HybridConfig} from './provider_factory.js';

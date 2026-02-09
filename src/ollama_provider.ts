@@ -11,14 +11,28 @@ import type {
     OllamaConfig,
     ProviderCapabilities,
     ProviderUsageStats,
-} from './provider_interface';
-import {LLMProviderError, UnsupportedCapabilityError} from './provider_interface';
+} from './provider_interface.js';
+import {LLMProviderError, UnsupportedCapabilityError} from './provider_interface.js';
 
 /**
  * SECURITY: Validate Ollama base URL and enforce HTTPS for remote connections
  */
+function normalizeOllamaBaseUrl(baseUrl: string | undefined): string {
+    const raw = baseUrl || 'http://localhost:11434';
+    try {
+        const parsed = new URL(raw);
+        if (!parsed.pathname || parsed.pathname === '/') {
+            parsed.pathname = '/v1';
+        }
+        return parsed.toString().replace(/\/$/, '');
+    } catch {
+        return 'http://localhost:11434/v1';
+    }
+}
+
+
 function validateOllamaUrl(baseUrl: string | undefined): {valid: boolean; url: string; warning?: string} {
-    const url = baseUrl || 'http://localhost:11434/v1';
+    const url = normalizeOllamaBaseUrl(baseUrl);
 
     try {
         const parsed = new URL(url);
@@ -88,6 +102,26 @@ function sanitizeErrorMessage(error: unknown, context: string): string {
         return `Operation failed (${context})`;
     }
     return 'An unexpected error occurred';
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number | undefined, context: string): Promise<T> {
+    if (!timeoutMs) {
+        return promise;
+    }
+
+    return new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(`Request timeout (${context})`)), timeoutMs);
+        promise.then(
+            (value) => {
+                clearTimeout(timer);
+                resolve(value);
+            },
+            (error) => {
+                clearTimeout(timer);
+                reject(error);
+            },
+        );
+    });
 }
 
 /**
@@ -198,14 +232,14 @@ export class OllamaProvider implements LLMProvider {
                 content: prompt,
             });
 
-            const response = await this.client.chat.completions.create({
+            const response = await withTimeout(this.client.chat.completions.create({
                 model: this.model,
                 messages,
                 max_tokens: options?.maxTokens,
                 temperature: options?.temperature,
                 top_p: options?.topP,
                 stop: options?.stopSequences,
-            });
+            }), options?.timeout, 'generateText');
 
             const responseTime = Date.now() - startTime;
             const text = response.choices[0]?.message?.content || '';
@@ -272,7 +306,7 @@ export class OllamaProvider implements LLMProvider {
                 content: prompt,
             });
 
-            const stream = await this.client.chat.completions.create({
+            const stream = await withTimeout(this.client.chat.completions.create({
                 model: this.model,
                 messages,
                 max_tokens: options?.maxTokens,
@@ -280,7 +314,7 @@ export class OllamaProvider implements LLMProvider {
                 top_p: options?.topP,
                 stop: options?.stopSequences,
                 stream: true,
-            });
+            }), options?.timeout, 'streamText');
 
             for await (const chunk of stream) {
                 const content = chunk.choices[0]?.delta?.content;
@@ -347,7 +381,7 @@ export class OllamaProvider implements LLMProvider {
     async checkHealth(): Promise<{healthy: boolean; message: string}> {
         try {
             // Try a simple request
-            await this.client.models.list();
+            await withTimeout(this.client.models.list(), 5000, 'health check');
             return {
                 healthy: true,
                 message: `Ollama is running with model: ${this.model}`,
@@ -365,7 +399,7 @@ export class OllamaProvider implements LLMProvider {
      */
     async listModels(): Promise<string[]> {
         try {
-            const response = await this.client.models.list();
+            const response = await withTimeout(this.client.models.list(), 5000, 'listModels');
             return response.data.map((model) => model.id);
         } catch (error) {
             throw new LLMProviderError(

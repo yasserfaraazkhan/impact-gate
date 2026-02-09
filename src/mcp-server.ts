@@ -346,6 +346,7 @@ export class E2EAgentsMCPServer {
             if (!validateBrowsers(browsers as string[])) {
                 return JSON.stringify({error: 'Invalid browser specification'});
             }
+            const projectArgs = (browsers as string[]).flatMap((browser) => ['--project', browser]);
 
             // SECURITY: Use -- to separate playwright options from test args
             const result = spawnSync(
@@ -353,9 +354,9 @@ export class E2EAgentsMCPServer {
                 [
                     'playwright',
                     'test',
+                    ...projectArgs,
                     '--',
                     pattern,
-                    `--project=${(browsers as string[]).join(',')}`,
                 ],
                 {
                     cwd: this.repoRoot,
@@ -419,7 +420,7 @@ export class E2EAgentsMCPServer {
 
     private getRepositoryContext(args: {include?: string[]}): string {
         try {
-            const defaultInclude = ['package.json', 'tsconfig.json', 'playwright.config'];
+            const defaultInclude = ['package.json', 'tsconfig.json', 'playwright.config.ts', 'playwright.config.js'];
             const include = args.include || defaultInclude;
 
             // SECURITY: Limit to allowed filenames

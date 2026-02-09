@@ -1,19 +1,23 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {AnthropicProvider} from './anthropic_provider';
-import {OllamaProvider} from './ollama_provider';
+import {AnthropicProvider} from './anthropic_provider.js';
+import {CustomProvider} from './custom_provider.js';
+import {OllamaProvider} from './ollama_provider.js';
+import {OpenAIProvider} from './openai_provider.js';
 import type {
     AnthropicConfig,
+    CustomConfig,
     GenerateOptions,
     ImageInput,
     LLMProvider,
     LLMResponse,
     OllamaConfig,
+    OpenAIConfig,
     ProviderConfig,
     ProviderUsageStats,
-} from './provider_interface';
-import {UnsupportedCapabilityError} from './provider_interface';
+} from './provider_interface.js';
+import {UnsupportedCapabilityError} from './provider_interface.js';
 
 /**
  * LLM Provider Factory
@@ -55,10 +59,10 @@ export class LLMProviderFactory {
                 return new AnthropicProvider(config.config as AnthropicConfig);
 
             case 'openai':
-                throw new Error('OpenAI provider not yet implemented');
+                return new OpenAIProvider(config.config as OpenAIConfig);
 
             case 'custom':
-                throw new Error('Custom provider not yet implemented');
+                return new CustomProvider(config.config as CustomConfig);
 
             default:
                 throw new Error(`Unknown provider type: ${(config as any).type}`);
@@ -94,20 +98,34 @@ export class LLMProviderFactory {
      * Priority:
      * 1. LLM_PROVIDER env var (ollama, anthropic, openai)
      * 2. ANTHROPIC_API_KEY exists → Anthropic
-     * 3. Ollama running locally → Ollama
-     * 4. Error (no provider available)
+     * 3. OPENAI_API_KEY exists → OpenAI
+     * 4. Ollama running locally → Ollama
+     * 5. Error (no provider available)
      */
     static async createFromEnv(): Promise<LLMProvider> {
         const providerType = process.env.LLM_PROVIDER?.toLowerCase();
 
         if (providerType === 'ollama') {
             return new OllamaProvider({
-                baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
+                baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434/v1',
                 model: process.env.OLLAMA_MODEL || 'deepseek-r1:7b',
             });
         }
 
-        if (providerType === 'anthropic' || process.env.ANTHROPIC_API_KEY) {
+        if (providerType === 'openai') {
+            if (!process.env.OPENAI_API_KEY) {
+                throw new Error('OPENAI_API_KEY environment variable is required for OpenAI provider');
+            }
+
+            return new OpenAIProvider({
+                apiKey: process.env.OPENAI_API_KEY,
+                model: process.env.OPENAI_MODEL || 'gpt-4',
+                baseUrl: process.env.OPENAI_BASE_URL,
+                organizationId: process.env.OPENAI_ORG_ID,
+            });
+        }
+
+        if (providerType === 'anthropic') {
             if (!process.env.ANTHROPIC_API_KEY) {
                 throw new Error('ANTHROPIC_API_KEY environment variable is required for Anthropic provider');
             }
@@ -115,6 +133,22 @@ export class LLMProviderFactory {
             return new AnthropicProvider({
                 apiKey: process.env.ANTHROPIC_API_KEY,
                 model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929',
+            });
+        }
+
+        if (process.env.ANTHROPIC_API_KEY) {
+            return new AnthropicProvider({
+                apiKey: process.env.ANTHROPIC_API_KEY,
+                model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929',
+            });
+        }
+
+        if (process.env.OPENAI_API_KEY) {
+            return new OpenAIProvider({
+                apiKey: process.env.OPENAI_API_KEY,
+                model: process.env.OPENAI_MODEL || 'gpt-4',
+                baseUrl: process.env.OPENAI_BASE_URL,
+                organizationId: process.env.OPENAI_ORG_ID,
             });
         }
 
@@ -132,7 +166,8 @@ export class LLMProviderFactory {
             'No LLM provider available. Please either:\n' +
                 '1. Install Ollama: curl -fsSL https://ollama.com/install.sh | sh\n' +
                 '2. Set ANTHROPIC_API_KEY environment variable\n' +
-                '3. Set LLM_PROVIDER environment variable',
+                '3. Set OPENAI_API_KEY environment variable\n' +
+                '4. Set LLM_PROVIDER environment variable',
         );
     }
 
@@ -144,9 +179,12 @@ export class LLMProviderFactory {
      * - "ollama:deepseek-r1:14b" → Ollama with specific model
      * - "anthropic" → Anthropic with env API key
      * - "anthropic:claude-opus-4-5" → Anthropic with specific model
+     * - "openai" → OpenAI with env API key
+     * - "openai:gpt-4" → OpenAI with specific model
      */
     static createFromString(providerString: string): LLMProvider {
-        const [type, model] = providerString.split(':');
+        const [type, ...modelParts] = providerString.split(':');
+        const model = modelParts.join(':');
 
         switch (type.toLowerCase()) {
             case 'ollama':
@@ -161,6 +199,17 @@ export class LLMProviderFactory {
                 return new AnthropicProvider({
                     apiKey: process.env.ANTHROPIC_API_KEY,
                     model: model || 'claude-sonnet-4-5-20250929',
+                });
+
+            case 'openai':
+                if (!process.env.OPENAI_API_KEY) {
+                    throw new Error('OPENAI_API_KEY environment variable is required');
+                }
+                return new OpenAIProvider({
+                    apiKey: process.env.OPENAI_API_KEY,
+                    model: model || 'gpt-4',
+                    baseUrl: process.env.OPENAI_BASE_URL,
+                    organizationId: process.env.OPENAI_ORG_ID,
                 });
 
             default:
@@ -323,6 +372,7 @@ class HybridProvider implements LLMProvider {
         const hypotheticalFullCost = totalRequests * fallbackCostPerRequest;
         const actualCost = primaryStats.totalCost + fallbackStats.totalCost;
         const savings = hypotheticalFullCost - actualCost;
+        const savingsPercent = hypotheticalFullCost > 0 ? (savings / hypotheticalFullCost) * 100 : 0;
 
         return {
             primary: {
@@ -333,7 +383,7 @@ class HybridProvider implements LLMProvider {
                 name: this.fallback.name,
                 stats: fallbackStats,
             },
-            costSavings: `$${savings.toFixed(2)} saved (${((savings / hypotheticalFullCost) * 100).toFixed(1)}% reduction)`,
+            costSavings: `$${savings.toFixed(2)} saved (${savingsPercent.toFixed(1)}% reduction)`,
         };
     }
 }

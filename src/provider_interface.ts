@@ -317,7 +317,7 @@ export interface AnthropicConfig {
  */
 export interface OllamaConfig {
     /**
-     * Ollama API base URL (default: http://localhost:11434)
+     * Ollama API base URL (default: http://localhost:11434, normalized to /v1)
      */
     baseUrl?: string;
 
@@ -356,6 +356,21 @@ export interface OpenAIConfig {
      * Organization ID (optional)
      */
     organizationId?: string;
+
+    /**
+     * Optional max context window in tokens (for capability reporting)
+     */
+    maxTokens?: number;
+
+    /**
+     * Optional cost per 1M input tokens (for cost tracking)
+     */
+    costPer1MInputTokens?: number;
+
+    /**
+     * Optional cost per 1M output tokens (for cost tracking)
+     */
+    costPer1MOutputTokens?: number;
 }
 
 /**

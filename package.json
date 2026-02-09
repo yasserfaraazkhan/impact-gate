@@ -3,30 +3,39 @@
   "version": "0.2.1",
   "description": "Pluggable LLM provider library for AI-powered test automation. Use Claude, Ollama, or your own LLM. Integrate with Playwright, Jest, or any test framework. MCP server for test agents, cost tracking, and hybrid provider mode.",
   "main": "dist/index.js",
+  "module": "dist/esm/index.js",
   "types": "dist/index.d.ts",
   "license": "Apache-2.0",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "require": "./dist/index.js",
-      "import": "./dist/index.js"
+      "import": "./dist/esm/index.js"
     },
     "./mcp": {
       "types": "./dist/mcp-server.d.ts",
-      "require": "./dist/mcp-server.js"
+      "require": "./dist/mcp-server.js",
+      "import": "./dist/esm/mcp-server.js"
     }
+  },
+  "bin": {
+    "e2e-ai-agents": "./dist/cli.js"
   },
   "files": [
     "dist",
+    "E2E_AI_TESTING.md",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "npm run build:cjs && npm run build:esm",
+    "build:cjs": "tsc -p tsconfig.json",
+    "build:esm": "tsc -p tsconfig.esm.json && node scripts/write-esm-package.js",
     "clean": "rm -rf dist",
     "prebuild": "npm run clean",
-    "test": "echo 'No tests yet'",
-    "lint": "echo 'Linting...'",
+    "pretest": "npm run build",
+    "test": "node --test test/*.js",
+    "lint": "tsc -p tsconfig.json --noEmit",
     "mcp:server": "node dist/mcp-server.js"
   },
   "dependencies": {
@@ -73,7 +82,7 @@
     "test-healing"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "author": "Yasser Khan",
   "homepage": "https://github.com/yasserfaraazkhan/e2e-agents",

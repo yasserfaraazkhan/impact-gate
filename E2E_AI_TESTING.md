@@ -104,7 +104,7 @@ import {OpenAIProvider} from 'e2e-ai-agents';
 
 const fixer = new OpenAIProvider({
     apiKey: process.env.OPENAI_API_KEY,
-    model: 'gpt-4-turbo'
+    model: 'gpt-4'
 });
 
 async function healFailedTest(testCode: string, errorMessage: string) {
@@ -362,7 +362,7 @@ All providers include:
 
 - [ ] Install: `npm install e2e-ai-agents`
 - [ ] Choose provider (Claude/GPT/Ollama)
-- [ ] Set environment variable (`ANTHROPIC_API_KEY` or `OLLAMA_BASE_URL`)
+- [ ] Set environment variable (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `OLLAMA_BASE_URL`)
 - [ ] Import provider: `import {AnthropicProvider} from 'e2e-ai-agents'`
 - [ ] Create instance: `new AnthropicProvider({...})`
 - [ ] Use in tests: `await llm.generateText(prompt)`
