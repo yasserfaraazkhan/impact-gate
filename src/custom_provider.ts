@@ -11,6 +11,7 @@ import type {
 import {LLMProviderError, UnsupportedCapabilityError} from './provider_interface.js';
 import {sanitizeErrorMessage, validateAndSanitizeUrl} from './provider_utils.js';
 import {BaseProvider} from './base_provider.js';
+import {logger} from './logger.js';
 
 interface OpenAIResponse {
     choices?: Array<{message?: {content?: string}; finish_reason?: string}>;
@@ -84,7 +85,7 @@ export class CustomProvider extends BaseProvider {
             throw new Error(`Invalid base URL: ${validation.warning}`);
         }
         if (validation.warning) {
-            console.warn(`[SECURITY WARNING] ${validation.warning}`);
+            logger.warn(`HTTPS required for remote URLs: ${validation.warning}`);
         }
 
         this.config = config;

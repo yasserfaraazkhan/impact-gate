@@ -13,6 +13,7 @@ import type {
 import {LLMProviderError} from './provider_interface.js';
 import {API_KEY_PATTERNS, sanitizeErrorMessage, withTimeout, validateAndSanitizeUrl} from './provider_utils.js';
 import {BaseProvider} from './base_provider.js';
+import {logger} from './logger.js';
 
 /**
  * SECURITY: Type-safe response handling
@@ -84,7 +85,7 @@ export class AnthropicProvider extends BaseProvider {
                 throw new Error(`Invalid base URL: ${validation.warning}`);
             }
             if (validation.warning) {
-                console.warn(`[SECURITY WARNING] ${validation.warning}`);
+                logger.warn(`HTTPS required for remote URLs: ${validation.warning}`);
             }
         }
 

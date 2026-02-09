@@ -13,6 +13,7 @@ import type {
 import {LLMProviderError, UnsupportedCapabilityError} from './provider_interface.js';
 import {sanitizeErrorMessage, withTimeout} from './provider_utils.js';
 import {BaseProvider} from './base_provider.js';
+import {logger} from './logger.js';
 
 /**
  * SECURITY: Validate Ollama base URL and enforce HTTPS for remote connections
@@ -40,10 +41,8 @@ function validateOllamaUrl(baseUrl: string | undefined): {valid: boolean; url: s
         // For non-localhost URLs, warn about HTTP risks
         const isLocalhost = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '::1';
         if (!isLocalhost && parsed.protocol === 'http:') {
-            console.warn(
-                '[SECURITY WARNING] Ollama connection over plaintext HTTP to remote server. ' +
-                'Prompts and responses will be transmitted unencrypted. Consider using HTTPS proxy or local Ollama.'
-            );
+            logger.warn('Ollama connection over plaintext HTTP to remote server. ' +
+                'Prompts and responses will be transmitted unencrypted. Consider using HTTPS proxy or local Ollama.');
         }
 
         return {valid: true, url};
@@ -71,7 +70,7 @@ function validateModelName(model: string): boolean {
 function validateTimeout(timeout: number | undefined): number {
     if (!timeout) return 60000;
     if (timeout < 1000 || timeout > 600000) {
-        console.warn('Timeout out of valid range (1s-10m). Using 60 second default.');
+        logger.warn('Timeout out of valid range (1s-10m). Using 60 second default.');
         return 60000;
     }
     return timeout;
