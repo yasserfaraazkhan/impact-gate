@@ -7,22 +7,32 @@ import {normalizePath} from './utils.js';
 export interface GitChangeResult {
     files: string[];
     error?: string;
+    baseRef?: string;
+    baseStrategy?: 'merge-base' | 'direct';
 }
 
 export interface GitChangeOptions {
     includeUncommitted?: boolean;
 }
 
-function runGit(args: string[], cwd: string): string[] | null {
+function runGitRaw(args: string[], cwd: string): string | null {
     const result = spawnSync('git', args, {
         cwd,
         encoding: 'utf-8',
         timeout: 30000,
     });
-    if (result.error) {
+    if (result.error || result.status !== 0) {
         return null;
     }
-    return result.stdout
+    return result.stdout;
+}
+
+function runGit(args: string[], cwd: string): string[] | null {
+    const output = runGitRaw(args, cwd);
+    if (output === null) {
+        return null;
+    }
+    return output
         .split('\n')
         .map((file) => file.trim())
         .filter(Boolean)
@@ -33,9 +43,9 @@ function parseStatusLines(lines: string[]): string[] {
     const files: string[] = [];
     for (const line of lines) {
         if (!line) continue;
-        const trimmed = line.trim();
-        if (trimmed.length < 3) continue;
-        const pathPart = trimmed.slice(3);
+        if (line.length < 4) continue;
+        const pathPart = line.slice(3).trim();
+        if (!pathPart) continue;
         if (pathPart.includes('->')) {
             const parts = pathPart.split('->').map((part) => part.trim());
             const target = parts[parts.length - 1];
@@ -52,7 +62,21 @@ function parseStatusLines(lines: string[]): string[] {
 export function getChangedFiles(appRoot: string, since: string, options?: GitChangeOptions): GitChangeResult {
     try {
         const files = new Set<string>();
-        const diffFiles = runGit(['diff', '--name-only', `${since}..HEAD`, '--', '.'], appRoot);
+        let baseRef = since;
+        let baseStrategy: GitChangeResult['baseStrategy'] = 'direct';
+        const mergeBase = runGitRaw(['merge-base', since, 'HEAD'], appRoot);
+        if (mergeBase) {
+            const candidate = mergeBase
+                .split('\n')
+                .map((line) => line.trim())
+                .find(Boolean);
+            if (candidate) {
+                baseRef = candidate;
+                baseStrategy = 'merge-base';
+            }
+        }
+
+        const diffFiles = runGit(['diff', '--name-only', `${baseRef}..HEAD`, '--', '.'], appRoot);
         if (!diffFiles) {
             return {files: [], error: 'git diff failed'};
         }
@@ -63,11 +87,14 @@ export function getChangedFiles(appRoot: string, since: string, options?: GitCha
             staged.forEach((file) => files.add(file));
             const unstaged = runGit(['diff', '--name-only', '--', '.'], appRoot) || [];
             unstaged.forEach((file) => files.add(file));
-            const status = runGit(['status', '--porcelain', '--', '.'], appRoot) || [];
-            parseStatusLines(status).forEach((file) => files.add(file));
+            const statusOutput = runGitRaw(['status', '--porcelain', '--', '.'], appRoot);
+            if (statusOutput) {
+                const statusLines = statusOutput.split('\n').filter(Boolean);
+                parseStatusLines(statusLines).forEach((file) => files.add(file));
+            }
         }
 
-        return {files: Array.from(files)};
+        return {files: Array.from(files), baseRef, baseStrategy};
     } catch {
         return {files: [], error: 'git diff failed'};
     }
