@@ -2,15 +2,31 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {existsSync} from 'fs';
+import {appendFileSync, existsSync, readFileSync} from 'fs';
 import {dirname, join, resolve} from 'path';
 
 import {resolveConfig, type AnalysisMode, type FrameworkType} from './agent/config.js';
 import {AnthropicProvider} from './anthropic_provider.js';
 import {LLMProviderError} from './provider_interface.js';
 import {runGap, runImpact} from './agent/runner.js';
+import {attachDeveloperActions, buildPlanFromImpactReport, renderCiSummaryMarkdown, writeCiSummary, writePlanReport} from './agent/plan.js';
+import type {ReportData} from './agent/report.js';
+import {applyOperationalInsights} from './agent/operational_insights.js';
+import {appendFeedbackAndRecompute, type RecommendationFeedbackEntry} from './agent/feedback.js';
+import {finalizeGeneratedTests} from './agent/handoff.js';
+import {ingestTraceabilityInput} from './agent/traceability_ingest.js';
+import {captureTraceabilityInput} from './agent/traceability_capture.js';
 
-type Command = AnalysisMode | 'llm-health';
+type Command =
+    AnalysisMode
+    | 'suggest'
+    | 'approve-and-generate'
+    | 'auto-heal-pr'
+    | 'finalize-generated-tests'
+    | 'feedback'
+    | 'traceability-capture'
+    | 'traceability-ingest'
+    | 'llm-health';
 
 interface ParsedArgs {
     command?: Command;
@@ -38,6 +54,29 @@ interface ParsedArgs {
     pipelineParallel?: boolean;
     pipelineDryRun?: boolean;
     pipelineMcp?: boolean;
+    policyMinConfidence?: number;
+    policySafeMergeConfidence?: number;
+    policyWarningsThreshold?: number;
+    policyRiskyPatterns?: string[];
+    ciCommentPath?: string;
+    githubOutputPath?: string;
+    failOnMustAddTests?: boolean;
+    feedbackInputPath?: string;
+    traceabilityReportPath?: string;
+    traceabilityCaptureOutputPath?: string;
+    traceabilityCoverageMapPath?: string;
+    traceabilityChangedFilesPath?: string;
+    traceabilityInputPath?: string;
+    traceabilityMinHits?: number;
+    traceabilityMaxFilesPerTest?: number;
+    traceabilityMaxAgeDays?: number;
+    branch?: string;
+    commitMessage?: string;
+    createPr?: boolean;
+    prTitle?: string;
+    prBody?: string;
+    prBase?: string;
+    dryRun?: boolean;
     apply: boolean;
     help: boolean;
 }
@@ -93,6 +132,13 @@ function printUsage(): void {
             'Usage:',
             '  e2e-ai-agents impact --path <app-root> [options]',
             '  e2e-ai-agents gap --path <app-root> [options]',
+            '  e2e-ai-agents suggest --path <app-root> [options]',
+            '  e2e-ai-agents approve-and-generate --path <app-root> [options]',
+            '  e2e-ai-agents auto-heal-pr --path <app-root> [options]',
+            '  e2e-ai-agents finalize-generated-tests --path <app-root> [options]',
+            '  e2e-ai-agents feedback --path <app-root> --feedback-input <json>',
+            '  e2e-ai-agents traceability-capture --path <app-root> --traceability-report <json>',
+            '  e2e-ai-agents traceability-ingest --path <app-root> --traceability-input <json>',
             '  e2e-ai-agents llm-health',
             '',
             'Options:',
@@ -120,7 +166,32 @@ function printUsage(): void {
             '  --time <minutes>      Time limit in minutes',
             '  --budget-usd <amount> Max LLM budget in USD',
             '  --budget-tokens <n>   Max LLM tokens',
+            '  --policy-min-confidence <n>   Minimum confidence for targeted suite',
+            '  --policy-safe-merge-confidence <n> Confidence needed for safe-to-merge',
+            '  --policy-force-full-on-warnings <n> Escalate to full at warning count',
+            '  --policy-risky-patterns <globs>     Comma-separated risky file globs',
+            '  --ci-comment-path <path>            Write CI markdown summary',
+            '  --github-output <path>              Write GitHub Actions outputs',
+            '  --fail-on-must-add-tests            Exit non-zero on must-add-tests decision',
+            '  --feedback-input <path>             Path to recommendation feedback JSON',
+            '  --traceability-report <path>        Path to Playwright JSON report for traceability capture',
+            '  --traceability-capture-output <path> Output path for generated traceability ingest JSON',
+            '  --traceability-coverage-map <path>  Optional coverage map (test<->files) to enrich traceability capture',
+            '  --traceability-changed-files <path> Optional changed-files list/JSON fallback for traceability capture',
+            '  --traceability-input <path>         Path to traceability ingest JSON payload',
+            '  --traceability-min-hits <n>         Minimum signal hits required per file mapping',
+            '  --traceability-max-files-per-test <n> Cap max mapped files per test',
+            '  --traceability-max-age-days <n>     Drop stale mappings older than N days',
+            '  --branch <name>      Optional handoff branch (prefixed with codex/)',
+            '  --commit-message <m> Commit message for finalize-generated-tests',
+            '  --create-pr          Open PR with gh after commit',
+            '  --pr-title <title>   PR title for finalize-generated-tests',
+            '  --pr-body <body>     PR body for finalize-generated-tests',
+            '  --pr-base <branch>   PR base branch for finalize-generated-tests',
+            '                      (auto-heal-pr defaults to base=master)',
+            '  --dry-run            Preview actions without mutating git state',
             '  --apply               Apply data-testid patches and generate tests',
+            '                        (legacy shortcut; prefer approve-and-generate)',
             '  --help                Show help',
         ].join('\n'),
     );
@@ -133,7 +204,18 @@ function parseArgs(argv: string[]): ParsedArgs {
     }
 
     const command = argv[0];
-    if (command === 'impact' || command === 'gap' || command === 'llm-health') {
+    if (
+        command === 'impact'
+        || command === 'gap'
+        || command === 'suggest'
+            || command === 'approve-and-generate'
+            || command === 'auto-heal-pr'
+            || command === 'finalize-generated-tests'
+            || command === 'feedback'
+            || command === 'traceability-capture'
+            || command === 'traceability-ingest'
+            || command === 'llm-health'
+    ) {
         parsed.command = command;
     }
 
@@ -277,6 +359,136 @@ function parseArgs(argv: string[]): ParsedArgs {
             i += 1;
             continue;
         }
+        if (arg === '--policy-min-confidence' && next) {
+            const value = Number(next);
+            if (Number.isFinite(value)) {
+                parsed.policyMinConfidence = value;
+            }
+            i += 1;
+            continue;
+        }
+        if (arg === '--policy-safe-merge-confidence' && next) {
+            const value = Number(next);
+            if (Number.isFinite(value)) {
+                parsed.policySafeMergeConfidence = value;
+            }
+            i += 1;
+            continue;
+        }
+        if (arg === '--policy-force-full-on-warnings' && next) {
+            const value = Number(next);
+            if (Number.isFinite(value)) {
+                parsed.policyWarningsThreshold = value;
+            }
+            i += 1;
+            continue;
+        }
+        if (arg === '--policy-risky-patterns' && next) {
+            parsed.policyRiskyPatterns = next.split(',').map((value) => value.trim()).filter(Boolean);
+            i += 1;
+            continue;
+        }
+        if (arg === '--ci-comment-path' && next) {
+            parsed.ciCommentPath = next;
+            i += 1;
+            continue;
+        }
+        if (arg === '--github-output' && next) {
+            parsed.githubOutputPath = next;
+            i += 1;
+            continue;
+        }
+        if (arg === '--fail-on-must-add-tests') {
+            parsed.failOnMustAddTests = true;
+            continue;
+        }
+        if (arg === '--feedback-input' && next) {
+            parsed.feedbackInputPath = next;
+            i += 1;
+            continue;
+        }
+        if (arg === '--traceability-report' && next) {
+            parsed.traceabilityReportPath = next;
+            i += 1;
+            continue;
+        }
+        if (arg === '--traceability-capture-output' && next) {
+            parsed.traceabilityCaptureOutputPath = next;
+            i += 1;
+            continue;
+        }
+        if (arg === '--traceability-coverage-map' && next) {
+            parsed.traceabilityCoverageMapPath = next;
+            i += 1;
+            continue;
+        }
+        if (arg === '--traceability-changed-files' && next) {
+            parsed.traceabilityChangedFilesPath = next;
+            i += 1;
+            continue;
+        }
+        if (arg === '--traceability-input' && next) {
+            parsed.traceabilityInputPath = next;
+            i += 1;
+            continue;
+        }
+        if (arg === '--traceability-min-hits' && next) {
+            const value = Number(next);
+            if (Number.isFinite(value)) {
+                parsed.traceabilityMinHits = value;
+            }
+            i += 1;
+            continue;
+        }
+        if (arg === '--traceability-max-files-per-test' && next) {
+            const value = Number(next);
+            if (Number.isFinite(value)) {
+                parsed.traceabilityMaxFilesPerTest = value;
+            }
+            i += 1;
+            continue;
+        }
+        if (arg === '--traceability-max-age-days' && next) {
+            const value = Number(next);
+            if (Number.isFinite(value)) {
+                parsed.traceabilityMaxAgeDays = value;
+            }
+            i += 1;
+            continue;
+        }
+        if (arg === '--branch' && next) {
+            parsed.branch = next;
+            i += 1;
+            continue;
+        }
+        if (arg === '--commit-message' && next) {
+            parsed.commitMessage = next;
+            i += 1;
+            continue;
+        }
+        if (arg === '--create-pr') {
+            parsed.createPr = true;
+            continue;
+        }
+        if (arg === '--pr-title' && next) {
+            parsed.prTitle = next;
+            i += 1;
+            continue;
+        }
+        if (arg === '--pr-body' && next) {
+            parsed.prBody = next;
+            i += 1;
+            continue;
+        }
+        if (arg === '--pr-base' && next) {
+            parsed.prBase = next;
+            i += 1;
+            continue;
+        }
+        if (arg === '--dry-run') {
+            parsed.dryRun = true;
+            continue;
+        }
     }
 
     return parsed;
@@ -296,6 +508,247 @@ async function main(): Promise<void> {
         return;
     }
 
+    if (args.command === 'feedback') {
+        if (!args.path && !autoConfig) {
+            // eslint-disable-next-line no-console
+            console.error('Error: --path is required for feedback command');
+            process.exit(1);
+        }
+        if (!args.feedbackInputPath) {
+            // eslint-disable-next-line no-console
+            console.error('Error: --feedback-input <path> is required for feedback command');
+            process.exit(1);
+        }
+
+        const {config} = resolveConfig(process.cwd(), autoConfig, {
+            path: args.path,
+            testsRoot: args.testsRoot,
+            mode: 'impact',
+        });
+        const reportRoot = config.testsRoot || config.path;
+        const raw = JSON.parse(readFileSync(args.feedbackInputPath, 'utf-8')) as RecommendationFeedbackEntry;
+        const payload: RecommendationFeedbackEntry = {
+            timestamp: raw.timestamp || new Date().toISOString(),
+            runSet: raw.runSet || 'targeted',
+            recommendedTests: raw.recommendedTests || [],
+            executedTests: raw.executedTests || [],
+            failedTests: raw.failedTests || [],
+            escapedFailures: raw.escapedFailures || [],
+        };
+        const output = appendFeedbackAndRecompute(reportRoot, payload);
+        // eslint-disable-next-line no-console
+        console.log(`Feedback data: ${output.feedbackPath}`);
+        // eslint-disable-next-line no-console
+        console.log(`Calibration data: ${output.calibrationPath}`);
+        // eslint-disable-next-line no-console
+        console.log(
+            `Calibration overall: precision=${output.calibration.overall.precision}, recall=${output.calibration.overall.recall}, fnr=${output.calibration.overall.falseNegativeRate}`,
+        );
+        return;
+    }
+
+    if (args.command === 'traceability-capture') {
+        if (!args.path && !autoConfig) {
+            // eslint-disable-next-line no-console
+            console.error('Error: --path is required for traceability-capture command');
+            process.exit(1);
+        }
+        if (!args.traceabilityReportPath) {
+            // eslint-disable-next-line no-console
+            console.error('Error: --traceability-report <path> is required for traceability-capture command');
+            process.exit(1);
+        }
+
+        const {config} = resolveConfig(process.cwd(), autoConfig, {
+            path: args.path,
+            testsRoot: args.testsRoot,
+            mode: 'impact',
+            gitSince: args.gitSince,
+        });
+        const reportRoot = config.testsRoot || config.path;
+        const output = captureTraceabilityInput({
+            appPath: config.path,
+            testsRoot: reportRoot,
+            reportPath: args.traceabilityReportPath,
+            sinceRef: args.gitSince || config.git.since,
+            outputPath: args.traceabilityCaptureOutputPath,
+            coverageMapPath: args.traceabilityCoverageMapPath,
+            changedFilesPath: args.traceabilityChangedFilesPath,
+        });
+        // eslint-disable-next-line no-console
+        console.log(`Traceability input: ${output.outputPath}`);
+        // eslint-disable-next-line no-console
+        console.log(`Traceability tests seen: ${output.testsSeen}`);
+        // eslint-disable-next-line no-console
+        console.log(`Traceability runs generated: ${output.runsGenerated}`);
+        // eslint-disable-next-line no-console
+        console.log(`Traceability changed files used: ${output.changedFilesUsed}`);
+        if (output.warnings.length > 0) {
+            // eslint-disable-next-line no-console
+            console.log(`Traceability warnings: ${output.warnings.join(' | ')}`);
+        }
+        return;
+    }
+
+    if (args.command === 'traceability-ingest') {
+        if (!args.path && !autoConfig) {
+            // eslint-disable-next-line no-console
+            console.error('Error: --path is required for traceability-ingest command');
+            process.exit(1);
+        }
+        if (!args.traceabilityInputPath) {
+            // eslint-disable-next-line no-console
+            console.error('Error: --traceability-input <path> is required for traceability-ingest command');
+            process.exit(1);
+        }
+
+        const {config} = resolveConfig(process.cwd(), autoConfig, {
+            path: args.path,
+            testsRoot: args.testsRoot,
+            mode: 'impact',
+        });
+        const reportRoot = config.testsRoot || config.path;
+        const raw = JSON.parse(readFileSync(args.traceabilityInputPath, 'utf-8')) as unknown;
+        const output = ingestTraceabilityInput(
+            reportRoot,
+            config.impact.traceability,
+            raw,
+            {
+                minHits: args.traceabilityMinHits,
+                maxFilesPerTest: args.traceabilityMaxFilesPerTest,
+                maxAgeDays: args.traceabilityMaxAgeDays,
+            },
+        );
+        // eslint-disable-next-line no-console
+        console.log(`Traceability manifest: ${output.manifestPath}`);
+        // eslint-disable-next-line no-console
+        console.log(`Traceability state: ${output.statePath}`);
+        // eslint-disable-next-line no-console
+        console.log(`Traceability ingested entries: ${output.entriesIngested}`);
+        // eslint-disable-next-line no-console
+        console.log(`Traceability tracked tests: ${output.testsTracked}`);
+        // eslint-disable-next-line no-console
+        console.log(`Traceability tracked edges: ${output.edgesTracked}`);
+        if (output.warnings.length > 0) {
+            // eslint-disable-next-line no-console
+            console.log(`Traceability warnings: ${output.warnings.join(' | ')}`);
+        }
+        return;
+    }
+
+    if (args.command === 'finalize-generated-tests') {
+        if (!args.path && !autoConfig) {
+            // eslint-disable-next-line no-console
+            console.error('Error: --path is required for finalize-generated-tests command');
+            process.exit(1);
+        }
+        const {config} = resolveConfig(process.cwd(), autoConfig, {
+            path: args.path,
+            testsRoot: args.testsRoot,
+            mode: 'gap',
+        });
+        const result = finalizeGeneratedTests({
+            appPath: config.path,
+            testsRoot: config.testsRoot || config.path,
+            branch: args.branch,
+            commitMessage: args.commitMessage,
+            createPr: args.createPr,
+            prTitle: args.prTitle,
+            prBody: args.prBody,
+            baseBranch: args.prBase,
+            dryRun: args.dryRun,
+        });
+        // eslint-disable-next-line no-console
+        console.log(`Finalize repo root: ${result.repoRoot}`);
+        // eslint-disable-next-line no-console
+        console.log(`Finalize branch: ${result.branch}`);
+        // eslint-disable-next-line no-console
+        console.log(`Finalize staged paths: ${result.stagedPaths.join(', ') || 'none'}`);
+        // eslint-disable-next-line no-console
+        console.log(`Finalize commit: ${result.committed ? 'created' : 'skipped'}`);
+        if (result.commitSha) {
+            // eslint-disable-next-line no-console
+            console.log(`Finalize commit sha: ${result.commitSha}`);
+        }
+        if (result.prUrl) {
+            // eslint-disable-next-line no-console
+            console.log(`Finalize PR: ${result.prUrl}`);
+        }
+        return;
+    }
+
+    if (args.command === 'auto-heal-pr') {
+        if (!args.path && !autoConfig) {
+            // eslint-disable-next-line no-console
+            console.error('Error: --path is required for auto-heal-pr command');
+            process.exit(1);
+        }
+        const {config} = resolveConfig(process.cwd(), autoConfig, {
+            path: args.path,
+            testsRoot: args.testsRoot,
+            mode: 'gap',
+            framework: args.framework,
+            timeLimitMinutes: args.timeLimitMinutes,
+            budget: {
+                maxUSD: args.budgetUSD,
+                maxTokens: args.budgetTokens,
+            },
+            testPatterns: args.testPatterns,
+            flowPatterns: args.flowPatterns,
+            flowExclude: args.flowExclude,
+            flowCatalogPath: args.flowCatalogPath,
+            specPDF: args.specPDF,
+            gitSince: args.gitSince,
+            pipeline: {
+                enabled: true,
+                scenarios: args.pipelineScenarios,
+                outputDir: args.pipelineOutput,
+                baseUrl: args.pipelineBaseUrl,
+                browser: args.pipelineBrowser,
+                headless: args.pipelineHeadless,
+                project: args.pipelineProject,
+                parallel: args.pipelineParallel,
+                dryRun: args.pipelineDryRun,
+                mcp: args.pipelineMcp,
+            },
+        });
+        if (args.allowFallback) {
+            config.impact.allowFallback = true;
+        }
+
+        await runGap(config, {apply: true});
+        const reportRoot = config.testsRoot || config.path;
+        const branchSuffix = new Date().toISOString().replace(/[:.]/g, '-');
+        const result = finalizeGeneratedTests({
+            appPath: config.path,
+            testsRoot: reportRoot,
+            branch: args.branch || `auto-heal-${branchSuffix}`,
+            commitMessage: args.commitMessage || 'test(e2e): auto-heal generated specs',
+            createPr: true,
+            prTitle: args.prTitle || 'test(e2e): auto-heal generated specs',
+            prBody: args.prBody || 'Automated e2e-heal run generated by @mattermost/e2e-agents.',
+            baseBranch: args.prBase || 'master',
+            dryRun: args.dryRun,
+        });
+        // eslint-disable-next-line no-console
+        console.log(`Auto-heal repo root: ${result.repoRoot}`);
+        // eslint-disable-next-line no-console
+        console.log(`Auto-heal branch: ${result.branch}`);
+        // eslint-disable-next-line no-console
+        console.log(`Auto-heal staged paths: ${result.stagedPaths.join(', ') || 'none'}`);
+        // eslint-disable-next-line no-console
+        console.log(`Auto-heal commit: ${result.committed ? 'created' : 'skipped'}`);
+        if (result.commitSha) {
+            // eslint-disable-next-line no-console
+            console.log(`Auto-heal commit sha: ${result.commitSha}`);
+        }
+        if (result.prUrl) {
+            // eslint-disable-next-line no-console
+            console.log(`Auto-heal PR: ${result.prUrl}`);
+        }
+        return;
+    }
+
     if (!args.path && !autoConfig) {
         // eslint-disable-next-line no-console
         console.error('Error: --path is required (or provide a config file with path set)');
@@ -303,10 +756,11 @@ async function main(): Promise<void> {
         process.exit(1);
     }
 
+    const forcePipelineFromApproval = args.command === 'approve-and-generate';
     const {config} = resolveConfig(process.cwd(), autoConfig, {
         path: args.path,
         testsRoot: args.testsRoot,
-        mode: args.command,
+        mode: (args.command === 'gap' || args.command === 'approve-and-generate') ? 'gap' : 'impact',
         framework: args.framework,
         timeLimitMinutes: args.timeLimitMinutes,
         budget: {
@@ -319,7 +773,7 @@ async function main(): Promise<void> {
         flowCatalogPath: args.flowCatalogPath,
         specPDF: args.specPDF,
         gitSince: args.gitSince,
-        pipeline: args.pipeline
+        pipeline: (args.pipeline || forcePipelineFromApproval)
             ? {
                   enabled: true,
                   scenarios: args.pipelineScenarios,
@@ -330,9 +784,21 @@ async function main(): Promise<void> {
                   project: args.pipelineProject,
                   parallel: args.pipelineParallel,
                   dryRun: args.pipelineDryRun,
-                  mcp: args.pipelineMcp,
+                  mcp: args.pipelineMcp !== undefined ? args.pipelineMcp : forcePipelineFromApproval,
               }
             : undefined,
+        policy:
+            args.policyMinConfidence !== undefined ||
+            args.policySafeMergeConfidence !== undefined ||
+            args.policyWarningsThreshold !== undefined ||
+            (args.policyRiskyPatterns && args.policyRiskyPatterns.length > 0)
+                ? {
+                      minConfidenceForTargeted: args.policyMinConfidence,
+                      safeMergeMinConfidence: args.policySafeMergeConfidence,
+                      forceFullOnWarningsAtOrAbove: args.policyWarningsThreshold,
+                      riskyFilePatterns: args.policyRiskyPatterns,
+                  }
+                : undefined,
     });
 
     if (args.allowFallback) {
@@ -341,6 +807,61 @@ async function main(): Promise<void> {
 
     if (args.command === 'impact') {
         await runImpact(config, {apply: args.apply});
+        return;
+    }
+
+    if (args.command === 'suggest') {
+        await runImpact(config, {apply: args.apply});
+        const reportRoot = config.testsRoot || config.path;
+        const impactPath = join(reportRoot, '.e2e-ai-agents', 'impact.json');
+        if (!existsSync(impactPath)) {
+            throw new Error(`Impact report not found at ${impactPath}`);
+        }
+        const impact = JSON.parse(readFileSync(impactPath, 'utf-8')) as ReportData;
+        const basePlan = buildPlanFromImpactReport(impact, config.policy);
+        const withActions = attachDeveloperActions(basePlan, {
+            appPath: config.path,
+            testsRoot: reportRoot,
+            sinceRef: config.git.since,
+        });
+        const plan = applyOperationalInsights(withActions, reportRoot);
+        const planPath = writePlanReport(reportRoot, plan);
+        const summaryMarkdown = renderCiSummaryMarkdown(plan);
+        const summaryPath = writeCiSummary(reportRoot, summaryMarkdown, args.ciCommentPath);
+        const ghaOutput = args.githubOutputPath || process.env.GITHUB_OUTPUT;
+        if (ghaOutput) {
+            appendFileSync(ghaOutput, `run_set=${plan.runSet}\n`);
+            appendFileSync(ghaOutput, `action=${plan.decision.action}\n`);
+            appendFileSync(ghaOutput, `confidence=${plan.confidence}\n`);
+            appendFileSync(ghaOutput, `recommended_tests_count=${plan.recommendedTests.length}\n`);
+            appendFileSync(ghaOutput, `required_new_tests_count=${plan.requiredNewTests.length}\n`);
+            appendFileSync(ghaOutput, `plan_path=${planPath}\n`);
+            appendFileSync(ghaOutput, `summary_path=${summaryPath}\n`);
+        }
+        // eslint-disable-next-line no-console
+        console.log(`Suggested run set: ${plan.runSet} (confidence ${plan.confidence})`);
+        // eslint-disable-next-line no-console
+        console.log(`Decision: ${plan.decision.action} - ${plan.decision.summary}`);
+        // eslint-disable-next-line no-console
+        console.log(`Plan data: ${planPath}`);
+        // eslint-disable-next-line no-console
+        console.log(`CI summary: ${summaryPath}`);
+        if (plan.nextActions) {
+            // eslint-disable-next-line no-console
+            console.log(`Next action (run existing): ${plan.nextActions.runRecommendedTests || plan.nextActions.runSmokeSuite}`);
+            // eslint-disable-next-line no-console
+            console.log(`Next action (approve + generate): ${plan.nextActions.approveAndGenerate || plan.nextActions.generateMissingTests}`);
+            // eslint-disable-next-line no-console
+            console.log(`Next action (heal): ${plan.nextActions.healGeneratedTests}`);
+        }
+        if (args.failOnMustAddTests && plan.decision.action === 'must-add-tests') {
+            process.exit(2);
+        }
+        return;
+    }
+
+    if (args.command === 'approve-and-generate') {
+        await runGap(config, {apply: true});
         return;
     }
 

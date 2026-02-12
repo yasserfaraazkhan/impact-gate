@@ -1,0 +1,54 @@
+name: e2e-auto-heal-pr
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows:
+      - e2e-smoke
+      - e2e-full
+    types:
+      - completed
+
+jobs:
+  heal-and-open-pr:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    env:
+      APP_PATH: ./webapp
+      TESTS_ROOT: ./e2e-tests/playwright
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_branch || github.ref_name }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Auto-heal and open PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          npx e2e-ai-agents auto-heal-pr \
+            --path "$APP_PATH" \
+            --tests-root "$TESTS_ROOT" \
+            --since origin/master \
+            --pipeline-scenarios 3 \
+            --pr-base master \
+            --pr-title "test(e2e): auto-heal generated specs" \
+            --pr-body "Automated e2e-heal run triggered by failing e2e workflow."
