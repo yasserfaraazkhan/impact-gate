@@ -2,11 +2,11 @@
 // See LICENSE.txt for license information.
 
 import {existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync} from 'fs';
-import {join, relative, resolve} from 'path';
+import {basename, dirname, join, relative, resolve} from 'path';
 import {spawnSync} from 'child_process';
 import type {PipelineConfig} from './config.js';
 import type {FlowImpact} from './analysis.js';
-import {isPathWithinRoot, normalizePath} from './utils.js';
+import {baseNameWithoutExt, isPathWithinRoot, normalizePath, titleCase, tokenize, uniqueTokens} from './utils.js';
 
 export interface PipelineResult {
     flowId: string;
@@ -21,6 +21,12 @@ export interface PipelineSummary {
     runner: 'e2e-test-gen' | 'package-native' | 'unknown';
     results: PipelineResult[];
     warnings: string[];
+}
+
+export interface SpecHealTarget {
+    specPath: string;
+    status?: 'failed' | 'flaky';
+    reason?: string;
 }
 
 type NativeSpecStrategy =
@@ -59,6 +65,33 @@ function hasE2eTestGenCLI(testsRoot: string): string | null {
 
 function toSafeSlug(value: string): string {
     return value.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'flow';
+}
+
+function stripSpecSuffix(value: string): string {
+    return value.replace(/\.(spec|test)\.[^.]+$/i, '').replace(/\.[^.]+$/, '');
+}
+
+function buildSyntheticFlowFromSpecTarget(relativeSpecPath: string, target: SpecHealTarget): FlowImpact {
+    const normalizedSpecPath = normalizePath(relativeSpecPath);
+    const noSuffix = stripSpecSuffix(normalizedSpecPath);
+    const flowId = toSafeSlug(noSuffix.replace(/\//g, '.'));
+    const base = baseNameWithoutExt(stripSpecSuffix(basename(normalizedSpecPath)));
+    const flowName = titleCase(base.replace(/[._-]+/g, ' ')) || 'Recovered Spec';
+    const keywords = uniqueTokens(tokenize(noSuffix.replace(/[/.]/g, ' ')));
+    const reasons = [
+        `Playwright report marked this spec as ${target.status || 'unstable'}.`,
+        target.reason || `Auto-heal target: ${normalizedSpecPath}`,
+    ];
+    return {
+        id: flowId,
+        name: flowName,
+        kind: 'flow',
+        score: target.status === 'failed' ? 12 : 9,
+        priority: target.status === 'failed' ? 'P0' : 'P1',
+        reasons,
+        keywords,
+        files: [normalizedSpecPath],
+    };
 }
 
 function firstFlowFiles(flow: FlowImpact): string[] {
@@ -475,6 +508,98 @@ function runPackageNativePipeline(
     }
 
     return {runner: 'package-native', results, warnings: Array.from(warningSet)};
+}
+
+export function runTargetedSpecHeal(
+    testsRoot: string,
+    targets: SpecHealTarget[],
+    pipeline: PipelineConfig,
+): PipelineSummary {
+    const warnings = new Set<string>();
+    const results: PipelineResult[] = [];
+    if (targets.length === 0) {
+        warnings.add('No targeted specs provided for heal.');
+        return {
+            runner: 'package-native',
+            results,
+            warnings: Array.from(warnings),
+        };
+    }
+
+    const playwrightBinary = pipeline.heal ? resolvePlaywrightBinary(testsRoot) : null;
+    if (pipeline.heal && !playwrightBinary) {
+        warnings.add('Playwright binary was not found. Targeted heal uses static quality checks without runtime compile validation.');
+    }
+
+    for (const target of targets) {
+        const inputPath = target.specPath || '';
+        const absoluteSpecPath = normalizePath(resolve(testsRoot, inputPath));
+        if (!isPathWithinRoot(testsRoot, absoluteSpecPath)) {
+            results.push({
+                flowId: inputPath || 'unknown',
+                flowName: inputPath || 'Unknown Spec',
+                generatedDir: normalizePath(dirname(absoluteSpecPath)),
+                generateStatus: 'failed',
+                healStatus: pipeline.heal ? 'failed' : undefined,
+                error: `Targeted spec resolves outside testsRoot: ${inputPath}`,
+            });
+            continue;
+        }
+
+        if (!existsSync(absoluteSpecPath)) {
+            results.push({
+                flowId: inputPath || 'unknown',
+                flowName: inputPath || 'Unknown Spec',
+                generatedDir: normalizePath(dirname(absoluteSpecPath)),
+                generateStatus: 'failed',
+                healStatus: pipeline.heal ? 'failed' : undefined,
+                error: `Targeted spec does not exist: ${inputPath}`,
+            });
+            continue;
+        }
+
+        const relativeSpecPath = normalizePath(relative(testsRoot, absoluteSpecPath));
+        if (!/\.(spec|test)\.[tj]sx?$/.test(relativeSpecPath)) {
+            warnings.add(`Skipping non-spec target path: ${relativeSpecPath}`);
+            results.push({
+                flowId: relativeSpecPath,
+                flowName: relativeSpecPath,
+                generatedDir: normalizePath(dirname(absoluteSpecPath)),
+                generateStatus: 'skipped',
+                healStatus: pipeline.heal ? 'skipped' : undefined,
+            });
+            continue;
+        }
+
+        if (pipeline.dryRun) {
+            results.push({
+                flowId: relativeSpecPath,
+                flowName: relativeSpecPath,
+                generatedDir: normalizePath(dirname(absoluteSpecPath)),
+                generateStatus: 'skipped',
+                healStatus: pipeline.heal ? 'skipped' : undefined,
+            });
+            continue;
+        }
+
+        const syntheticFlow = buildSyntheticFlowFromSpecTarget(relativeSpecPath, target);
+        results.push(
+            runPackageNativeFlow(
+                testsRoot,
+                syntheticFlow,
+                pipeline,
+                normalizePath(dirname(absoluteSpecPath)),
+                absoluteSpecPath,
+                playwrightBinary,
+            ),
+        );
+    }
+
+    return {
+        runner: 'package-native',
+        results,
+        warnings: Array.from(warnings),
+    };
 }
 
 function findSpecFiles(root: string): string[] {

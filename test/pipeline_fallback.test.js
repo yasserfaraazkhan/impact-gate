@@ -3,7 +3,7 @@ import test from 'node:test';
 import {chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync} from 'fs';
 import {join} from 'path';
 import {tmpdir} from 'os';
-import {runPlaywrightPipeline} from '../dist/agent/pipeline.js';
+import {runPlaywrightPipeline, runTargetedSpecHeal} from '../dist/agent/pipeline.js';
 
 function writeFakePlaywrightBinary(root, body) {
     const binDir = join(root, 'node_modules', '.bin');
@@ -144,6 +144,49 @@ test('package-native heal reports failure and removes new generated file when al
             'specs/functional/ai-assisted/messaging.realtime/messaging.realtime.spec.ts',
         );
         assert.equal(existsSync(generatedPath), false);
+    } finally {
+        rmSync(root, {recursive: true, force: true});
+    }
+});
+
+test('runTargetedSpecHeal heals an invalid existing failing spec in place', () => {
+    const root = mkdtempSync(join(tmpdir(), 'pipeline-targeted-heal-'));
+    try {
+        writeFakePlaywrightBinary(root, '#!/bin/sh\nexit 0\n');
+        const specPath = join(root, 'specs/functional/channels/threads_list.spec.ts');
+        mkdirSync(join(root, 'specs/functional/channels'), {recursive: true});
+        writeFileSync(
+            specPath,
+            "import {test} from '@mattermost/playwright-lib';\n\ntest.describe('broken', () => { test('x', async () => {}); });\n",
+            'utf-8',
+        );
+
+        const summary = runTargetedSpecHeal(
+            root,
+            [
+                {
+                    specPath: 'specs/functional/channels/threads_list.spec.ts',
+                    status: 'failed',
+                    reason: 'playwright report failure',
+                },
+            ],
+            {
+                enabled: true,
+                scenarios: 3,
+                outputDir: 'specs/functional/ai-assisted',
+                heal: true,
+                mcp: false,
+            },
+        );
+
+        assert.equal(summary.runner, 'package-native');
+        assert.equal(summary.results.length, 1);
+        assert.equal(summary.results[0].generateStatus, 'success');
+        assert.equal(summary.results[0].healStatus, 'success');
+
+        const healed = readFileSync(specPath, 'utf-8');
+        assert.equal(healed.includes('test.describe('), false);
+        assert(healed.includes("tag: '@ai-assisted'"));
     } finally {
         rmSync(root, {recursive: true, force: true});
     }

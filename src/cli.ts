@@ -2,7 +2,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {appendFileSync, existsSync, readFileSync} from 'fs';
+import {appendFileSync, existsSync, readFileSync, writeFileSync} from 'fs';
 import {dirname, join, resolve} from 'path';
 
 import {resolveConfig, type AnalysisMode, type FrameworkType} from './agent/config.js';
@@ -16,6 +16,8 @@ import {appendFeedbackAndRecompute, type RecommendationFeedbackEntry} from './ag
 import {finalizeGeneratedTests} from './agent/handoff.js';
 import {ingestTraceabilityInput} from './agent/traceability_ingest.js';
 import {captureTraceabilityInput} from './agent/traceability_capture.js';
+import {runTargetedSpecHeal} from './agent/pipeline.js';
+import {extractPlaywrightUnstableSpecs} from './agent/playwright_report.js';
 
 type Command =
     AnalysisMode
@@ -718,6 +720,54 @@ async function main(): Promise<void> {
 
         await runGap(config, {apply: true});
         const reportRoot = config.testsRoot || config.path;
+        if (args.traceabilityReportPath) {
+            const unstableSpecs = extractPlaywrightUnstableSpecs(args.traceabilityReportPath, [reportRoot, config.path]);
+            if (unstableSpecs.length > 0) {
+                const targetedSummary = runTargetedSpecHeal(
+                    reportRoot,
+                    unstableSpecs.map((spec) => ({
+                        specPath: spec.specPath,
+                        status: spec.status,
+                        reason: `Playwright report: failingTests=${spec.failingTests}, flakyTests=${spec.flakyTests}`,
+                    })),
+                    {
+                        ...config.pipeline,
+                        enabled: true,
+                        heal: true,
+                    },
+                );
+                const healedCount = targetedSummary.results.filter((result) => result.healStatus === 'success').length;
+                // eslint-disable-next-line no-console
+                console.log(`Auto-heal targeted unstable specs: ${unstableSpecs.length} (healed=${healedCount})`);
+                if (targetedSummary.warnings.length > 0) {
+                    // eslint-disable-next-line no-console
+                    console.log(`Auto-heal warnings: ${targetedSummary.warnings.join(' | ')}`);
+                }
+
+                const gapPath = join(reportRoot, '.e2e-ai-agents', 'gap.json');
+                if (existsSync(gapPath)) {
+                    const gap = JSON.parse(readFileSync(gapPath, 'utf-8')) as {
+                        pipeline?: {
+                            runner?: string;
+                            results?: unknown[];
+                            warnings?: string[];
+                        };
+                    };
+                    const existingResults = Array.isArray(gap.pipeline?.results) ? gap.pipeline?.results : [];
+                    const existingWarnings = Array.isArray(gap.pipeline?.warnings) ? gap.pipeline?.warnings : [];
+                    gap.pipeline = {
+                        runner: gap.pipeline?.runner || targetedSummary.runner,
+                        results: [...existingResults, ...targetedSummary.results],
+                        warnings: Array.from(new Set([...(existingWarnings || []), ...targetedSummary.warnings])),
+                    };
+                    writeFileSync(gapPath, `${JSON.stringify(gap, null, 2)}\n`, 'utf-8');
+                }
+            } else {
+                // eslint-disable-next-line no-console
+                console.log('Auto-heal targeted unstable specs: 0');
+            }
+        }
+
         const branchSuffix = new Date().toISOString().replace(/[:.]/g, '-');
         const result = finalizeGeneratedTests({
             appPath: config.path,

@@ -40,10 +40,27 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+      - name: Download Playwright report artifact (optional)
+        id: report
+        if: github.event_name == 'workflow_run'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p ./.e2e-ai-agents
+          gh run download ${{ github.event.workflow_run.id }} -D ./.e2e-ai-agents || true
+          REPORT_PATH=$(find ./.e2e-ai-agents -type f \( -name '*playwright*report*.json' -o -name '*report*.json' \) | head -n 1 || true)
+          if [ -n "$REPORT_PATH" ]; then
+            echo "report_path=$REPORT_PATH" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Auto-heal and open PR
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          REPORT_ARG=""
+          if [ -n "${{ steps.report.outputs.report_path }}" ]; then
+            REPORT_ARG="--traceability-report ${{ steps.report.outputs.report_path }}"
+          fi
           npx e2e-ai-agents auto-heal-pr \
             --path "$APP_PATH" \
             --tests-root "$TESTS_ROOT" \
@@ -51,4 +68,5 @@ jobs:
             --pipeline-scenarios 3 \
             --pr-base master \
             --pr-title "test(e2e): auto-heal generated specs" \
-            --pr-body "Automated e2e-heal run triggered by failing e2e workflow."
+            --pr-body "Automated e2e-heal run triggered by failing e2e workflow." \
+            $REPORT_ARG
