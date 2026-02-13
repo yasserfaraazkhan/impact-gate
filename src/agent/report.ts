@@ -7,6 +7,7 @@ import type {AgentConfig} from './config.js';
 import type {FlowImpact} from './analysis.js';
 import type {FlowCoverage} from './tests.js';
 import type {DataTestIdSuggestion} from './selectors.js';
+import type {GapTestSuggestion} from './gap_suggestions.js';
 import {formatFlags} from './flags.js';
 
 export interface ReportData {
@@ -16,12 +17,53 @@ export interface ReportData {
     coverage: FlowCoverage[];
     gaps: FlowImpact[];
     dataTestIds: DataTestIdSuggestion[];
+    testSuggestions?: GapTestSuggestion[];
+    // Backward-compatible alias for integrations that read the older field name.
+    suggestedNewTests?: GapTestSuggestion[];
     framework: string;
     testPatterns: string[];
     specPDF?: string;
     warnings: string[];
     flowCatalog?: string;
     recommendedTests?: string[];
+    impactModel?: {
+        schemaVersion: '1.0.0';
+        flowMapping: 'catalog' | 'heuristic';
+        testMapping: 'catalog' | 'traceability' | 'heuristic';
+        confidenceClass: 'high' | 'medium' | 'low';
+        traceability?: {
+            source: 'manifest';
+            enabled: boolean;
+            manifestPath: string;
+            manifestFound: boolean;
+            manifestTests: number;
+            manifestEdges: number;
+            matchedFlows: number;
+            totalFlows: number;
+            matchedTests: number;
+            coverageRatio: number;
+        };
+        dependencyGraph?: {
+            source: 'static-dependency-graph';
+            enabled: boolean;
+            seedFiles: number;
+            expandedFiles: number;
+            analyzedFiles: number;
+            analyzedEdges: number;
+            maxDepth: number;
+            truncated: boolean;
+        };
+        subsystemRisk?: {
+            source: 'map';
+            enabled: boolean;
+            mapPath: string;
+            mapFound: boolean;
+            rulesLoaded: number;
+            filesMatched: number;
+            ruleMatches: number;
+            boostedFlows: number;
+        };
+    };
     pipeline?: {
         runner: string;
         results: Array<{
@@ -57,6 +99,11 @@ function formatSuggestion(suggestion: DataTestIdSuggestion): string {
     return `- ${suggestion.file}:${suggestion.line} -> ${suggestion.testId}\n  ${suggestion.snippet}`;
 }
 
+function formatTestSuggestion(suggestion: GapTestSuggestion): string {
+    const source = suggestion.sourceFiles.length > 0 ? suggestion.sourceFiles.join(', ') : 'N/A';
+    return `- [${suggestion.priority}] ${suggestion.flowName} (${suggestion.flowId})\n  Path: ${suggestion.suggestedTestPath}\n  Source files: ${source}\n  Why: ${suggestion.rationale}`;
+}
+
 function flowCounts(flows: FlowImpact[]): {p0: number; p1: number; p2: number} {
     return flows.reduce(
         (acc, flow) => {
@@ -87,6 +134,29 @@ export function writeReport(appRoot: string, config: AgentConfig, data: ReportDa
     markdownLines.push(`Test Patterns: ${data.testPatterns.join(', ') || 'None'}`);
     if (data.flowCatalog) {
         markdownLines.push(`Flow Catalog: ${data.flowCatalog}`);
+    }
+    if (data.impactModel) {
+        markdownLines.push(
+            `Impact Model: flow=${data.impactModel.flowMapping} test=${data.impactModel.testMapping} confidence=${data.impactModel.confidenceClass}`,
+        );
+        if (data.impactModel.traceability) {
+            const traceability = data.impactModel.traceability;
+            markdownLines.push(
+                `Traceability: enabled=${traceability.enabled} manifestFound=${traceability.manifestFound} matchedFlows=${traceability.matchedFlows}/${traceability.totalFlows} matchedTests=${traceability.matchedTests} coverageRatio=${traceability.coverageRatio}`,
+            );
+        }
+        if (data.impactModel.dependencyGraph) {
+            const graph = data.impactModel.dependencyGraph;
+            markdownLines.push(
+                `Dependency Graph: enabled=${graph.enabled} seeds=${graph.seedFiles} expanded=${graph.expandedFiles} files=${graph.analyzedFiles} edges=${graph.analyzedEdges} depth=${graph.maxDepth}${graph.truncated ? ' (truncated)' : ''}`,
+            );
+        }
+        if (data.impactModel.subsystemRisk) {
+            const subsystemRisk = data.impactModel.subsystemRisk;
+            markdownLines.push(
+                `Subsystem Risk: enabled=${subsystemRisk.enabled} mapFound=${subsystemRisk.mapFound} rules=${subsystemRisk.rulesLoaded} filesMatched=${subsystemRisk.filesMatched} ruleMatches=${subsystemRisk.ruleMatches} boostedFlows=${subsystemRisk.boostedFlows}`,
+            );
+        }
     }
     markdownLines.push(`Changed Files: ${data.changedFiles.length}`);
     markdownLines.push(`Flows: P0=${counts.p0} P1=${counts.p1} P2=${counts.p2}`);
@@ -140,6 +210,12 @@ export function writeReport(appRoot: string, config: AgentConfig, data: ReportDa
         markdownLines.push(...data.dataTestIds.map(formatSuggestion));
     }
 
+    if (data.testSuggestions && data.testSuggestions.length > 0) {
+        markdownLines.push('');
+        markdownLines.push('Suggested New Tests (Actionable):');
+        markdownLines.push(...data.testSuggestions.map(formatTestSuggestion));
+    }
+
     if (data.applied) {
         markdownLines.push('');
         markdownLines.push('Applied Changes:');
@@ -163,7 +239,13 @@ export function writeReport(appRoot: string, config: AgentConfig, data: ReportDa
     }
 
     const jsonPath = join(baseDir, data.mode === 'impact' ? 'impact.json' : 'gap.json');
-    writeFileSync(jsonPath, JSON.stringify(data, null, 2), 'utf-8');
+    const jsonData = data.mode === 'gap'
+        ? {
+            ...data,
+            suggestedNewTests: data.suggestedNewTests || data.testSuggestions || [],
+        }
+        : data;
+    writeFileSync(jsonPath, JSON.stringify(jsonData, null, 2), 'utf-8');
 
     return {markdownPath, jsonPath};
 }

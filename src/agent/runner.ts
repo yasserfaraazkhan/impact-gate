@@ -16,6 +16,15 @@ import {generateTests} from './generator.js';
 import {loadFlowCatalog} from './flow_catalog.js';
 import {mapChangesToCatalogFlows} from './flow_mapping.js';
 import {runPlaywrightPipeline, type PipelineSummary} from './pipeline.js';
+import {buildGapTestSuggestions, type GapTestSuggestion} from './gap_suggestions.js';
+import {expandByDependencyGraph, type DependencyGraphExpansion} from './dependency_graph.js';
+import {mapTraceabilityToFlows, type TraceabilityStats} from './traceability.js';
+
+const PRIORITY_RANK: Record<FlowPriority, number> = {
+    P0: 0,
+    P1: 1,
+    P2: 2,
+};
 
 function ensureAppRoot(path: string): void {
     if (!existsSync(path)) {
@@ -65,7 +74,10 @@ function applyPriorityThresholds(flows: FlowImpact[], config: AgentConfig): Flow
                 : flow.score >= config.risk.p1Threshold
                   ? 'P1'
                   : 'P2';
-        return {...flow, priority};
+        const boundedPriority = flow.priorityFloor && PRIORITY_RANK[flow.priorityFloor] < PRIORITY_RANK[priority]
+            ? flow.priorityFloor
+            : priority;
+        return {...flow, priority: boundedPriority};
     });
 }
 
@@ -130,6 +142,72 @@ function buildRecommendedTestsFromCoverage(flows: FlowImpact[], coverage: FlowCo
         .sort();
 }
 
+function uniquePaths(paths: string[]): string[] {
+    return Array.from(new Set(paths.map((value) => value.replace(/\\/g, '/')).filter(Boolean)));
+}
+
+function mergeCoverageWithHeuristicFallback(traceability: FlowCoverage[], heuristic: FlowCoverage[]): FlowCoverage[] {
+    const byFlow = new Map<string, FlowCoverage>();
+    for (const entry of traceability) {
+        byFlow.set(entry.flowId, entry);
+    }
+    for (const entry of heuristic) {
+        const existing = byFlow.get(entry.flowId);
+        if (!existing) {
+            byFlow.set(entry.flowId, entry);
+            continue;
+        }
+        if (existing.coveredBy.length === 0 && entry.coveredBy.length > 0) {
+            byFlow.set(entry.flowId, entry);
+        }
+    }
+    return Array.from(byFlow.values());
+}
+
+function classifyImpactModelConfidence(
+    flowMapping: 'catalog' | 'heuristic',
+    testMapping: 'catalog' | 'traceability' | 'heuristic',
+    dependencyGraph: DependencyGraphExpansion | undefined,
+    traceability: TraceabilityStats | undefined,
+    warnings: string[],
+): 'high' | 'medium' | 'low' {
+    let score = 0;
+    if (flowMapping === 'catalog') {
+        score += 2;
+    }
+    if (testMapping === 'catalog') {
+        score += 2;
+    } else if (testMapping === 'traceability') {
+        score += 3;
+    }
+    if (traceability) {
+        if (!traceability.manifestFound) {
+            score -= 1;
+        } else if (traceability.coverageRatio >= 0.7) {
+            score += 1;
+        } else if (traceability.coverageRatio < 0.4) {
+            score -= 1;
+        }
+    }
+    if (dependencyGraph && dependencyGraph.expandedFiles.length > 0) {
+        score += 1;
+    }
+    if (dependencyGraph && dependencyGraph.truncated) {
+        score -= 1;
+    }
+    if (warnings.length > 0) {
+        score -= 1;
+    }
+
+    if (score >= 5) {
+        return 'high';
+    }
+    if (score >= 3) {
+        return 'medium';
+    }
+    return 'low';
+}
+
 export interface RunOptions {
     apply: boolean;
 }
@@ -172,7 +250,20 @@ export async function runImpact(_config: AgentConfig, _options: RunOptions): Pro
         );
     }
 
+    let dependencyGraph: DependencyGraphExpansion | undefined;
+    if (analysisTargets.length > 0 && _config.impact.dependencyGraph.enabled) {
+        dependencyGraph = expandByDependencyGraph(_config.path, analysisTargets, _config.impact.dependencyGraph);
+        warnings.push(...dependencyGraph.warnings);
+        if (dependencyGraph.expandedFiles.length > 0) {
+            analysisTargets = uniquePaths([...analysisTargets, ...dependencyGraph.expandedFiles]);
+            warnings.push(
+                `Dependency graph expanded impacted files by ${dependencyGraph.expandedFiles.length} (depth=${dependencyGraph.maxDepth}).`,
+            );
+        }
+    }
+
     const analysis = analyzeFiles(_config.path, analysisTargets, _config);
+    warnings.push(...analysis.warnings);
     if (Date.now() > deadline) {
         warnings.push('Time limit exceeded after impact analysis. Skipping coverage and selector steps.');
     }
@@ -184,8 +275,11 @@ export async function runImpact(_config: AgentConfig, _options: RunOptions): Pro
     let flowCatalogSource: string | undefined;
     let recommendedTests: string[] = [];
     let testsByFlow: Map<string, string[]> | undefined;
-
+    let testSuggestions: GapTestSuggestion[] = [];
     const catalog = loadFlowCatalog(_config);
+    const flowMappingSource: 'catalog' | 'heuristic' = catalog ? 'catalog' : 'heuristic';
+    let testMappingSource: 'catalog' | 'traceability' | 'heuristic' = 'heuristic';
+    let traceabilityStats: TraceabilityStats | undefined;
     if (catalog) {
         flowCatalogSource = catalog.source;
         const mapping = mapChangesToCatalogFlows(catalog, analysisTargets, 'impact', _config);
@@ -204,6 +298,7 @@ export async function runImpact(_config: AgentConfig, _options: RunOptions): Pro
     if (Date.now() <= deadline) {
         if (catalog && testsByFlow) {
             coverage = mapCatalogTestsToFlows(flows, testsRoot, testsByFlow);
+            testMappingSource = 'catalog';
             const coverageMap = new Map<string, string[]>();
             for (const entry of coverage) {
                 coverageMap.set(entry.flowId, entry.coveredBy);
@@ -211,8 +306,22 @@ export async function runImpact(_config: AgentConfig, _options: RunOptions): Pro
             gaps = computeGaps(flows, coverageMap);
             recommendedTests = buildRecommendedTestsWithFlags(flows, testsByFlow);
         } else {
-            const tests = discoverTests(testsRoot, testPatterns.patterns);
-            coverage = mapTestsToFlows(flows, tests);
+            const traceability = mapTraceabilityToFlows(testsRoot, _config.impact.traceability, flows);
+            warnings.push(...traceability.warnings);
+            traceabilityStats = traceability.stats;
+            if (traceability.stats.manifestFound && traceability.stats.matchedFlows > 0) {
+                coverage = traceability.coverage;
+                testMappingSource = 'traceability';
+                if (traceability.stats.coverageRatio < 0.8) {
+                    const tests = discoverTests(testsRoot, testPatterns.patterns);
+                    const heuristicCoverage = mapTestsToFlows(flows, tests);
+                    coverage = mergeCoverageWithHeuristicFallback(coverage, heuristicCoverage);
+                    warnings.push('Applied heuristic fallback for flows not covered by traceability mapping.');
+                }
+            } else {
+                const tests = discoverTests(testsRoot, testPatterns.patterns);
+                coverage = mapTestsToFlows(flows, tests);
+            }
             const coverageMap = new Map<string, string[]>();
             for (const entry of coverage) {
                 coverageMap.set(entry.flowId, entry.coveredBy);
@@ -220,6 +329,10 @@ export async function runImpact(_config: AgentConfig, _options: RunOptions): Pro
             gaps = computeGaps(flows, coverageMap);
             recommendedTests = buildRecommendedTestsFromCoverage(flows, coverage);
         }
+    }
+
+    if (Date.now() <= deadline) {
+        testSuggestions = buildGapTestSuggestions(testsRoot, gaps, frameworkDetection.framework, testPatterns.patterns);
     }
 
     if (Date.now() <= deadline) {
@@ -258,6 +371,27 @@ export async function runImpact(_config: AgentConfig, _options: RunOptions): Pro
         warnings,
         flowCatalog: flowCatalogSource,
         recommendedTests,
+        impactModel: {
+            schemaVersion: '1.0.0',
+            flowMapping: flowMappingSource,
+            testMapping: testMappingSource,
+            confidenceClass: classifyImpactModelConfidence(flowMappingSource, testMappingSource, dependencyGraph, traceabilityStats, warnings),
+            traceability: traceabilityStats,
+            dependencyGraph: dependencyGraph
+                ? {
+                      source: dependencyGraph.source,
+                      enabled: _config.impact.dependencyGraph.enabled,
+                      seedFiles: dependencyGraph.seedFiles.length,
+                      expandedFiles: dependencyGraph.expandedFiles.length,
+                      analyzedFiles: dependencyGraph.analyzedFiles,
+                      analyzedEdges: dependencyGraph.analyzedEdges,
+                      maxDepth: dependencyGraph.maxDepth,
+                      truncated: dependencyGraph.truncated,
+                  }
+                : undefined,
+            subsystemRisk: analysis.subsystemRisk.enabled ? analysis.subsystemRisk : undefined,
+        },
+        testSuggestions,
         pipeline: pipelineSummary,
         applied,
     });
@@ -288,6 +422,9 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
         includeUncommitted: _config.git.includeUncommitted,
     });
     const changedFiles = normalizeChangedFiles(_config.path, gitResult.files);
+    if (gitResult.error) {
+        warnings.push(`Git diff failed: ${gitResult.error}`);
+    }
 
     let analysisTargets = changedFiles.filter((file) => !isTestFilePath(file));
     if (analysisTargets.length === 0) {
@@ -303,7 +440,20 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
         warnings.push('No flow candidates found. Ensure pages/screens exist or provide changed files.');
     }
 
+    let dependencyGraph: DependencyGraphExpansion | undefined;
+    if (analysisTargets.length > 0 && _config.impact.dependencyGraph.enabled) {
+        dependencyGraph = expandByDependencyGraph(_config.path, analysisTargets, _config.impact.dependencyGraph);
+        warnings.push(...dependencyGraph.warnings);
+        if (dependencyGraph.expandedFiles.length > 0) {
+            analysisTargets = uniquePaths([...analysisTargets, ...dependencyGraph.expandedFiles]);
+            warnings.push(
+                `Dependency graph expanded impacted files by ${dependencyGraph.expandedFiles.length} (depth=${dependencyGraph.maxDepth}).`,
+            );
+        }
+    }
+
     const analysis = analyzeFiles(_config.path, analysisTargets, _config);
+    warnings.push(...analysis.warnings);
     if (Date.now() > deadline) {
         warnings.push('Time limit exceeded after gap analysis. Skipping coverage and selector steps.');
     }
@@ -315,8 +465,11 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
     let flowCatalogSource: string | undefined;
     let recommendedTests: string[] = [];
     let testsByFlow: Map<string, string[]> | undefined;
-
+    let testSuggestions: GapTestSuggestion[] = [];
     const catalog = loadFlowCatalog(_config);
+    const flowMappingSource: 'catalog' | 'heuristic' = catalog ? 'catalog' : 'heuristic';
+    let testMappingSource: 'catalog' | 'traceability' | 'heuristic' = 'heuristic';
+    let traceabilityStats: TraceabilityStats | undefined;
     if (catalog) {
         flowCatalogSource = catalog.source;
         const mapping = mapChangesToCatalogFlows(catalog, analysisTargets, 'gap', _config);
@@ -335,6 +488,7 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
     if (Date.now() <= deadline) {
         if (catalog && testsByFlow) {
             coverage = mapCatalogTestsToFlows(flows, testsRoot, testsByFlow);
+            testMappingSource = 'catalog';
             const coverageMap = new Map<string, string[]>();
             for (const entry of coverage) {
                 coverageMap.set(entry.flowId, entry.coveredBy);
@@ -342,8 +496,22 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
             gaps = computeGaps(flows, coverageMap);
             recommendedTests = buildRecommendedTestsWithFlags(flows, testsByFlow);
         } else {
-            const tests = discoverTests(testsRoot, testPatterns.patterns);
-            coverage = mapTestsToFlows(flows, tests);
+            const traceability = mapTraceabilityToFlows(testsRoot, _config.impact.traceability, flows);
+            warnings.push(...traceability.warnings);
+            traceabilityStats = traceability.stats;
+            if (traceability.stats.manifestFound && traceability.stats.matchedFlows > 0) {
+                coverage = traceability.coverage;
+                testMappingSource = 'traceability';
+                if (traceability.stats.coverageRatio < 0.8) {
+                    const tests = discoverTests(testsRoot, testPatterns.patterns);
+                    const heuristicCoverage = mapTestsToFlows(flows, tests);
+                    coverage = mergeCoverageWithHeuristicFallback(coverage, heuristicCoverage);
+                    warnings.push('Applied heuristic fallback for flows not covered by traceability mapping.');
+                }
+            } else {
+                const tests = discoverTests(testsRoot, testPatterns.patterns);
+                coverage = mapTestsToFlows(flows, tests);
+            }
             const coverageMap = new Map<string, string[]>();
             for (const entry of coverage) {
                 coverageMap.set(entry.flowId, entry.coveredBy);
@@ -351,6 +519,10 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
             gaps = computeGaps(flows, coverageMap);
             recommendedTests = buildRecommendedTestsFromCoverage(flows, coverage);
         }
+    }
+
+    if (Date.now() <= deadline) {
+        testSuggestions = buildGapTestSuggestions(testsRoot, gaps, frameworkDetection.framework, testPatterns.patterns);
     }
 
     if (Date.now() <= deadline) {
@@ -389,6 +561,27 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
         warnings,
         flowCatalog: flowCatalogSource,
         recommendedTests,
+        impactModel: {
+            schemaVersion: '1.0.0',
+            flowMapping: flowMappingSource,
+            testMapping: testMappingSource,
+            confidenceClass: classifyImpactModelConfidence(flowMappingSource, testMappingSource, dependencyGraph, traceabilityStats, warnings),
+            traceability: traceabilityStats,
+            dependencyGraph: dependencyGraph
+                ? {
+                      source: dependencyGraph.source,
+                      enabled: _config.impact.dependencyGraph.enabled,
+                      seedFiles: dependencyGraph.seedFiles.length,
+                      expandedFiles: dependencyGraph.expandedFiles.length,
+                      analyzedFiles: dependencyGraph.analyzedFiles,
+                      analyzedEdges: dependencyGraph.analyzedEdges,
+                      maxDepth: dependencyGraph.maxDepth,
+                      truncated: dependencyGraph.truncated,
+                  }
+                : undefined,
+            subsystemRisk: analysis.subsystemRisk.enabled ? analysis.subsystemRisk : undefined,
+        },
+        testSuggestions,
         pipeline: pipelineSummary,
         applied,
     });
