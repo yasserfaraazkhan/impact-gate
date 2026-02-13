@@ -1,8 +1,8 @@
-# @mattermost/e2e-agents
+# @yasserkhanorg/e2e-agents
 
 Framework-agnostic LLM provider library with MCP server for autonomous E2E testing.
 
-[![npm](https://img.shields.io/npm/v/%40mattermost%2Fe2e-agents)](https://www.npmjs.com/package/@mattermost/e2e-agents)
+[![npm](https://img.shields.io/npm/v/%40yasserkhanorg%2Fe2e-agents)](https://www.npmjs.com/package/@yasserkhanorg/e2e-agents)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 [![GitHub](https://img.shields.io/badge/github-yasserfaraazkhan%2Fe2e--agents-blue?logo=github)](https://github.com/yasserfaraazkhan/e2e-agents)
 
@@ -18,14 +18,14 @@ Pluggable LLM provider abstraction for test automation with:
 ## Installation
 
 ```bash
-npm install @mattermost/e2e-agents
+npm install @yasserkhanorg/e2e-agents
 ```
 
 ## Module Formats (CJS + ESM)
 
 This package ships both CommonJS and ESM builds:
-- `require('@mattermost/e2e-agents')` loads the CommonJS build from `dist/index.js`.
-- `import ... from '@mattermost/e2e-agents'` loads the ESM build from `dist/esm/index.js`.
+- `require('@yasserkhanorg/e2e-agents')` loads the CommonJS build from `dist/index.js`.
+- `import ... from '@yasserkhanorg/e2e-agents'` loads the ESM build from `dist/esm/index.js`.
 - `./mcp` follows the same pattern (`dist/mcp-server.js` for CJS, `dist/esm/mcp-server.js` for ESM).
 
 Node.js >= 20 is required.
@@ -43,7 +43,7 @@ Node.js >= 20 is required.
 ### Use Claude
 
 ```typescript
-import { AnthropicProvider } from '@mattermost/e2e-agents';
+import { AnthropicProvider } from '@yasserkhanorg/e2e-agents';
 
 const claude = new AnthropicProvider({
     apiKey: process.env.ANTHROPIC_API_KEY
@@ -57,7 +57,7 @@ console.log(`Cost: $${response.cost.toFixed(4)}`);
 ### Use OpenAI
 
 ```typescript
-import { OpenAIProvider } from '@mattermost/e2e-agents';
+import { OpenAIProvider } from '@yasserkhanorg/e2e-agents';
 
 const openai = new OpenAIProvider({
     apiKey: process.env.OPENAI_API_KEY,
@@ -73,7 +73,7 @@ Tip: for accurate OpenAI cost tracking, set `costPer1MInputTokens` and `costPer1
 ### Use Ollama (Free)
 
 ```typescript
-import { OllamaProvider } from '@mattermost/e2e-agents';
+import { OllamaProvider } from '@yasserkhanorg/e2e-agents';
 
 const ollama = new OllamaProvider({
     model: 'deepseek-r1:7b'
@@ -86,7 +86,7 @@ console.log(response.text); // Free!
 ### Use Custom Provider (OpenAI-compatible endpoint)
 
 ```typescript
-import { CustomProvider } from '@mattermost/e2e-agents';
+import { CustomProvider } from '@yasserkhanorg/e2e-agents';
 
 const custom = new CustomProvider({
     baseUrl: 'https://your-llm-gateway.example.com/v1',
@@ -104,7 +104,7 @@ console.log(response.text);
 ### Factory Pattern
 
 ```typescript
-import { LLMProviderFactory } from '@mattermost/e2e-agents';
+import { LLMProviderFactory } from '@yasserkhanorg/e2e-agents';
 
 // Auto-detect from environment
 const provider = LLMProviderFactory.create({
@@ -236,7 +236,7 @@ Notes:
 - `--apply` remains available as a legacy shortcut for direct `gap` execution.
 - Use `--pipeline` to run the Playwright generation pipeline.
 - If `e2e-test-gen-cli.ts` exists in `testsRoot`, it is used as the advanced runner.
-- If it is absent, `@mattermost/e2e-agents` falls back to package-native generation with strategy-based templates, quality guardrails (`no test.describe`, single tag), and iterative heal attempts.
+- If it is absent, `@yasserkhanorg/e2e-agents` falls back to package-native generation with strategy-based templates, quality guardrails (`no test.describe`, single tag), and iterative heal attempts.
 - Use `--pipeline-mcp` (or `"pipeline": { "mcp": true }`) to run exploration/healing via Playwright MCP.
 - `suggest` writes `.e2e-ai-agents/plan.json` with `runSet` (`smoke|targeted|full`) and confidence.
 - `suggest` also writes `.e2e-ai-agents/ci-summary.md` with CI status: `run-now`, `must-add-tests`, or `safe-to-merge`.
@@ -263,7 +263,7 @@ Notes:
 Programmatic API:
 
 ```typescript
-import {analyzeImpact, findGaps, recommendTests, captureTraceability, ingestTraceability} from '@mattermost/e2e-agents';
+import {analyzeImpact, findGaps, recommendTests, captureTraceability, ingestTraceability} from '@yasserkhanorg/e2e-agents';
 
 await analyzeImpact({path: '/path/to/webapp'});
 await findGaps({path: '/path/to/webapp'});
@@ -286,7 +286,7 @@ ingestTraceability({
 Feedback API:
 
 ```typescript
-import {appendFeedbackAndRecompute} from '@mattermost/e2e-agents';
+import {appendFeedbackAndRecompute} from '@yasserkhanorg/e2e-agents';
 
 appendFeedbackAndRecompute('/path/to/webapp', {
   timestamp: new Date().toISOString(),
@@ -301,7 +301,7 @@ appendFeedbackAndRecompute('/path/to/webapp', {
 Traceability ingest API:
 
 ```typescript
-import {ingestTraceability} from '@mattermost/e2e-agents';
+import {ingestTraceability} from '@yasserkhanorg/e2e-agents';
 
 ingestTraceability({
   path: '/path/to/webapp',
@@ -321,7 +321,7 @@ ingestTraceability({
 Automation API:
 
 ```typescript
-import {handoffGeneratedTests} from '@mattermost/e2e-agents';
+import {handoffGeneratedTests} from '@yasserkhanorg/e2e-agents';
 
 handoffGeneratedTests({
   appPath: '/path/to/webapp',
@@ -391,7 +391,7 @@ Flow catalog entries can also include optional audience and flag metadata:
 ### 1. Create Custom Provider
 
 ```typescript
-import { LLMProvider } from '@mattermost/e2e-agents';
+import { LLMProvider } from '@yasserkhanorg/e2e-agents';
 
 export class MyCustomProvider implements LLMProvider {
     async generateText(prompt: string) {
@@ -422,7 +422,7 @@ export class MyCustomProvider implements LLMProvider {
 ### 2. Register with Factory
 
 ```typescript
-import { LLMProviderFactory } from '@mattermost/e2e-agents';
+import { LLMProviderFactory } from '@yasserkhanorg/e2e-agents';
 
 LLMProviderFactory.register('my-provider', (config) => {
     return new MyCustomProvider(config);
@@ -440,7 +440,7 @@ const provider = LLMProviderFactory.create({
 ```typescript
 // Playwright example
 import { test } from '@playwright/test';
-import { LLMProviderFactory } from '@mattermost/e2e-agents';
+import { LLMProviderFactory } from '@yasserkhanorg/e2e-agents';
 
 const llm = LLMProviderFactory.create({
     type: 'anthropic',
@@ -465,7 +465,7 @@ test('use LLM to verify UI', async ({ page }) => {
 For Playwright test agents (v1.56+):
 
 ```typescript
-import { E2EAgentsMCPServer } from '@mattermost/e2e-agents/mcp';
+import { E2EAgentsMCPServer } from '@yasserkhanorg/e2e-agents/mcp';
 
 const server = new E2EAgentsMCPServer();
 const tools = server.getTools();
@@ -516,7 +516,7 @@ Note: If `OLLAMA_BASE_URL` points to the root host (for example, `http://localho
 ## Error Handling
 
 ```typescript
-import { LLMProviderError, UnsupportedCapabilityError } from '@mattermost/e2e-agents';
+import { LLMProviderError, UnsupportedCapabilityError } from '@yasserkhanorg/e2e-agents';
 
 try {
     await provider.analyzeImage([...], 'Analyze');
@@ -569,7 +569,7 @@ Supported levels: `ERROR`, `WARN`, `INFO`, `DEBUG` (default: `INFO`)
 The library includes a simple TTL cache for repository context:
 
 ```typescript
-import { SimpleCache } from '@mattermost/e2e-agents/agent/cache_utils';
+import { SimpleCache } from '@yasserkhanorg/e2e-agents/agent/cache_utils';
 
 // Create a 10-minute cache
 const cache = new SimpleCache(10 * 60 * 1000);
