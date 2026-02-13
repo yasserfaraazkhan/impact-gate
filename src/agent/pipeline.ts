@@ -18,9 +18,14 @@ export interface PipelineResult {
 }
 
 export interface PipelineSummary {
-    runner: 'e2e-test-gen' | 'package-native' | 'unknown';
+    runner: 'playwright-agents' | 'e2e-test-gen' | 'package-native' | 'unknown';
     results: PipelineResult[];
     warnings: string[];
+    mcp?: {
+        requested: boolean;
+        active: boolean;
+        backend: 'playwright-agents' | 'e2e-test-gen' | 'package-native' | 'unknown';
+    };
 }
 
 export interface SpecHealTarget {
@@ -31,6 +36,12 @@ export interface SpecHealTarget {
 
 type NativeSpecStrategy =
     | 'thread-reply'
+    | 'lifecycle-channel'
+    | 'channel-settings'
+    | 'channel-switch'
+    | 'markdown-post'
+    | 'mentions-post'
+    | 'realtime-post'
     | 'message-post'
     | 'channel-baseline'
     | 'search-baseline'
@@ -42,7 +53,8 @@ interface NativeSpecQualityIssue {
         | 'disallowed-only'
         | 'missing-test'
         | 'missing-tag'
-        | 'tag-array-disallowed';
+        | 'tag-array-disallowed'
+        | 'unknown-api-surface';
     message: string;
 }
 
@@ -56,6 +68,24 @@ interface CommandResult {
 interface ValidationResult {
     status: 'passed' | 'failed' | 'skipped';
     detail?: string;
+}
+
+interface ApiSurfaceCatalog {
+    pwProps: Set<string>;
+    testBrowserMethods: Set<string>;
+    channelsPageMembers: Set<string>;
+    sidebarRightMembers: Set<string>;
+}
+
+function createMcpStatus(
+    backend: 'playwright-agents' | 'e2e-test-gen' | 'package-native' | 'unknown',
+    requested: boolean,
+): NonNullable<PipelineSummary['mcp']> {
+    return {
+        requested,
+        active: requested && (backend === 'e2e-test-gen' || backend === 'playwright-agents'),
+        backend,
+    };
 }
 
 function hasE2eTestGenCLI(testsRoot: string): string | null {
@@ -99,6 +129,7 @@ function firstFlowFiles(flow: FlowImpact): string[] {
 }
 
 function buildNativeStrategyOrder(flow: FlowImpact): NativeSpecStrategy[] {
+    const flowId = (flow.id || '').toLowerCase();
     const haystack = [
         flow.id,
         flow.name,
@@ -108,8 +139,53 @@ function buildNativeStrategyOrder(flow: FlowImpact): NativeSpecStrategy[] {
     ].join(' ').toLowerCase();
 
     const strategies: NativeSpecStrategy[] = [];
+    if (flowId.includes('search')) {
+        strategies.push('search-baseline');
+    }
+    if (flowId.includes('threads') || flowId.includes('thread')) {
+        strategies.push('thread-reply');
+    }
+    if (flowId.includes('channels.lifecycle')) {
+        strategies.push('lifecycle-channel');
+    }
+    if (flowId.includes('channels.settings')) {
+        strategies.push('channel-settings');
+    }
+    if (flowId.includes('channels.switch')) {
+        strategies.push('channel-switch');
+    }
+    if (flowId.includes('messaging.markdown')) {
+        strategies.push('markdown-post');
+    }
+    if (flowId.includes('messaging.mentions')) {
+        strategies.push('mentions-post');
+    }
+    if (flowId.includes('messaging.realtime')) {
+        strategies.push('realtime-post');
+    }
     if (/(thread|reply|rhs|sidebar[_-]?right)/.test(haystack)) {
         strategies.push('thread-reply');
+    }
+    if (/(create|join|leave|invite)/.test(haystack)) {
+        strategies.push('lifecycle-channel');
+    }
+    if (/(settings|preferences)/.test(haystack)) {
+        strategies.push('channel-settings');
+    }
+    if (/(switch|quick\\s*switch)/.test(haystack)) {
+        strategies.push('channel-switch');
+    }
+    if (/(markdown|format)/.test(haystack)) {
+        strategies.push('markdown-post');
+    }
+    if (/(mention|@)/.test(haystack)) {
+        strategies.push('mentions-post');
+    }
+    if (/(realtime|websocket|presence)/.test(haystack)) {
+        strategies.push('realtime-post');
+    }
+    if (/(search|find|spotlight)/.test(haystack)) {
+        strategies.push('search-baseline');
     }
     if (/(message|post|realtime|websocket|chat)/.test(haystack)) {
         strategies.push('message-post');
@@ -117,14 +193,134 @@ function buildNativeStrategyOrder(flow: FlowImpact): NativeSpecStrategy[] {
     if (/(channel|navigation|sidebar|switch)/.test(haystack)) {
         strategies.push('channel-baseline');
     }
-    if (/(search|find|spotlight)/.test(haystack)) {
-        strategies.push('search-baseline');
-    }
     strategies.push('generic-baseline');
     return Array.from(new Set(strategies));
 }
 
-function validateGeneratedSpecContent(content: string): NativeSpecQualityIssue[] {
+function createDefaultApiSurfaceCatalog(): ApiSurfaceCatalog {
+    return {
+        pwProps: new Set([
+            'initSetup',
+            'testBrowser',
+            'apiInitSetup',
+            'apiAdminSetup',
+            'apiCreateChannel',
+            'apiCreateUser',
+            'apiLogin',
+        ]),
+        testBrowserMethods: new Set([
+            'login',
+            'openNewBrowserContext',
+            'newContext',
+        ]),
+        channelsPageMembers: new Set([
+            'goto',
+            'page',
+            'postMessage',
+            'getLastPost',
+            'sidebarRight',
+            'openChannelSettings',
+            'newChannel',
+            'globalHeader',
+            'searchBox',
+        ]),
+        sidebarRightMembers: new Set([
+            'openThreadForPost',
+            'postMessage',
+            'getLastPost',
+        ]),
+    };
+}
+
+function collectMatches(content: string, pattern: RegExp): Set<string> {
+    const out = new Set<string>();
+    for (const match of content.matchAll(pattern)) {
+        const value = match[1];
+        if (value) {
+            out.add(value);
+        }
+    }
+    return out;
+}
+
+function collectApiSurfaceFromContent(content: string, catalog: ApiSurfaceCatalog): void {
+    for (const prop of collectMatches(content, /\bpw\.([A-Za-z_][A-Za-z0-9_]*)\b/g)) {
+        catalog.pwProps.add(prop);
+    }
+    for (const method of collectMatches(content, /\bpw\.testBrowser\.([A-Za-z_][A-Za-z0-9_]*)\b/g)) {
+        catalog.testBrowserMethods.add(method);
+    }
+    for (const member of collectMatches(content, /\bchannelsPage\.([A-Za-z_][A-Za-z0-9_]*)\b/g)) {
+        catalog.channelsPageMembers.add(member);
+    }
+    for (const member of collectMatches(content, /\bchannelsPage\.sidebarRight\.([A-Za-z_][A-Za-z0-9_]*)\b/g)) {
+        catalog.sidebarRightMembers.add(member);
+    }
+}
+
+function buildApiSurfaceCatalog(testsRoot: string, seedFile: string): ApiSurfaceCatalog {
+    const catalog = createDefaultApiSurfaceCatalog();
+    const candidateRoots = [
+        join(testsRoot, 'specs'),
+        join(testsRoot, 'tests'),
+    ];
+
+    const files: string[] = [];
+    for (const root of candidateRoots) {
+        if (!existsSync(root)) {
+            continue;
+        }
+        const stack = [root];
+        while (stack.length > 0) {
+            const current = stack.pop()!;
+            let entries: import('fs').Dirent[];
+            try {
+                entries = readdirSync(current, {withFileTypes: true});
+            } catch {
+                continue;
+            }
+            for (const entry of entries) {
+                const full = join(current, entry.name);
+                if (entry.isDirectory()) {
+                    if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'dist') {
+                        continue;
+                    }
+                    stack.push(full);
+                    continue;
+                }
+                if (!entry.isFile()) {
+                    continue;
+                }
+                if (!/\.(spec|test)\.[jt]sx?$/.test(entry.name)) {
+                    continue;
+                }
+                files.push(full);
+            }
+        }
+    }
+
+    const uniqueFiles = Array.from(new Set(files)).slice(0, 2500);
+    for (const filePath of uniqueFiles) {
+        try {
+            const content = readFileSync(filePath, 'utf-8');
+            collectApiSurfaceFromContent(content, catalog);
+        } catch {
+            continue;
+        }
+    }
+
+    const absoluteSeed = join(testsRoot, seedFile);
+    if (existsSync(absoluteSeed)) {
+        try {
+            collectApiSurfaceFromContent(readFileSync(absoluteSeed, 'utf-8'), catalog);
+        } catch {
+            // ignore seed read failures; defaults + catalog scan still apply
+        }
+    }
+    return catalog;
+}
+
+function validateGeneratedSpecContent(content: string, apiSurface?: ApiSurfaceCatalog): NativeSpecQualityIssue[] {
     const issues: NativeSpecQualityIssue[] = [];
     if (/\btest\.describe\s*\(/.test(content)) {
         issues.push({
@@ -150,12 +346,40 @@ function validateGeneratedSpecContent(content: string): NativeSpecQualityIssue[]
             message: 'Generated tests must use a single tag string, not a tag array.',
         });
     }
-    const hasTagString = /\btag\s*:\s*['"][^'"]+['"]/.test(content);
-    if (!hasTagString || !/@ai-assisted/.test(content)) {
+    const hasTagOption = /\btag\s*:\s*['"][^'"]+['"]/.test(content);
+    const hasTagInTitle = /\btest(?:\.\w+)?\s*\(\s*['"][^'"]*@ai-assisted[^'"]*['"]/.test(content);
+    if (!(hasTagOption || hasTagInTitle) || !/@ai-assisted/.test(content)) {
         issues.push({
             code: 'missing-tag',
-            message: "Generated tests must include a single '@ai-assisted' tag.",
+            message: "Generated tests must include '@ai-assisted' either as tag option or in test title.",
         });
+    }
+
+    if (apiSurface) {
+        const unknownPwProps = Array.from(collectMatches(content, /\bpw\.([A-Za-z_][A-Za-z0-9_]*)\b/g)).filter(
+            (prop) => !apiSurface.pwProps.has(prop),
+        );
+        const unknownBrowserMethods = Array.from(
+            collectMatches(content, /\bpw\.testBrowser\.([A-Za-z_][A-Za-z0-9_]*)\b/g),
+        ).filter((method) => !apiSurface.testBrowserMethods.has(method));
+        const unknownChannelMembers = Array.from(
+            collectMatches(content, /\bchannelsPage\.([A-Za-z_][A-Za-z0-9_]*)\b/g),
+        ).filter((member) => !apiSurface.channelsPageMembers.has(member));
+        const unknownSidebarMembers = Array.from(
+            collectMatches(content, /\bchannelsPage\.sidebarRight\.([A-Za-z_][A-Za-z0-9_]*)\b/g),
+        ).filter((member) => !apiSurface.sidebarRightMembers.has(member));
+        const unknown = [
+            ...unknownPwProps.map((value) => `pw.${value}`),
+            ...unknownBrowserMethods.map((value) => `pw.testBrowser.${value}`),
+            ...unknownChannelMembers.map((value) => `channelsPage.${value}`),
+            ...unknownSidebarMembers.map((value) => `channelsPage.sidebarRight.${value}`),
+        ];
+        if (unknown.length > 0) {
+            issues.push({
+                code: 'unknown-api-surface',
+                message: `Generated test uses unknown API/page-object members: ${Array.from(new Set(unknown)).join(', ')}`,
+            });
+        }
     }
     return issues;
 }
@@ -191,10 +415,82 @@ function createNativePlaywrightSpec(flow: FlowImpact, slug: string, strategy: Na
             ...start,
             `  const parentMessage = \`ai-${slug}-parent-\${Date.now()}\`;`,
             '  await channelsPage.postMessage(parentMessage);',
-            '  await channelsPage.openAThread(parentMessage);',
+            '  const rootPost = await channelsPage.getLastPost();',
+            '  await rootPost.openAThread();',
             `  const replyMessage = \`ai-${slug}-reply-\${Date.now()}\`;`,
             '  await channelsPage.sidebarRight.postMessage(replyMessage);',
-            '  await expect(channelsPage.sidebarRight.getLastPost()).toContainText(replyMessage);',
+            '  const lastReply = await channelsPage.sidebarRight.getLastPost();',
+            '  await expect(lastReply.container).toContainText(replyMessage);',
+            ...end,
+        ].join('\n');
+    }
+
+    if (strategy === 'lifecycle-channel') {
+        return [
+            ...header,
+            ...start,
+            `  const channelName = \`ai-${slug}-\${Date.now().toString().slice(-6)}\`;`,
+            "  await channelsPage.newChannel(channelName, 'O');",
+            '  await expect(channelsPage.page).toHaveURL(new RegExp(`/channels/${channelName}$`));',
+            ...end,
+        ].join('\n');
+    }
+
+    if (strategy === 'channel-settings') {
+        return [
+            ...header,
+            ...start,
+            '  await channelsPage.openChannelSettings();',
+            "  await expect(channelsPage.page.getByRole('dialog', {name: 'Channel Settings'})).toBeVisible();",
+            "  await channelsPage.page.keyboard.press('Escape');",
+            ...end,
+        ].join('\n');
+    }
+
+    if (strategy === 'channel-switch') {
+        return [
+            ...header,
+            ...start,
+            "  await channelsPage.goto(team.name, 'off-topic');",
+            "  await expect(channelsPage.page).toHaveURL(/\\/channels\\/off-topic$/);",
+            "  await expect(channelsPage.page.locator('#channelHeaderTitle')).toContainText(/off-topic/i);",
+            ...end,
+        ].join('\n');
+    }
+
+    if (strategy === 'markdown-post') {
+        return [
+            ...header,
+            ...start,
+            `  const message = '**ai-${slug}-bold** _italic_';`,
+            '  await channelsPage.postMessage(message);',
+            '  const lastPost = await channelsPage.getLastPost();',
+            "  await expect(lastPost.container.locator('strong')).toBeVisible();",
+            ...end,
+        ].join('\n');
+    }
+
+    if (strategy === 'mentions-post') {
+        return [
+            ...header,
+            ...start,
+            '  const mention = `@${user.username}`;',
+            '  await channelsPage.postMessage(`Ping ${mention}`);',
+            '  const lastPost = await channelsPage.getLastPost();',
+            '  await expect(lastPost.container).toContainText(mention);',
+            ...end,
+        ].join('\n');
+    }
+
+    if (strategy === 'realtime-post') {
+        return [
+            ...header,
+            ...start,
+            `  const message = \`ai-${slug}-realtime-\${Date.now()}\`;`,
+            '  await channelsPage.postMessage(message);',
+            '  const lastPost = await channelsPage.getLastPost();',
+            '  await expect(lastPost.container).toContainText(message);',
+            "  await expect(channelsPage.page.locator('#channel_view')).toBeVisible();",
             ...end,
         ].join('\n');
     }
@@ -224,11 +520,12 @@ function createNativePlaywrightSpec(flow: FlowImpact, slug: string, strategy: Na
         return [
             ...header,
             ...start,
-            `  const searchTerm = '${slug}'.slice(0, 20);`,
-            "  await channelsPage.page.keyboard.press('ControlOrMeta+K');",
-            '  await channelsPage.page.keyboard.type(searchTerm);',
-            "  await channelsPage.page.keyboard.press('Escape');",
-            '  await expect(channelsPage.page).toHaveURL(/\\/channels\\//);',
+            `  const searchTerm = \`ai-${slug}-\${Date.now().toString().slice(-6)}\`;`,
+            '  await channelsPage.postMessage(searchTerm);',
+            '  await channelsPage.globalHeader.openSearch();',
+            '  await channelsPage.searchBox.searchInput.fill(searchTerm);',
+            "  await channelsPage.page.keyboard.press('Enter');",
+            "  await expect(channelsPage.page.locator('#searchContainer')).toBeVisible();",
             ...end,
         ].join('\n');
     }
@@ -326,6 +623,7 @@ function runPackageNativeFlow(
     outputDir: string,
     testFile: string,
     playwrightBinary: string | null,
+    apiSurface: ApiSurfaceCatalog,
 ): PipelineResult {
     const flowId = flow.id;
     const flowName = flow.name;
@@ -372,7 +670,7 @@ function runPackageNativeFlow(
             wroteNewFile = true;
         }
         const currentContent = candidate.write ? candidate.content : (originalContent || '');
-        const qualityIssues = validateGeneratedSpecContent(currentContent);
+        const qualityIssues = validateGeneratedSpecContent(currentContent, apiSurface);
         if (qualityIssues.length > 0) {
             attempts.push(`${candidate.label}: ${qualityIssues.map((issue) => issue.message).join(' ')}`);
             if (pipeline.heal && i < candidates.length - 1) {
@@ -447,11 +745,11 @@ function runPackageNativePipeline(
     baseWarnings: string[] = [],
 ): PipelineSummary {
     const warningSet = new Set(baseWarnings);
-    if (pipeline.mcp) {
-        warningSet.add('Package-native pipeline does not run Playwright MCP directly. Use follow-up heal workflows if MCP is required.');
-    }
+    const mcp = createMcpStatus('package-native', Boolean(pipeline.mcp));
 
     const playwrightBinary = pipeline.heal ? resolvePlaywrightBinary(testsRoot) : null;
+    const seedFile = resolveAgentSeedSpec(testsRoot) || 'specs/seed.spec.ts';
+    const apiSurface = buildApiSurfaceCatalog(testsRoot, seedFile);
     if (pipeline.heal && !playwrightBinary) {
         warningSet.add('Playwright binary was not found. Heal uses static quality checks without runtime compile validation.');
     }
@@ -460,7 +758,7 @@ function runPackageNativePipeline(
     const outputBase = resolve(testsRoot, pipeline.outputDir || 'specs/functional/ai-assisted');
     if (!isPathWithinRoot(testsRoot, outputBase)) {
         warningSet.add(`Pipeline outputDir resolves outside testsRoot and was blocked: ${pipeline.outputDir}`);
-        return {runner: 'unknown', results, warnings: Array.from(warningSet)};
+        return {runner: 'unknown', results, warnings: Array.from(warningSet), mcp: createMcpStatus('unknown', Boolean(pipeline.mcp))};
     }
 
     for (const flow of flows) {
@@ -504,10 +802,10 @@ function runPackageNativePipeline(
             continue;
         }
 
-        results.push(runPackageNativeFlow(testsRoot, flow, pipeline, outputDir, testFile, playwrightBinary));
+        results.push(runPackageNativeFlow(testsRoot, flow, pipeline, outputDir, testFile, playwrightBinary, apiSurface));
     }
 
-    return {runner: 'package-native', results, warnings: Array.from(warningSet)};
+    return {runner: 'package-native', results, warnings: Array.from(warningSet), mcp};
 }
 
 export function runTargetedSpecHeal(
@@ -517,16 +815,20 @@ export function runTargetedSpecHeal(
 ): PipelineSummary {
     const warnings = new Set<string>();
     const results: PipelineResult[] = [];
+    const mcp = createMcpStatus('package-native', Boolean(pipeline.mcp));
     if (targets.length === 0) {
         warnings.add('No targeted specs provided for heal.');
         return {
             runner: 'package-native',
             results,
             warnings: Array.from(warnings),
+            mcp,
         };
     }
 
     const playwrightBinary = pipeline.heal ? resolvePlaywrightBinary(testsRoot) : null;
+    const seedFile = resolveAgentSeedSpec(testsRoot) || 'specs/seed.spec.ts';
+    const apiSurface = buildApiSurfaceCatalog(testsRoot, seedFile);
     if (pipeline.heal && !playwrightBinary) {
         warnings.add('Playwright binary was not found. Targeted heal uses static quality checks without runtime compile validation.');
     }
@@ -591,6 +893,7 @@ export function runTargetedSpecHeal(
                 normalizePath(dirname(absoluteSpecPath)),
                 absoluteSpecPath,
                 playwrightBinary,
+                apiSurface,
             ),
         );
     }
@@ -599,6 +902,7 @@ export function runTargetedSpecHeal(
         runner: 'package-native',
         results,
         warnings: Array.from(warnings),
+        mcp,
     };
 }
 
@@ -624,27 +928,435 @@ function findDisallowedDescribeFiles(root: string): string[] {
     return files.filter((file) => /\btest\.describe\s*\(/.test(readFileSync(file, 'utf-8')));
 }
 
+function hasCommand(command: string, cwd: string): boolean {
+    const result = runCommand(command, ['--version'], cwd);
+    return result.status === 0;
+}
+
+function hasPlaywrightAgentDefinitions(testsRoot: string): boolean {
+    const required = [
+        '.mcp.json',
+        '.claude/agents/playwright-test-planner.md',
+        '.claude/agents/playwright-test-generator.md',
+        '.claude/agents/playwright-test-healer.md',
+    ];
+    return required.every((path) => existsSync(join(testsRoot, path)));
+}
+
+function hasPlaywrightConfig(testsRoot: string): boolean {
+    const candidates = [
+        'playwright.config.ts',
+        'playwright.config.js',
+        'playwright.config.mts',
+        'playwright.config.mjs',
+        'playwright.config.cts',
+        'playwright.config.cjs',
+    ];
+    return candidates.some((candidate) => existsSync(join(testsRoot, candidate)));
+}
+
+function bootstrapPlaywrightAgentDefinitions(testsRoot: string, pipeline: PipelineConfig): CommandResult {
+    const args = ['playwright', 'init-agents', '--loop=claude', '--prompts'];
+    if (pipeline.project) {
+        args.push('--project', pipeline.project);
+    }
+    return runCommand('npx', args, testsRoot);
+}
+
+function resolveAgentSeedSpec(testsRoot: string): string | null {
+    const preferred = join(testsRoot, 'specs', 'seed.spec.ts');
+    const specsRoot = join(testsRoot, 'specs');
+    const specFiles = findSpecFiles(specsRoot).filter((file) => !normalizePath(file).includes('/functional/ai-assisted/'));
+    const scored = specFiles
+        .map((file) => {
+            const rel = normalizePath(relative(testsRoot, file));
+            const content = readFileSync(file, 'utf-8');
+            let score = 0;
+            if (rel.endsWith('/seed.spec.ts')) {
+                // Generated default seed from init-agents is often a placeholder; prefer real tests.
+                if (!/generate code here/i.test(content)) {
+                    score += 2;
+                }
+            }
+            if (content.includes('@mattermost/playwright-lib')) {
+                score += 8;
+            }
+            if (content.includes('pw.initSetup(')) {
+                score += 6;
+            }
+            if (content.includes('testBrowser.login(')) {
+                score += 4;
+            }
+            if (content.includes('channelsPage')) {
+                score += 2;
+            }
+            if (rel.includes('/functional/channels/')) {
+                score += 1;
+            }
+            return {rel, score};
+        })
+        .sort((a, b) => b.score - a.score);
+
+    if (scored.length > 0 && scored[0].score > 0) {
+        return scored[0].rel;
+    }
+
+    if (existsSync(preferred)) {
+        return normalizePath(relative(testsRoot, preferred));
+    }
+
+    return null;
+}
+
+function buildPlaywrightAgentsPrompt(
+    flow: FlowImpact,
+    seedFile: string,
+    planFile: string,
+    testFile: string,
+    includeHealer: boolean,
+): string {
+    const linkedFiles = firstFlowFiles(flow).join(', ') || 'N/A';
+    const reasons = (flow.reasons || []).slice(0, 5).join(' | ') || 'N/A';
+    return [
+        'Use official Playwright Test agents (planner, generator, healer) to implement exactly one high-quality test for this flow.',
+        '',
+        `Flow ID: ${flow.id}`,
+        `Flow Name: ${flow.name}`,
+        `Priority: ${flow.priority}`,
+        `Linked files: ${linkedFiles}`,
+        `Risk reasons: ${reasons}`,
+        '',
+        'Workflow requirements:',
+        '1) Use #playwright-test-planner to explore and save a focused test plan.',
+        '2) Use #playwright-test-generator to generate one test from that plan.',
+        includeHealer
+            ? '3) Use #playwright-test-healer to run and fix that generated test.'
+            : '3) Skip runtime healing and focus on producing compile-ready test code.',
+        '',
+        `Seed file: ${seedFile}`,
+        `Plan file to save: ${planFile}`,
+        `Generated test file path (must be exact): ${testFile}`,
+        '',
+        'Quality constraints (must follow):',
+        '- The generated file must contain a standalone test() and must not use test.describe or test.only.',
+        '- Do not mark the test with test.fixme unless user explicitly requests skipping.',
+        "- The generated test must include a single tag string '@ai-assisted'.",
+        '- Match fixture/import style from the seed file. Prefer existing page-object APIs over raw brittle selectors.',
+        '- Only use `pw` and page-object methods that already exist in the seed/current specs (for example, do not invent APIs like `pw.mainClient.*`).',
+        '- Keep the scenario strictly aligned to the flow and linked files, not broad unrelated flows.',
+        '',
+        'At the end, return a short summary that includes the generated test file path and whether healing succeeded.',
+    ].join('\n');
+}
+
+function buildPlaywrightHealerPrompt(testFile: string, extra?: string): string {
+    const lines = [
+        'Heal this specific Playwright test file and keep edits minimal.',
+        `Target test file: ${testFile}`,
+        'Constraints:',
+        '- Do not use test.describe or test.only.',
+        "- Keep a single tag string '@ai-assisted'.",
+        '- Use only existing Mattermost Playwright fixture/page-object APIs; do not invent new `pw.*` clients or methods.',
+        '- Keep the test intent unchanged and focused.',
+        '',
+        'Run and fix this test until it compiles/passes, or mark test.fixme with a clear comment when behavior is truly broken.',
+    ];
+    if (extra) {
+        lines.push('', `Context: ${extra}`);
+    }
+    return lines.join('\n');
+}
+
+function runPlaywrightAgentsFlow(
+    testsRoot: string,
+    flow: FlowImpact,
+    pipeline: PipelineConfig,
+    outputDir: string,
+    preferredTestFile: string,
+    seedFile: string,
+    apiSurface: ApiSurfaceCatalog,
+    playwrightBinary: string | null,
+    allowRuntimeHeal: boolean,
+): PipelineResult {
+    mkdirSync(outputDir, {recursive: true});
+    const slug = toSafeSlug(flow.id);
+    const planFile = normalizePath(relative(testsRoot, join(outputDir, `${slug}.plan.md`)));
+    const targetTestFile = normalizePath(relative(testsRoot, preferredTestFile));
+
+    if (pipeline.dryRun) {
+        return {
+            flowId: flow.id,
+            flowName: flow.name,
+            generatedDir: outputDir,
+            generateStatus: 'skipped',
+            healStatus: pipeline.heal ? 'skipped' : undefined,
+        };
+    }
+
+    const prompt = buildPlaywrightAgentsPrompt(flow, seedFile, planFile, targetTestFile, allowRuntimeHeal);
+    const runArgs = [
+        '-p',
+        '--permission-mode',
+        'bypassPermissions',
+        '--mcp-config',
+        '.mcp.json',
+        '--add-dir',
+        testsRoot,
+        '--',
+        prompt,
+    ];
+    const runResult = runCommand('claude', runArgs, testsRoot);
+    if (runResult.status !== 0) {
+        return {
+            flowId: flow.id,
+            flowName: flow.name,
+            generatedDir: outputDir,
+            generateStatus: 'failed',
+            healStatus: pipeline.heal ? 'failed' : undefined,
+            error: summarizeCommandOutput(runResult.stdout, runResult.stderr) || runResult.error || 'Playwright agents run failed',
+        };
+    }
+
+    let actualTestFile = preferredTestFile;
+    if (!existsSync(actualTestFile)) {
+        const candidates = findSpecFiles(outputDir);
+        if (candidates.length === 1) {
+            actualTestFile = candidates[0];
+        }
+    }
+    if (!existsSync(actualTestFile)) {
+        return {
+            flowId: flow.id,
+            flowName: flow.name,
+            generatedDir: outputDir,
+            generateStatus: 'failed',
+            healStatus: pipeline.heal ? 'failed' : undefined,
+            error: `Playwright agents did not produce expected test file: ${targetTestFile}`,
+        };
+    }
+
+    const relativeActualTestFile = normalizePath(relative(testsRoot, actualTestFile));
+    let qualityIssues = validateGeneratedSpecContent(readFileSync(actualTestFile, 'utf-8'), apiSurface);
+    if (qualityIssues.length > 0 && allowRuntimeHeal) {
+        const healResult = runCommand(
+            'claude',
+            [
+                '-p',
+                '--permission-mode',
+                'bypassPermissions',
+                '--agent',
+                'playwright-test-healer',
+                '--mcp-config',
+                '.mcp.json',
+                '--add-dir',
+                testsRoot,
+                '--',
+                buildPlaywrightHealerPrompt(relativeActualTestFile, qualityIssues.map((issue) => issue.message).join(' | ')),
+            ],
+            testsRoot,
+        );
+        if (healResult.status === 0 && existsSync(actualTestFile)) {
+            qualityIssues = validateGeneratedSpecContent(readFileSync(actualTestFile, 'utf-8'), apiSurface);
+        }
+    }
+    if (qualityIssues.length > 0) {
+        return {
+            flowId: flow.id,
+            flowName: flow.name,
+            generatedDir: outputDir,
+            generateStatus: 'failed',
+            healStatus: pipeline.heal ? 'failed' : undefined,
+            error: `Playwright agents produced invalid test content: ${qualityIssues.map((issue) => issue.message).join(' | ')}`,
+        };
+    }
+
+    if (allowRuntimeHeal) {
+        let validation = runPlaywrightListValidation(testsRoot, actualTestFile, pipeline, playwrightBinary);
+        if (validation.status === 'failed') {
+            const healResult = runCommand(
+                'claude',
+                [
+                    '-p',
+                    '--permission-mode',
+                    'bypassPermissions',
+                    '--agent',
+                    'playwright-test-healer',
+                    '--mcp-config',
+                    '.mcp.json',
+                    '--add-dir',
+                    testsRoot,
+                    '--',
+                    buildPlaywrightHealerPrompt(relativeActualTestFile, validation.detail || 'playwright --list failed'),
+                ],
+                testsRoot,
+            );
+            if (healResult.status === 0 && existsSync(actualTestFile)) {
+                validation = runPlaywrightListValidation(testsRoot, actualTestFile, pipeline, playwrightBinary);
+            }
+            if (validation.status === 'failed') {
+                return {
+                    flowId: flow.id,
+                    flowName: flow.name,
+                    generatedDir: outputDir,
+                    generateStatus: 'failed',
+                    healStatus: 'failed',
+                    error: `Playwright agents heal failed: ${validation.detail || 'playwright validation failed'}`,
+                };
+            }
+        }
+    }
+
+    return {
+        flowId: flow.id,
+        flowName: flow.name,
+        generatedDir: outputDir,
+        generateStatus: 'success',
+        healStatus: pipeline.heal ? 'success' : undefined,
+    };
+}
+
+function runPlaywrightAgentsPipeline(
+    testsRoot: string,
+    flows: FlowImpact[],
+    pipeline: PipelineConfig,
+): PipelineSummary {
+    const warnings: string[] = [];
+    const results: PipelineResult[] = [];
+
+    if (!hasCommand('claude', testsRoot)) {
+        warnings.push('Claude CLI is required for official Playwright planner/generator/healer execution but was not found.');
+        return {runner: 'unknown', results, warnings, mcp: createMcpStatus('unknown', true)};
+    }
+
+    if (!hasPlaywrightConfig(testsRoot)) {
+        warnings.push('Playwright config file not found in testsRoot; skipping official Playwright agents backend.');
+        return {runner: 'unknown', results, warnings, mcp: createMcpStatus('unknown', true)};
+    }
+
+    if (!hasPlaywrightAgentDefinitions(testsRoot)) {
+        const bootstrap = bootstrapPlaywrightAgentDefinitions(testsRoot, pipeline);
+        if (bootstrap.status !== 0) {
+            warnings.push(
+                summarizeCommandOutput(bootstrap.stdout, bootstrap.stderr) ||
+                bootstrap.error ||
+                'Failed to initialize Playwright agents via `npx playwright init-agents`.',
+            );
+            return {runner: 'unknown', results, warnings, mcp: createMcpStatus('unknown', true)};
+        }
+    }
+
+    if (!hasPlaywrightAgentDefinitions(testsRoot)) {
+        warnings.push('Playwright agent definitions are missing after bootstrap.');
+        return {runner: 'unknown', results, warnings, mcp: createMcpStatus('unknown', true)};
+    }
+
+    const seedFile = resolveAgentSeedSpec(testsRoot);
+    if (!seedFile) {
+        warnings.push('No seed spec file found under specs/. Playwright planner cannot be initialized.');
+        return {runner: 'unknown', results, warnings, mcp: createMcpStatus('unknown', true)};
+    }
+
+    const allowRuntimeHeal = Boolean(pipeline.heal && pipeline.baseUrl);
+    const playwrightBinary = allowRuntimeHeal ? resolvePlaywrightBinary(testsRoot) : null;
+    const apiSurface = buildApiSurfaceCatalog(testsRoot, seedFile);
+    if (allowRuntimeHeal && !playwrightBinary) {
+        warnings.push('Playwright binary was not found. Healer runtime validation may be limited.');
+    }
+    if (pipeline.heal && !allowRuntimeHeal) {
+        warnings.push('Skipping runtime healer in official MCP mode because no --pipeline-base-url was provided.');
+    }
+
+    const outputBase = resolve(testsRoot, pipeline.outputDir || 'specs/functional/ai-assisted');
+    if (!isPathWithinRoot(testsRoot, outputBase)) {
+        warnings.push(`Pipeline outputDir resolves outside testsRoot and was blocked: ${pipeline.outputDir}`);
+        return {runner: 'unknown', results, warnings, mcp: createMcpStatus('unknown', true)};
+    }
+
+    for (const flow of flows) {
+        if (flow.priority !== 'P0' && flow.priority !== 'P1') {
+            continue;
+        }
+
+        const slug = toSafeSlug(flow.id);
+        const outputDir = normalizePath(join(outputBase, slug));
+        if (!isPathWithinRoot(testsRoot, outputDir)) {
+            results.push({
+                flowId: flow.id,
+                flowName: flow.name,
+                generatedDir: outputDir,
+                generateStatus: 'failed',
+                error: 'output directory resolves outside testsRoot',
+            });
+            continue;
+        }
+
+        const testFile = normalizePath(join(outputDir, `${slug}.spec.ts`));
+        if (!isPathWithinRoot(testsRoot, testFile)) {
+            results.push({
+                flowId: flow.id,
+                flowName: flow.name,
+                generatedDir: outputDir,
+                generateStatus: 'failed',
+                error: 'generated test path resolves outside testsRoot',
+            });
+            continue;
+        }
+
+        results.push(
+            runPlaywrightAgentsFlow(
+                testsRoot,
+                flow,
+                pipeline,
+                outputDir,
+                testFile,
+                seedFile,
+                apiSurface,
+                playwrightBinary,
+                allowRuntimeHeal,
+            ),
+        );
+    }
+
+    return {runner: 'playwright-agents', results, warnings, mcp: createMcpStatus('playwright-agents', true)};
+}
+
 export function runPlaywrightPipeline(
     testsRoot: string,
     flows: FlowImpact[],
     pipeline: PipelineConfig,
 ): PipelineSummary {
-    const cliPath = hasE2eTestGenCLI(testsRoot);
-    if (!cliPath) {
-        return runPackageNativePipeline(
-            testsRoot,
-            flows,
-            pipeline,
-            ['e2e-test-gen-cli.ts not found; using package-native pipeline fallback.'],
-        );
+    const mcpFallbackWarnings: string[] = [];
+    if (pipeline.mcp) {
+        const agentsSummary = runPlaywrightAgentsPipeline(testsRoot, flows, pipeline);
+        if (agentsSummary.runner !== 'unknown' || agentsSummary.results.length > 0) {
+            return agentsSummary;
+        }
+        if (!pipeline.mcpAllowFallback) {
+            const warnings = [
+                ...agentsSummary.warnings,
+                'Official Playwright MCP mode is strict; fallback generation is disabled unless pipeline.mcpAllowFallback=true.',
+            ];
+            return {
+                runner: 'unknown',
+                results: agentsSummary.results,
+                warnings,
+                mcp: createMcpStatus('unknown', true),
+            };
+        }
+        mcpFallbackWarnings.push(...agentsSummary.warnings);
     }
 
-    const warnings: string[] = [];
+    const cliPath = hasE2eTestGenCLI(testsRoot);
+    if (!cliPath) {
+        return runPackageNativePipeline(testsRoot, flows, pipeline, mcpFallbackWarnings);
+    }
+
+    const warnings: string[] = [...mcpFallbackWarnings];
     const results: PipelineResult[] = [];
     const outputBase = resolve(testsRoot, pipeline.outputDir || 'specs/functional/ai-assisted');
     if (!isPathWithinRoot(testsRoot, outputBase)) {
         warnings.push(`Pipeline outputDir resolves outside testsRoot and was blocked: ${pipeline.outputDir}`);
-        return {runner: 'unknown', results, warnings};
+        return {runner: 'unknown', results, warnings, mcp: createMcpStatus('unknown', Boolean(pipeline.mcp))};
     }
 
     for (const flow of flows) {
@@ -748,5 +1460,5 @@ export function runPlaywrightPipeline(
         });
     }
 
-    return {runner: 'e2e-test-gen', results, warnings};
+    return {runner: 'e2e-test-gen', results, warnings, mcp: createMcpStatus('e2e-test-gen', Boolean(pipeline.mcp))};
 }

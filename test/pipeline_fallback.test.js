@@ -36,11 +36,15 @@ test('runPlaywrightPipeline falls back to package-native generation and static h
                 outputDir: 'specs/functional/ai-assisted',
                 heal: true,
                 mcp: true,
+                mcpAllowFallback: true,
             },
         );
 
         assert.equal(summary.runner, 'package-native');
-        assert(summary.warnings.some((warning) => warning.includes('package-native pipeline fallback')));
+        assert.equal(summary.mcp.requested, true);
+        assert.equal(summary.mcp.active, false);
+        assert.equal(summary.mcp.backend, 'package-native');
+        assert.equal(summary.warnings.some((warning) => warning.includes('package-native pipeline fallback')), false);
         assert(summary.warnings.some((warning) => warning.includes('Playwright binary was not found')));
         assert.equal(summary.results.length, 1);
         assert.equal(summary.results[0].generateStatus, 'success');
@@ -58,6 +62,42 @@ test('runPlaywrightPipeline falls back to package-native generation and static h
     }
 });
 
+test('runPlaywrightPipeline keeps strict official MCP mode by default and does not auto-fallback', () => {
+    const root = mkdtempSync(join(tmpdir(), 'pipeline-mcp-strict-'));
+    try {
+        const summary = runPlaywrightPipeline(
+            root,
+            [
+                {
+                    id: 'messaging.realtime',
+                    name: 'Realtime Messaging',
+                    kind: 'flow',
+                    score: 42,
+                    priority: 'P0',
+                    reasons: ['High risk area'],
+                    keywords: ['realtime', 'messaging'],
+                    files: ['channels/src/actions/websocket_actions.ts'],
+                },
+            ],
+            {
+                enabled: true,
+                scenarios: 3,
+                outputDir: 'specs/functional/ai-assisted',
+                heal: true,
+                mcp: true,
+            },
+        );
+
+        assert.equal(summary.runner, 'unknown');
+        assert.equal(summary.mcp.requested, true);
+        assert.equal(summary.mcp.active, false);
+        assert.equal(summary.mcp.backend, 'unknown');
+        assert(summary.warnings.some((warning) => warning.includes('strict')));
+    } finally {
+        rmSync(root, {recursive: true, force: true});
+    }
+});
+
 test('package-native heal rewrites an invalid existing spec when quality guardrails fail', () => {
     const root = mkdtempSync(join(tmpdir(), 'pipeline-heal-existing-'));
     try {
@@ -69,7 +109,7 @@ test('package-native heal rewrites an invalid existing spec when quality guardra
         mkdirSync(join(root, 'specs/functional/ai-assisted/messaging.realtime'), {recursive: true});
         writeFileSync(
             specPath,
-            "import {test} from '@mattermost/playwright-lib';\n\ntest.describe('bad', () => { test('x', async () => {}); });\n",
+            "import {test} from '@mattermost/playwright-lib';\n\ntest.describe('bad', () => { test('x', async ({pw}) => { await pw.mainClient.addToChannel('x'); }); });\n",
             'utf-8',
         );
 
@@ -101,6 +141,7 @@ test('package-native heal rewrites an invalid existing spec when quality guardra
         assert.equal(summary.results[0].healStatus, 'success');
         const healed = readFileSync(specPath, 'utf-8');
         assert.equal(healed.includes('test.describe('), false);
+        assert.equal(healed.includes('pw.mainClient'), false);
         assert(healed.includes("tag: '@ai-assisted'"));
     } finally {
         rmSync(root, {recursive: true, force: true});

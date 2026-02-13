@@ -77,6 +77,7 @@ export interface PipelineConfig {
     parallel?: boolean;
     dryRun?: boolean;
     mcp?: boolean;
+    mcpAllowFallback?: boolean;
 }
 
 export interface LLMConfig {
@@ -233,6 +234,7 @@ const DEFAULT_CONFIG: AgentConfig = {
         outputDir: 'specs/functional/ai-assisted',
         heal: true,
         mcp: false,
+        mcpAllowFallback: false,
     },
     llm: {
         provider: 'anthropic',
@@ -642,6 +644,10 @@ function extractConfigPatch(raw: Record<string, unknown>): Partial<AgentConfig> 
             parallel: pipeline.parallel !== undefined ? Boolean(pipeline.parallel) : undefined,
             dryRun: pipeline.dryRun !== undefined ? Boolean(pipeline.dryRun) : undefined,
             mcp: pipeline.mcp !== undefined ? Boolean(pipeline.mcp) : DEFAULT_CONFIG.pipeline.mcp,
+            mcpAllowFallback:
+                pipeline.mcpAllowFallback !== undefined
+                    ? Boolean(pipeline.mcpAllowFallback)
+                    : DEFAULT_CONFIG.pipeline.mcpAllowFallback,
         };
     }
 
@@ -800,6 +806,12 @@ export function resolveConfig(cwd: string, configPath?: string, overrides?: Conf
         }
         if (overrides.pipeline.dryRun !== undefined) {
             pipelinePatch.dryRun = overrides.pipeline.dryRun;
+        }
+        if (overrides.pipeline.mcp !== undefined) {
+            pipelinePatch.mcp = overrides.pipeline.mcp;
+        }
+        if (overrides.pipeline.mcpAllowFallback !== undefined) {
+            pipelinePatch.mcpAllowFallback = overrides.pipeline.mcpAllowFallback;
         }
         config.pipeline = {...config.pipeline, ...pipelinePatch};
     }

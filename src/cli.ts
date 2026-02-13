@@ -21,6 +21,9 @@ import {extractPlaywrightUnstableSpecs} from './agent/playwright_report.js';
 
 type Command =
     AnalysisMode
+    | 'plan'
+    | 'generate'
+    | 'heal'
     | 'suggest'
     | 'approve-and-generate'
     | 'auto-heal-pr'
@@ -56,6 +59,7 @@ interface ParsedArgs {
     pipelineParallel?: boolean;
     pipelineDryRun?: boolean;
     pipelineMcp?: boolean;
+    pipelineMcpAllowFallback?: boolean;
     policyMinConfidence?: number;
     policySafeMergeConfidence?: number;
     policyWarningsThreshold?: number;
@@ -134,6 +138,9 @@ function printUsage(): void {
             'Usage:',
             '  e2e-ai-agents impact --path <app-root> [options]',
             '  e2e-ai-agents gap --path <app-root> [options]',
+            '  e2e-ai-agents plan --path <app-root> [options]',
+            '  e2e-ai-agents generate --path <app-root> [options]',
+            '  e2e-ai-agents heal --path <app-root> --traceability-report <json> [options]',
             '  e2e-ai-agents suggest --path <app-root> [options]',
             '  e2e-ai-agents approve-and-generate --path <app-root> [options]',
             '  e2e-ai-agents auto-heal-pr --path <app-root> [options]',
@@ -163,6 +170,7 @@ function printUsage(): void {
             '  --pipeline-parallel   Enable parallel mode in generator',
             '  --pipeline-dry-run    Do not execute pipeline (report only)',
             '  --pipeline-mcp        Use Playwright MCP server for exploration/healing',
+            '  --pipeline-mcp-allow-fallback  Allow non-MCP fallback if official MCP setup fails',
             '  --spec <path>         Optional spec PDF for context',
             '  --since <git-ref>     Git ref for impact analysis (default HEAD~1)',
             '  --time <minutes>      Time limit in minutes',
@@ -209,6 +217,9 @@ function parseArgs(argv: string[]): ParsedArgs {
     if (
         command === 'impact'
         || command === 'gap'
+        || command === 'plan'
+        || command === 'generate'
+        || command === 'heal'
         || command === 'suggest'
             || command === 'approve-and-generate'
             || command === 'auto-heal-pr'
@@ -282,6 +293,10 @@ function parseArgs(argv: string[]): ParsedArgs {
         }
         if (arg === '--pipeline-mcp') {
             parsed.pipelineMcp = true;
+            continue;
+        }
+        if (arg === '--pipeline-mcp-allow-fallback') {
+            parsed.pipelineMcpAllowFallback = true;
             continue;
         }
         if (arg === '--pipeline-scenarios' && next) {
@@ -712,6 +727,7 @@ async function main(): Promise<void> {
                 parallel: args.pipelineParallel,
                 dryRun: args.pipelineDryRun,
                 mcp: args.pipelineMcp,
+                mcpAllowFallback: args.pipelineMcpAllowFallback,
             },
         });
         if (args.allowFallback) {
@@ -799,6 +815,69 @@ async function main(): Promise<void> {
         return;
     }
 
+    if (args.command === 'heal') {
+        if (!args.path && !autoConfig) {
+            // eslint-disable-next-line no-console
+            console.error('Error: --path is required for heal command');
+            process.exit(1);
+        }
+        if (!args.traceabilityReportPath) {
+            // eslint-disable-next-line no-console
+            console.error('Error: --traceability-report <path> is required for heal command');
+            process.exit(1);
+        }
+
+        const {config} = resolveConfig(process.cwd(), autoConfig, {
+            path: args.path,
+            testsRoot: args.testsRoot,
+            mode: 'gap',
+            framework: args.framework,
+            pipeline: {
+                enabled: true,
+                scenarios: args.pipelineScenarios,
+                outputDir: args.pipelineOutput,
+                baseUrl: args.pipelineBaseUrl,
+                browser: args.pipelineBrowser,
+                headless: args.pipelineHeadless,
+                project: args.pipelineProject,
+                parallel: args.pipelineParallel,
+                dryRun: args.pipelineDryRun,
+                mcp: args.pipelineMcp,
+                mcpAllowFallback: args.pipelineMcpAllowFallback,
+            },
+        });
+
+        const reportRoot = config.testsRoot || config.path;
+        const unstableSpecs = extractPlaywrightUnstableSpecs(args.traceabilityReportPath, [reportRoot, config.path]);
+        if (unstableSpecs.length === 0) {
+            // eslint-disable-next-line no-console
+            console.log('Heal targeted unstable specs: 0');
+            return;
+        }
+
+        const targetedSummary = runTargetedSpecHeal(
+            reportRoot,
+            unstableSpecs.map((spec) => ({
+                specPath: spec.specPath,
+                status: spec.status,
+                reason: `Playwright report: failingTests=${spec.failingTests}, flakyTests=${spec.flakyTests}`,
+            })),
+            {
+                ...config.pipeline,
+                enabled: true,
+                heal: true,
+            },
+        );
+        const healedCount = targetedSummary.results.filter((result) => result.healStatus === 'success').length;
+        // eslint-disable-next-line no-console
+        console.log(`Heal targeted unstable specs: ${unstableSpecs.length} (healed=${healedCount})`);
+        if (targetedSummary.warnings.length > 0) {
+            // eslint-disable-next-line no-console
+            console.log(`Heal warnings: ${targetedSummary.warnings.join(' | ')}`);
+        }
+        return;
+    }
+
     if (!args.path && !autoConfig) {
         // eslint-disable-next-line no-console
         console.error('Error: --path is required (or provide a config file with path set)');
@@ -806,11 +885,11 @@ async function main(): Promise<void> {
         process.exit(1);
     }
 
-    const forcePipelineFromApproval = args.command === 'approve-and-generate';
+    const forcePipelineFromApproval = args.command === 'approve-and-generate' || args.command === 'generate';
     const {config} = resolveConfig(process.cwd(), autoConfig, {
         path: args.path,
         testsRoot: args.testsRoot,
-        mode: (args.command === 'gap' || args.command === 'approve-and-generate') ? 'gap' : 'impact',
+        mode: (args.command === 'gap' || args.command === 'approve-and-generate' || args.command === 'generate') ? 'gap' : 'impact',
         framework: args.framework,
         timeLimitMinutes: args.timeLimitMinutes,
         budget: {
@@ -835,6 +914,7 @@ async function main(): Promise<void> {
                   parallel: args.pipelineParallel,
                   dryRun: args.pipelineDryRun,
                   mcp: args.pipelineMcp !== undefined ? args.pipelineMcp : forcePipelineFromApproval,
+                  mcpAllowFallback: args.pipelineMcpAllowFallback,
               }
             : undefined,
         policy:
@@ -860,7 +940,7 @@ async function main(): Promise<void> {
         return;
     }
 
-    if (args.command === 'suggest') {
+    if (args.command === 'suggest' || args.command === 'plan') {
         await runImpact(config, {apply: args.apply});
         const reportRoot = config.testsRoot || config.path;
         const impactPath = join(reportRoot, '.e2e-ai-agents', 'impact.json');
@@ -910,8 +990,8 @@ async function main(): Promise<void> {
         return;
     }
 
-    if (args.command === 'approve-and-generate') {
-        await runGap(config, {apply: true});
+    if (args.command === 'approve-and-generate' || args.command === 'generate') {
+        await runGap(config, {apply: args.apply});
         return;
     }
 

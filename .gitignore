@@ -33,3 +33,6 @@ yarn-error.log*
 # Temp files
 *.tmp
 .cache/
+.mcp.json
+.claude/
+.e2e-ai-agents/

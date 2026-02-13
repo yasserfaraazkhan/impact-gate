@@ -75,6 +75,11 @@ export interface ReportData {
             error?: string;
         }>;
         warnings: string[];
+        mcp?: {
+            requested: boolean;
+            active: boolean;
+            backend: string;
+        };
     };
     applied?: {
         patchedFiles: string[];
@@ -191,6 +196,11 @@ export function writeReport(appRoot: string, config: AgentConfig, data: ReportDa
         markdownLines.push('');
         markdownLines.push('Pipeline Results:');
         markdownLines.push(`- Runner: ${data.pipeline.runner}`);
+        if (data.pipeline.mcp) {
+            markdownLines.push(
+                `- MCP: requested=${data.pipeline.mcp.requested} active=${data.pipeline.mcp.active} backend=${data.pipeline.mcp.backend}`,
+            );
+        }
         for (const result of data.pipeline.results) {
             const status = result.healStatus ? `${result.generateStatus}/${result.healStatus}` : result.generateStatus;
             markdownLines.push(`- ${result.flowId} (${result.flowName}): ${status} -> ${result.generatedDir}`);

@@ -19,6 +19,7 @@ import {runPlaywrightPipeline, type PipelineSummary} from './pipeline.js';
 import {buildGapTestSuggestions, type GapTestSuggestion} from './gap_suggestions.js';
 import {expandByDependencyGraph, type DependencyGraphExpansion} from './dependency_graph.js';
 import {mapTraceabilityToFlows, type TraceabilityStats} from './traceability.js';
+import {normalizePath} from './utils.js';
 
 const PRIORITY_RANK: Record<FlowPriority, number> = {
     P0: 0,
@@ -91,11 +92,14 @@ function buildRecommendedTestsWithFlags(flows: FlowImpact[], testsByFlow: Map<st
         const tests = testsByFlow.get(flow.id) || [];
         const flagSummary = formatFlags(flow.flags || []);
         for (const test of tests) {
-            if (!testNotes.has(test)) {
-                testNotes.set(test, new Set());
+            const normalizedTest = normalizePath(test)
+                .replace(/^\.\//, '')
+                .replace(/^e2e-tests\/playwright\//, '');
+            if (!testNotes.has(normalizedTest)) {
+                testNotes.set(normalizedTest, new Set());
             }
             if (flagSummary !== 'none') {
-                testNotes.get(test)?.add(flagSummary);
+                testNotes.get(normalizedTest)?.add(flagSummary);
             }
         }
     }
@@ -239,7 +243,8 @@ export async function runImpact(_config: AgentConfig, _options: RunOptions): Pro
         throw new Error('No changed files detected. Provide --since or use gap mode (or --allow-fallback).');
     }
 
-    let analysisTargets = changedFiles.filter((file) => !isTestFilePath(file));
+    const changedAppFiles = changedFiles.filter((file) => !isTestFilePath(file));
+    let analysisTargets = [...changedAppFiles];
     if (analysisTargets.length === 0 && _config.impact.allowFallback) {
         warnings.push('No changed files detected. Falling back to repository scan for screens.');
         analysisTargets = scanRepositoryFlows(
@@ -426,7 +431,8 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
         warnings.push(`Git diff failed: ${gitResult.error}`);
     }
 
-    let analysisTargets = changedFiles.filter((file) => !isTestFilePath(file));
+    const changedAppFiles = changedFiles.filter((file) => !isTestFilePath(file));
+    let analysisTargets = [...changedAppFiles];
     if (analysisTargets.length === 0) {
         analysisTargets = scanRepositoryFlows(
             _config.path,
@@ -472,7 +478,20 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
     let traceabilityStats: TraceabilityStats | undefined;
     if (catalog) {
         flowCatalogSource = catalog.source;
-        const mapping = mapChangesToCatalogFlows(catalog, analysisTargets, 'gap', _config);
+        const catalogMode = changedAppFiles.length > 0 ? 'impact' : 'gap';
+        let mapping = mapChangesToCatalogFlows(catalog, analysisTargets, catalogMode, _config);
+        if (catalogMode === 'impact' && mapping.flows.length === 0 && _config.impact.allowFallback) {
+            const fallbackMapping = mapChangesToCatalogFlows(catalog, analysisTargets, 'gap', _config);
+            mapping = {
+                flows: fallbackMapping.flows,
+                testsByFlow: fallbackMapping.testsByFlow,
+                warnings: [
+                    ...mapping.warnings,
+                    ...fallbackMapping.warnings,
+                    'No catalog flow matched changed files; applied full-catalog fallback because allowFallback=true.',
+                ],
+            };
+        }
         flows = mapping.flows;
         testsByFlow = mapping.testsByFlow;
         warnings.push(...mapping.warnings);

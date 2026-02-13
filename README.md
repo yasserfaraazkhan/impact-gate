@@ -133,6 +133,9 @@ Run AI-driven impact analysis or gap analysis on any frontend repo.
 ```bash
 npx e2e-ai-agents impact --path /path/to/webapp
 npx e2e-ai-agents gap --path /path/to/webapp
+npx e2e-ai-agents plan --path /path/to/webapp
+npx e2e-ai-agents generate --path /path/to/webapp --pipeline
+npx e2e-ai-agents heal --path /path/to/webapp --traceability-report ./playwright-report.json
 npx e2e-ai-agents suggest --path /path/to/webapp
 npx e2e-ai-agents approve-and-generate --path /path/to/webapp
 npx e2e-ai-agents finalize-generated-tests --path /path/to/webapp
@@ -199,7 +202,8 @@ Optional config file `e2e-ai-agents.config.json` (JSON):
     "scenarios": 3,
     "outputDir": "specs/functional/ai-assisted",
     "heal": true,
-    "mcp": false
+    "mcp": false,
+    "mcpAllowFallback": false
   },
   "llm": { "provider": "anthropic", "fallback": "ollama" },
   "policy": {
@@ -232,12 +236,25 @@ Notes:
 - Impact analysis can apply subsystem-aware risk boosts and priority floors from a map (`impact.subsystemRisk`) to capture known high-blast-radius areas.
 - Diffing is computed from `merge-base(<since>, HEAD)` when available, which is the standard PR-impact baseline.
 - Reports are written under `testsRoot/.e2e-ai-agents/reports` (or app root if `testsRoot` is not set).
-- Use `approve-and-generate` for explicit approval before patching `data-testid` and generating/healing tests.
+- Use `approve-and-generate` for explicit approval before generating/healing tests.
+- Selector/data-testid patches are only applied when `--apply` is passed.
+- `plan` is a direct alias for `suggest`.
+- `generate` is a direct alias for `approve-and-generate`.
+- `heal` targets flaky/failed specs from a Playwright JSON report (`--traceability-report`).
 - `--apply` remains available as a legacy shortcut for direct `gap` execution.
 - Use `--pipeline` to run the Playwright generation pipeline.
 - If `e2e-test-gen-cli.ts` exists in `testsRoot`, it is used as the advanced runner.
 - If it is absent, `@yasserkhanorg/e2e-agents` falls back to package-native generation with strategy-based templates, quality guardrails (`no test.describe`, single tag), and iterative heal attempts.
-- Use `--pipeline-mcp` (or `"pipeline": { "mcp": true }`) to run exploration/healing via Playwright MCP.
+- `--pipeline-mcp` now attempts the official Playwright Test Agent loop first (planner/generator/healer) using:
+  - `npx playwright init-agents --loop=claude --prompts`
+  - `.mcp.json` (`playwright run-test-mcp-server`)
+  - `claude -p` non-interactive orchestration
+- In MCP mode, fallback is strict by default: if official agent setup fails, generation stops instead of silently degrading.
+- Use `--pipeline-mcp-allow-fallback` (or config `pipeline.mcpAllowFallback=true`) only when you explicitly want fallback generation.
+- MCP prerequisites: Playwright config in `testsRoot` and Claude CLI installed/authenticated.
+- Official MCP outputs are validated against discovered local API surface (`pw.*`, `pw.testBrowser.*`, `channelsPage.*`) to block invented methods (for example `pw.mainClient.*`).
+- If fallback is enabled and official MCP agent execution is unavailable, pipeline falls back to `e2e-test-gen` (if present) or package-native generation with warnings in report output.
+- `impact/gap` pipeline output now includes `pipeline.mcp` (`requested`, `active`, `backend`) so MCP activation is explicit.
 - `suggest` writes `.e2e-ai-agents/plan.json` with `runSet` (`smoke|targeted|full`) and confidence.
 - `suggest` also writes `.e2e-ai-agents/ci-summary.md` with CI status: `run-now`, `must-add-tests`, or `safe-to-merge`.
 - CLI policy overrides: `--policy-min-confidence`, `--policy-safe-merge-confidence`, `--policy-force-full-on-warnings`, `--policy-risky-patterns`.
@@ -566,21 +583,8 @@ Supported levels: `ERROR`, `WARN`, `INFO`, `DEBUG` (default: `INFO`)
 
 ### Caching
 
-The library includes a simple TTL cache for repository context:
-
-```typescript
-import { SimpleCache } from '@yasserkhanorg/e2e-agents/agent/cache_utils';
-
-// Create a 10-minute cache
-const cache = new SimpleCache(10 * 60 * 1000);
-
-// Store and retrieve
-cache.set('key', {data: 'value'});
-const value = cache.get('key');
-
-// Check stats
-const {size, entries} = cache.stats();
-```
+Repository context and analysis data are cached internally by the tool.
+No public cache API is exposed; caching behavior is automatic.
 
 ### Performance Metrics (v0.3.0)
 

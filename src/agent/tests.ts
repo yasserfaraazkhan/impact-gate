@@ -90,9 +90,19 @@ function resolveExpectedTests(testsRoot: string, expectedTests: string[]): strin
         if (!entry) {
             continue;
         }
-        resolved.push(normalizePath(entry));
+        const normalized = normalizePath(entry).replace(/^\.\//, '');
+        if (normalized.startsWith('e2e-tests/playwright/')) {
+            resolved.push(normalized.slice('e2e-tests/playwright/'.length));
+            continue;
+        }
+        const specsIndex = normalized.indexOf('specs/');
+        if (specsIndex >= 0) {
+            resolved.push(normalized.slice(specsIndex));
+            continue;
+        }
+        resolved.push(normalized);
     }
-    return resolved;
+    return Array.from(new Set(resolved));
 }
 
 export function mapCatalogTestsToFlows(
