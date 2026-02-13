@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {existsSync, readFileSync} from 'fs';
+import {existsSync, readFileSync, statSync} from 'fs';
 import {join} from 'path';
 import type {AgentConfig, AudienceRole} from './config.js';
 import type {FlowPriority} from './analysis.js';
@@ -35,6 +35,8 @@ interface RawFlowCatalogEntry extends Omit<FlowCatalogEntry, 'audience' | 'flags
     audience?: string[];
     flags?: Array<string | FlowCatalogFlag>;
 }
+
+const catalogCache = new Map<string, {mtimeMs: number; catalog: FlowCatalog | null}>();
 
 function normalizePriority(value: string): FlowPriority | null {
     const upper = value.toUpperCase();
@@ -96,17 +98,26 @@ function readCatalog(path: string, config: AgentConfig): FlowCatalog | null {
         if (!existsSync(path)) {
             return null;
         }
+        const mtimeMs = statSync(path).mtimeMs;
+        const cached = catalogCache.get(path);
+        if (cached && cached.mtimeMs === mtimeMs) {
+            return cached.catalog;
+        }
         const raw = JSON.parse(readFileSync(path, 'utf-8')) as {flows?: RawFlowCatalogEntry[]};
         if (!raw.flows || !Array.isArray(raw.flows)) {
+            catalogCache.set(path, {mtimeMs, catalog: null});
             return null;
         }
         const flows = raw.flows
             .map((flow) => normalizeEntry(flow, config))
             .filter((flow): flow is FlowCatalogEntry => Boolean(flow));
         if (flows.length === 0) {
+            catalogCache.set(path, {mtimeMs, catalog: null});
             return null;
         }
-        return {flows, source: path};
+        const catalog = {flows, source: path};
+        catalogCache.set(path, {mtimeMs, catalog});
+        return catalog;
     } catch {
         return null;
     }

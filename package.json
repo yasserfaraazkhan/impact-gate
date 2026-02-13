@@ -1,5 +1,5 @@
 {
-  "name": "e2e-ai-agents",
+  "name": "@mattermost/e2e-agents",
   "version": "0.3.0",
   "description": "Pluggable LLM provider library for AI-powered test automation. Use Claude, Ollama, or your own LLM. Integrate with Playwright, Jest, or any test framework. MCP server for test agents, cost tracking, and hybrid provider mode.",
   "main": "dist/index.js",
@@ -16,13 +16,20 @@
       "types": "./dist/mcp-server.d.ts",
       "require": "./dist/mcp-server.js",
       "import": "./dist/esm/mcp-server.js"
-    }
+    },
+    "./schemas/impact": "./schemas/impact.schema.json",
+    "./schemas/gap": "./schemas/gap.schema.json",
+    "./schemas/plan": "./schemas/plan.schema.json",
+    "./schemas/traceability-input": "./schemas/traceability-input.schema.json",
+    "./schemas/subsystem-risk-map": "./schemas/subsystem-risk-map.schema.json",
+    "./package.json": "./package.json"
   },
   "bin": {
     "e2e-ai-agents": "./dist/cli.js"
   },
   "files": [
     "dist",
+    "schemas",
     "E2E_AI_TESTING.md",
     "README.md",
     "LICENSE"
@@ -41,10 +48,13 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.73.0",
     "glob": "^11.0.0",
-    "openai": "^4.73.0"
+    "marked": "^15.0.6",
+    "openai": "^4.73.0",
+    "pdf-parse": "^1.1.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/pdf-parse": "^1.1.4",
     "typescript": "^5.6.0"
   },
   "repository": {

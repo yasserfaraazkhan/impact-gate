@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {readFileSync, statSync} from 'fs';
-import {basename, extname, posix} from 'path';
+import {basename, extname, posix, relative, resolve} from 'path';
 
 const MAX_READ_BYTES = 1024 * 1024; // 1MB
 
@@ -106,6 +106,13 @@ export function normalizePath(pathValue: string): string {
 export function toRelativePosix(root: string, filePath: string): string {
     const relative = posix.relative(normalizePath(root), normalizePath(filePath));
     return relative.startsWith('../') ? normalizePath(filePath) : relative;
+}
+
+export function isPathWithinRoot(root: string, target: string): boolean {
+    const rootAbs = resolve(root);
+    const targetAbs = resolve(target);
+    const rel = relative(rootAbs, targetAbs);
+    return rel === '' || (!rel.startsWith('..') && !rel.includes(`..${posix.sep}`) && !rel.includes('..\\'));
 }
 
 export function fileExtension(pathValue: string): string {

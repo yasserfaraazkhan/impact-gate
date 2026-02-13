@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mattermost.com/schemas/e2e-agents/traceability-input.schema.json",
+  "title": "TraceabilityIngestInput",
+  "oneOf": [
+    {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/testEntry"
+      }
+    },
+    {
+      "type": "object",
+      "properties": {
+        "tests": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/testEntry"
+          }
+        },
+        "runs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/runEntry"
+          }
+        },
+        "fileToTests": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "mappings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/mappingEntry"
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  ],
+  "$defs": {
+    "testEntry": {
+      "type": "object",
+      "required": [
+        "test",
+        "touchedFiles"
+      ],
+      "properties": {
+        "test": {
+          "type": "string"
+        },
+        "touchedFiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "timestamp": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "runEntry": {
+      "type": "object",
+      "required": [
+        "test"
+      ],
+      "properties": {
+        "test": {
+          "type": "string"
+        },
+        "touchedFiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "coveredFiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "timestamp": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "mappingEntry": {
+      "type": "object",
+      "required": [
+        "file",
+        "tests"
+      ],
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "tests": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

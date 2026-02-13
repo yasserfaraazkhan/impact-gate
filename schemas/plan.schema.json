@@ -1,0 +1,285 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mattermost.com/schemas/e2e-agents/plan.schema.json",
+  "title": "PlanReport",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "generatedAt",
+    "source",
+    "runSet",
+    "confidence",
+    "reasons",
+    "recommendedTests",
+    "requiredNewTests",
+    "policy",
+    "decision",
+    "metrics"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source": {
+      "const": "impact"
+    },
+    "runSet": {
+      "enum": [
+        "smoke",
+        "targeted",
+        "full"
+      ]
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "reasons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "recommendedTests": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "requiredNewTests": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "policy": {
+      "type": "object",
+      "required": [
+        "riskyFiles",
+        "triggeredRules",
+        "applied"
+      ],
+      "properties": {
+        "riskyFiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "triggeredRules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "applied": {
+          "type": "object",
+          "required": [
+            "minConfidenceForTargeted",
+            "safeMergeMinConfidence",
+            "forceFullOnWarningsAtOrAbove",
+            "forceFullOnP0WithGaps",
+            "forceFullOnRiskyFiles",
+            "riskyFilePatterns"
+          ],
+          "properties": {
+            "minConfidenceForTargeted": {
+              "type": "number"
+            },
+            "safeMergeMinConfidence": {
+              "type": "number"
+            },
+            "forceFullOnWarningsAtOrAbove": {
+              "type": "number"
+            },
+            "forceFullOnP0WithGaps": {
+              "type": "boolean"
+            },
+            "forceFullOnRiskyFiles": {
+              "type": "boolean"
+            },
+            "riskyFilePatterns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "decision": {
+      "type": "object",
+      "required": [
+        "action",
+        "title",
+        "summary"
+      ],
+      "properties": {
+        "action": {
+          "enum": [
+            "run-now",
+            "must-add-tests",
+            "safe-to-merge"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "insights": {
+      "type": "object",
+      "properties": {
+        "flaky": {
+          "type": "object",
+          "required": [
+            "highRiskRecommendedTests",
+            "quarantinedRecommendedTests"
+          ],
+          "properties": {
+            "highRiskRecommendedTests": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "test",
+                  "flakeRate"
+                ],
+                "properties": {
+                  "test": {"type": "string"},
+                  "flakeRate": {"type": "number"},
+                  "flakeRate7d": {"type": "number"},
+                  "flakeRate30d": {"type": "number"},
+                  "trend": {"enum": ["up", "down", "stable"]},
+                  "subsystem": {"type": "string"},
+                  "owners": {
+                    "type": "array",
+                    "items": {"type": "string"}
+                  },
+                  "quarantine": {"type": "boolean"},
+                  "quarantineState": {"enum": ["none", "active", "retire-candidate"]},
+                  "lastFailureAt": {"type": "string"}
+                },
+                "additionalProperties": false
+              }
+            },
+            "quarantinedRecommendedTests": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "ownerMentions": {
+              "type": "array",
+              "items": {"type": "string"}
+            }
+          },
+          "additionalProperties": false
+        },
+        "qualityGates": {
+          "type": "object",
+          "required": ["failed", "warnings"],
+          "properties": {
+            "failed": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/gate"}
+            },
+            "warnings": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/gate"}
+            }
+          },
+          "additionalProperties": false
+        },
+        "calibration": {
+          "type": "object",
+          "required": ["precision", "recall", "falseNegativeRate"],
+          "properties": {
+            "precision": {"type": "number"},
+            "recall": {"type": "number"},
+            "falseNegativeRate": {"type": "number"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "nextActions": {
+      "type": "object",
+      "required": [
+        "requiresUserApprovalForGeneration"
+      ],
+      "properties": {
+        "requiresUserApprovalForGeneration": {"type": "boolean"},
+        "runRecommendedTests": {"type": "string"},
+        "runSmokeSuite": {"type": "string"},
+        "runFullSuite": {"type": "string"},
+        "approveAndGenerate": {"type": "string"},
+        "generateMissingTests": {"type": "string"},
+        "healGeneratedTests": {"type": "string"},
+        "commitGeneratedTests": {"type": "string"},
+        "openPullRequest": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "metrics": {
+      "type": "object",
+      "required": [
+        "changedFiles",
+        "impactedFlows",
+        "p0Flows",
+        "p1Flows",
+        "p2Flows",
+        "uncoveredP0P1Flows",
+        "warnings"
+      ],
+      "properties": {
+        "changedFiles": {
+          "type": "number"
+        },
+        "impactedFlows": {
+          "type": "number"
+        },
+        "p0Flows": {
+          "type": "number"
+        },
+        "p1Flows": {
+          "type": "number"
+        },
+        "p2Flows": {
+          "type": "number"
+        },
+        "uncoveredP0P1Flows": {
+          "type": "number"
+        },
+        "warnings": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "gate": {
+      "type": "object",
+      "required": ["name", "status"],
+      "properties": {
+        "name": {"type": "string"},
+        "status": {"enum": ["pass", "warn", "fail"]},
+        "details": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

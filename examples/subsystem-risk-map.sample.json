@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "1.0.0",
+  "rules": [
+    {
+      "id": "plugin-platform-surface",
+      "description": "Plugin platform changes can affect multiple user workflows.",
+      "patterns": [
+        "channels/src/plugins/**",
+        "webapp/channels/src/plugins/**"
+      ],
+      "scoreDelta": 3,
+      "priorityFloor": "P1",
+      "reasons": [
+        "Plugin platform is a shared cross-workspace dependency."
+      ],
+      "keywords": [
+        "plugins",
+        "platform"
+      ]
+    },
+    {
+      "id": "security-auth-surface",
+      "description": "Auth and permission surfaces require stricter regression coverage.",
+      "patterns": [
+        "channels/src/**/auth/**",
+        "channels/src/**/permission*/**"
+      ],
+      "scoreDelta": 4,
+      "priorityFloor": "P0",
+      "reasons": [
+        "Authentication/authorization areas are high-risk for regressions."
+      ],
+      "keywords": [
+        "auth",
+        "permissions",
+        "security"
+      ]
+    }
+  ]
+}

@@ -15,6 +15,7 @@ import {
     tokenize,
     uniqueTokens,
 } from './utils.js';
+import {loadSubsystemRiskResolver, type RiskPriority} from './subsystem_risk.js';
 
 export type FlowPriority = 'P0' | 'P1' | 'P2';
 
@@ -35,6 +36,12 @@ export interface FileAnalysis {
     flowKind: 'screen' | 'flow';
     audience: AudienceRole[];
     flags: FlagHit[];
+    subsystemRisk?: {
+        rules: string[];
+        scoreDelta: number;
+        priorityFloor?: FlowPriority;
+        reasons: string[];
+    };
 }
 
 export interface FlowImpact {
@@ -49,11 +56,25 @@ export interface FlowImpact {
     audience?: AudienceRole[];
     flags?: FlagHit[];
     blastRadius?: BlastRadius;
+    priorityFloor?: FlowPriority;
+    subsystemRiskBoost?: number;
+    subsystemRiskRules?: string[];
 }
 
 export interface ImpactAnalysisResult {
     files: FileAnalysis[];
     flows: FlowImpact[];
+    warnings: string[];
+    subsystemRisk: {
+        source: 'map';
+        enabled: boolean;
+        mapPath: string;
+        mapFound: boolean;
+        rulesLoaded: number;
+        filesMatched: number;
+        ruleMatches: number;
+        boostedFlows: number;
+    };
 }
 
 const TEST_PATH_PATTERN = /(^|\/)__tests__(\/|$)|(^|\/)tests?(\/|$)|\.(spec|test)\.[a-z0-9]+$/i;
@@ -65,6 +86,11 @@ const STYLE_EXTS = new Set(['css', 'scss', 'sass', 'less', 'styl']);
 const UI_EXTS = new Set(['tsx', 'jsx']);
 const CODE_EXTS = new Set(['ts', 'js', 'tsx', 'jsx']);
 const INTERACTION_PATTERN = /(onClick|onSubmit|onChange|type=['"]submit['"]|role=['"]button['"]|aria-label=)/;
+const PRIORITY_RANK: Record<FlowPriority, number> = {
+    P0: 0,
+    P1: 1,
+    P2: 2,
+};
 
 function deriveFlowFromPath(relativePath: string): {id: string; name: string; kind: 'screen' | 'flow'} {
     const segments = normalizePath(relativePath).split('/').filter(Boolean);
@@ -152,13 +178,37 @@ function scoreFile(file: FileAnalysis, risk: RiskConfig): {score: number; reason
         reasons.push(`Critical keyword: ${keywordHit}`);
     }
 
+    if (file.subsystemRisk) {
+        const scoreDelta = file.subsystemRisk.scoreDelta;
+        if (scoreDelta !== 0) {
+            score += scoreDelta;
+            reasons.push(`Subsystem risk adjustment: ${scoreDelta > 0 ? '+' : ''}${scoreDelta}`);
+        }
+        reasons.push(...file.subsystemRisk.reasons);
+    }
+
     return {score, reasons};
+}
+
+function mergePriorityFloor(current: FlowPriority | undefined, candidate: RiskPriority | undefined): FlowPriority | undefined {
+    if (!candidate) {
+        return current;
+    }
+    if (!current) {
+        return candidate;
+    }
+    return PRIORITY_RANK[candidate] < PRIORITY_RANK[current] ? candidate : current;
 }
 
 export function analyzeFiles(appRoot: string, relativePaths: string[], config: AgentConfig): ImpactAnalysisResult {
     const files: FileAnalysis[] = [];
     const defaultAudience = config.audience.defaultRoles as AudienceRole[];
     const defaultFlagState = config.flags.defaultState;
+    const warnings: string[] = [];
+    const subsystemRisk = loadSubsystemRiskResolver(config.impact.subsystemRisk);
+    warnings.push(...subsystemRisk.warnings);
+    let subsystemRiskMatchedFiles = 0;
+    let subsystemRiskRuleMatches = 0;
 
     for (const relativePath of relativePaths) {
         if (isTestFilePath(relativePath)) {
@@ -171,6 +221,20 @@ export function analyzeFiles(appRoot: string, relativePaths: string[], config: A
         const {id, name, kind} = deriveFlowFromPath(relativePath);
         const audience = inferAudienceFromPath(relativePath, config);
         const flags = extractFlagHits(content, config);
+        const subsystemRiskMatches = subsystemRisk.matchFile(normalizePath(relativePath));
+        let subsystemRiskScoreDelta = 0;
+        let subsystemRiskPriorityFloor: FlowPriority | undefined;
+        const subsystemRiskRules = uniqueTokens(subsystemRiskMatches.map((entry) => entry.ruleId));
+        const subsystemRiskReasons = uniqueTokens(subsystemRiskMatches.flatMap((entry) => entry.reasons));
+        if (subsystemRiskMatches.length > 0) {
+            subsystemRiskMatchedFiles += 1;
+            subsystemRiskRuleMatches += subsystemRiskMatches.length;
+            subsystemRiskScoreDelta = subsystemRiskMatches.reduce((acc, entry) => acc + entry.scoreDelta, 0);
+            for (const match of subsystemRiskMatches) {
+                subsystemRiskPriorityFloor = mergePriorityFloor(subsystemRiskPriorityFloor, match.priorityFloor);
+            }
+        }
+        const subsystemKeywords = uniqueTokens(subsystemRiskMatches.flatMap((entry) => entry.keywords));
 
         const analysis: FileAnalysis = {
             relativePath: normalizePath(relativePath),
@@ -183,12 +247,20 @@ export function analyzeFiles(appRoot: string, relativePaths: string[], config: A
             isState: isStatePath(relativePath),
             isStyle: STYLE_EXTS.has(extension),
             hasInteractions: detectInteractions(content),
-            keywords: extractKeywords(relativePath),
+            keywords: uniqueTokens([...extractKeywords(relativePath), ...subsystemKeywords]),
             flowId: id,
             flowName: name,
             flowKind: kind,
             audience,
             flags,
+            subsystemRisk: subsystemRiskMatches.length > 0
+                ? {
+                      rules: subsystemRiskRules,
+                      scoreDelta: subsystemRiskScoreDelta,
+                      priorityFloor: subsystemRiskPriorityFloor,
+                      reasons: subsystemRiskReasons,
+                  }
+                : undefined,
         };
 
         files.push(analysis);
@@ -211,6 +283,9 @@ export function analyzeFiles(appRoot: string, relativePaths: string[], config: A
                 files: [file.relativePath],
                 audience: file.audience,
                 flags: file.flags,
+                priorityFloor: file.subsystemRisk?.priorityFloor,
+                subsystemRiskBoost: file.subsystemRisk?.scoreDelta || 0,
+                subsystemRiskRules: file.subsystemRisk?.rules || [],
             });
         } else {
             existing.score += score;
@@ -225,18 +300,26 @@ export function analyzeFiles(appRoot: string, relativePaths: string[], config: A
                 [...(existing.flags || []), ...file.flags],
                 defaultFlagState,
             );
+            existing.priorityFloor = mergePriorityFloor(existing.priorityFloor, file.subsystemRisk?.priorityFloor);
+            existing.subsystemRiskBoost = (existing.subsystemRiskBoost || 0) + (file.subsystemRisk?.scoreDelta || 0);
+            existing.subsystemRiskRules = uniqueTokens([...(existing.subsystemRiskRules || []), ...(file.subsystemRisk?.rules || [])]);
         }
     }
 
+    let boostedFlows = 0;
     const flows: FlowImpact[] = Array.from(flowMap.values()).map((flow) => {
         const uniqueReason = uniqueTokens(flow.reasons);
         const uniqueKeywords = uniqueTokens(flow.keywords);
-        const priority: FlowPriority =
+        const computedPriority: FlowPriority =
             flow.score >= config.risk.p0Threshold
                 ? 'P0'
                 : flow.score >= config.risk.p1Threshold
                   ? 'P1'
                   : 'P2';
+        const priority = mergePriorityFloor(computedPriority, flow.priorityFloor) || computedPriority;
+        if ((flow.subsystemRiskBoost || 0) !== 0 || (flow.priorityFloor && flow.priorityFloor !== computedPriority)) {
+            boostedFlows += 1;
+        }
         return {
             ...flow,
             reasons: uniqueReason.map((reason) => reason),
@@ -245,7 +328,21 @@ export function analyzeFiles(appRoot: string, relativePaths: string[], config: A
         };
     });
 
-    return {files, flows};
+    return {
+        files,
+        flows,
+        warnings,
+        subsystemRisk: {
+            source: 'map',
+            enabled: subsystemRisk.info.enabled,
+            mapPath: subsystemRisk.info.mapPath,
+            mapFound: subsystemRisk.info.mapFound,
+            rulesLoaded: subsystemRisk.info.rulesLoaded,
+            filesMatched: subsystemRiskMatchedFiles,
+            ruleMatches: subsystemRiskRuleMatches,
+            boostedFlows,
+        },
+    };
 }
 
 export function isTestFilePath(relativePath: string): boolean {

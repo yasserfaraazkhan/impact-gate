@@ -1,8 +1,8 @@
-# e2e-ai-agents
+# @mattermost/e2e-agents
 
 Framework-agnostic LLM provider library with MCP server for autonomous E2E testing.
 
-[![npm](https://img.shields.io/npm/v/e2e-ai-agents)](https://www.npmjs.com/package/e2e-ai-agents)
+[![npm](https://img.shields.io/npm/v/%40mattermost%2Fe2e-agents)](https://www.npmjs.com/package/@mattermost/e2e-agents)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 [![GitHub](https://img.shields.io/badge/github-yasserfaraazkhan%2Fe2e--agents-blue?logo=github)](https://github.com/yasserfaraazkhan/e2e-agents)
 
@@ -18,14 +18,14 @@ Pluggable LLM provider abstraction for test automation with:
 ## Installation
 
 ```bash
-npm install e2e-ai-agents
+npm install @mattermost/e2e-agents
 ```
 
 ## Module Formats (CJS + ESM)
 
 This package ships both CommonJS and ESM builds:
-- `require('e2e-ai-agents')` loads the CommonJS build from `dist/index.js`.
-- `import ... from 'e2e-ai-agents'` loads the ESM build from `dist/esm/index.js`.
+- `require('@mattermost/e2e-agents')` loads the CommonJS build from `dist/index.js`.
+- `import ... from '@mattermost/e2e-agents'` loads the ESM build from `dist/esm/index.js`.
 - `./mcp` follows the same pattern (`dist/mcp-server.js` for CJS, `dist/esm/mcp-server.js` for ESM).
 
 Node.js >= 20 is required.
@@ -43,7 +43,7 @@ Node.js >= 20 is required.
 ### Use Claude
 
 ```typescript
-import { AnthropicProvider } from 'e2e-ai-agents';
+import { AnthropicProvider } from '@mattermost/e2e-agents';
 
 const claude = new AnthropicProvider({
     apiKey: process.env.ANTHROPIC_API_KEY
@@ -57,7 +57,7 @@ console.log(`Cost: $${response.cost.toFixed(4)}`);
 ### Use OpenAI
 
 ```typescript
-import { OpenAIProvider } from 'e2e-ai-agents';
+import { OpenAIProvider } from '@mattermost/e2e-agents';
 
 const openai = new OpenAIProvider({
     apiKey: process.env.OPENAI_API_KEY,
@@ -73,7 +73,7 @@ Tip: for accurate OpenAI cost tracking, set `costPer1MInputTokens` and `costPer1
 ### Use Ollama (Free)
 
 ```typescript
-import { OllamaProvider } from 'e2e-ai-agents';
+import { OllamaProvider } from '@mattermost/e2e-agents';
 
 const ollama = new OllamaProvider({
     model: 'deepseek-r1:7b'
@@ -86,7 +86,7 @@ console.log(response.text); // Free!
 ### Use Custom Provider (OpenAI-compatible endpoint)
 
 ```typescript
-import { CustomProvider } from 'e2e-ai-agents';
+import { CustomProvider } from '@mattermost/e2e-agents';
 
 const custom = new CustomProvider({
     baseUrl: 'https://your-llm-gateway.example.com/v1',
@@ -104,7 +104,7 @@ console.log(response.text);
 ### Factory Pattern
 
 ```typescript
-import { LLMProviderFactory } from 'e2e-ai-agents';
+import { LLMProviderFactory } from '@mattermost/e2e-agents';
 
 // Auto-detect from environment
 const provider = LLMProviderFactory.create({
@@ -133,6 +133,12 @@ Run AI-driven impact analysis or gap analysis on any frontend repo.
 ```bash
 npx e2e-ai-agents impact --path /path/to/webapp
 npx e2e-ai-agents gap --path /path/to/webapp
+npx e2e-ai-agents suggest --path /path/to/webapp
+npx e2e-ai-agents approve-and-generate --path /path/to/webapp
+npx e2e-ai-agents finalize-generated-tests --path /path/to/webapp
+npx e2e-ai-agents feedback --path /path/to/webapp --feedback-input ./feedback.json
+npx e2e-ai-agents traceability-capture --path /path/to/webapp --traceability-report ./playwright-report.json
+npx e2e-ai-agents traceability-ingest --path /path/to/webapp --traceability-input ./traceability-input.json
 ```
 
 If tests live outside the app root:
@@ -163,7 +169,31 @@ Optional config file `e2e-ai-agents.config.json` (JSON):
     "priorityScores": { "P0": 10, "P1": 6, "P2": 3 },
     "fileMatchWeight": 1
   },
-  "impact": { "allowFallback": false },
+  "impact": {
+    "allowFallback": false,
+    "dependencyGraph": {
+      "enabled": true,
+      "maxDepth": 3,
+      "maxExpandedFiles": 1000,
+      "filePatterns": ["**/*.{ts,tsx,js,jsx}"],
+      "excludePatterns": ["**/node_modules/**", "**/.git/**", "**/dist/**", "**/build/**"],
+      "aliasRoots": ["src", "channels/src"],
+      "pathAliases": {
+        "@app/*": ["src/*"],
+        "@channels/*": ["channels/src/*"]
+      }
+    },
+    "traceability": {
+      "enabled": true,
+      "manifestPath": ".e2e-ai-agents/traceability.json",
+      "minSignalsPerTest": 1
+    },
+    "subsystemRisk": {
+      "enabled": false,
+      "mapPath": ".e2e-ai-agents/subsystem-risk-map.json",
+      "maxRulesPerFile": 4
+    }
+  },
   "pipeline": {
     "enabled": false,
     "scenarios": 3,
@@ -172,6 +202,14 @@ Optional config file `e2e-ai-agents.config.json` (JSON):
     "mcp": false
   },
   "llm": { "provider": "anthropic", "fallback": "ollama" },
+  "policy": {
+    "minConfidenceForTargeted": 60,
+    "safeMergeMinConfidence": 85,
+    "forceFullOnWarningsAtOrAbove": 2,
+    "forceFullOnP0WithGaps": true,
+    "forceFullOnRiskyFiles": true,
+    "riskyFilePatterns": ["**/auth/**", "**/permissions/**", "**/security/**", "**/*.sql"]
+  },
   "flags": { "defaultState": "on" },
   "audience": { "defaultRoles": ["member"] },
   "blastRadius": {
@@ -189,10 +227,149 @@ Notes:
 - Use `testsRoot` when tests live outside the app root.
 - Use `flowCatalogPath` or `--flow-catalog` to provide a flow catalog for deterministic P0/P1 mapping.
 - Impact mode expects a git diff; use `--since` or add `"impact": { "allowFallback": true }` to fall back to scanning.
+- Impact analysis now uses static reverse dependency graph expansion (configurable via `impact.dependencyGraph`) to propagate changed-file impact, including alias imports via `aliasRoots` and `pathAliases`.
+- Impact analysis can use coverage-style traceability manifests (`impact.traceability`) for file->test mapping with heuristic fallback for uncovered flows.
+- Impact analysis can apply subsystem-aware risk boosts and priority floors from a map (`impact.subsystemRisk`) to capture known high-blast-radius areas.
+- Diffing is computed from `merge-base(<since>, HEAD)` when available, which is the standard PR-impact baseline.
 - Reports are written under `testsRoot/.e2e-ai-agents/reports` (or app root if `testsRoot` is not set).
-- Use `--apply` to patch `data-testid` in React/TSX and generate test skeletons.
-- Use `--pipeline` to run the Playwright AI pipeline (requires `e2e-test-gen-cli.ts` in testsRoot).
+- Use `approve-and-generate` for explicit approval before patching `data-testid` and generating/healing tests.
+- `--apply` remains available as a legacy shortcut for direct `gap` execution.
+- Use `--pipeline` to run the Playwright generation pipeline.
+- If `e2e-test-gen-cli.ts` exists in `testsRoot`, it is used as the advanced runner.
+- If it is absent, `@mattermost/e2e-agents` falls back to package-native generation with strategy-based templates, quality guardrails (`no test.describe`, single tag), and iterative heal attempts.
 - Use `--pipeline-mcp` (or `"pipeline": { "mcp": true }`) to run exploration/healing via Playwright MCP.
+- `suggest` writes `.e2e-ai-agents/plan.json` with `runSet` (`smoke|targeted|full`) and confidence.
+- `suggest` also writes `.e2e-ai-agents/ci-summary.md` with CI status: `run-now`, `must-add-tests`, or `safe-to-merge`.
+- CLI policy overrides: `--policy-min-confidence`, `--policy-safe-merge-confidence`, `--policy-force-full-on-warnings`, `--policy-risky-patterns`.
+- GitHub Actions output wiring: `--github-output $GITHUB_OUTPUT`.
+- Optional merge gating: `--fail-on-must-add-tests` exits non-zero when uncovered P0/P1 gaps are detected. Leave this flag unset for advisory-only mode.
+- `impact/gap` now include actionable `testSuggestions` with linked source files and skeleton test code.
+- `impact/gap` now include `impactModel` metadata (`flowMapping`, `testMapping`, `confidenceClass`, traceability stats, dependency graph stats).
+- `impact/gap` now include optional `impactModel.subsystemRisk` stats (map status, matched files/rules, boosted flows).
+- `feedback` appends outcomes to `.e2e-ai-agents/feedback.json` and recomputes `.e2e-ai-agents/calibration.json`.
+- `feedback` also computes intelligent flaky scores into `.e2e-ai-agents/flaky-tests.json`.
+- `traceability-capture` converts Playwright JSON execution report + optional coverage map into `.e2e-ai-agents/traceability-input.json`.
+- `traceability-ingest` merges CI execution mappings into `.e2e-ai-agents/traceability.json` and persists rolling counts in `.e2e-ai-agents/traceability-state.json`.
+- Traceability capture flags: `--traceability-report`, `--traceability-capture-output`, `--traceability-coverage-map`, `--traceability-changed-files`.
+- Traceability ingest tuning flags: `--traceability-min-hits`, `--traceability-max-files-per-test`, `--traceability-max-age-days`.
+- Optional ownership routing for flaky alerts: `.e2e-ai-agents/subsystem-owners.json`.
+- `suggest` automatically consumes optional operational manifests:
+  - `.e2e-ai-agents/flaky-tests.json`
+  - `.e2e-ai-agents/quality-gates.json`
+- `plan.json` includes `nextActions` commands for run/approve-and-generate/heal/finalize/PR handoff.
+- `finalize-generated-tests` stages generated artifacts from `gap.json`, commits, and can open a PR with `--create-pr`.
+- Generated Mattermost Playwright tests use standalone `test(...)` style (no `test.describe`) and a single tag string.
+
+Programmatic API:
+
+```typescript
+import {analyzeImpact, findGaps, recommendTests, captureTraceability, ingestTraceability} from '@mattermost/e2e-agents';
+
+await analyzeImpact({path: '/path/to/webapp'});
+await findGaps({path: '/path/to/webapp'});
+const suggestion = await recommendTests({path: '/path/to/webapp'});
+console.log(suggestion.plan.runSet);
+
+const captured = captureTraceability({
+  path: '/path/to/webapp',
+  testsRoot: '/path/to/e2e-tests/playwright',
+  reportPath: '/path/to/playwright-report.json',
+});
+
+ingestTraceability({
+  path: '/path/to/webapp',
+  testsRoot: '/path/to/e2e-tests/playwright',
+  payload: JSON.parse(require('fs').readFileSync(captured.outputPath, 'utf8')),
+});
+```
+
+Feedback API:
+
+```typescript
+import {appendFeedbackAndRecompute} from '@mattermost/e2e-agents';
+
+appendFeedbackAndRecompute('/path/to/webapp', {
+  timestamp: new Date().toISOString(),
+  runSet: 'targeted',
+  recommendedTests: ['specs/channels/realtime.spec.ts'],
+  executedTests: ['specs/channels/realtime.spec.ts'],
+  failedTests: ['specs/channels/realtime.spec.ts'],
+  escapedFailures: []
+});
+```
+
+Traceability ingest API:
+
+```typescript
+import {ingestTraceability} from '@mattermost/e2e-agents';
+
+ingestTraceability({
+  path: '/path/to/webapp',
+  testsRoot: '/path/to/e2e-tests/playwright',
+  payload: {
+    runs: [
+      {
+        test: 'specs/channels/channels.switch.spec.ts',
+        touchedFiles: ['channels/src/components/channel_switcher/channel_switcher.tsx']
+      }
+    ]
+  },
+  options: {minHits: 2}
+});
+```
+
+Automation API:
+
+```typescript
+import {handoffGeneratedTests} from '@mattermost/e2e-agents';
+
+handoffGeneratedTests({
+  appPath: '/path/to/webapp',
+  testsRoot: '/path/to/e2e-tests/playwright',
+  createPr: true,
+});
+```
+
+CI integration template:
+
+- [GitHub Actions example](examples/github-actions/pr-impact.yml)
+- The example uses Node 22 (`actions/setup-node@v4` with `node-version: 22`).
+- The example captures Playwright JSON output via `traceability-capture` and ingests it with `traceability-ingest`.
+- Feedback payload example: [examples/feedback.sample.json](examples/feedback.sample.json)
+- Subsystem owners example: [examples/subsystem-owners.sample.json](examples/subsystem-owners.sample.json)
+- Traceability ingest payload schema: [schemas/traceability-input.schema.json](schemas/traceability-input.schema.json)
+- Traceability ingest payload example: [examples/traceability-input.sample.json](examples/traceability-input.sample.json)
+- Traceability manifest example: [examples/traceability.sample.json](examples/traceability.sample.json)
+- Subsystem risk map schema: [schemas/subsystem-risk-map.schema.json](schemas/subsystem-risk-map.schema.json)
+- Subsystem risk map example: [examples/subsystem-risk-map.sample.json](examples/subsystem-risk-map.sample.json)
+- End-to-end verification steps: [examples/verification/README.md](examples/verification/README.md)
+
+Traceability manifest example (`.e2e-ai-agents/traceability.json`):
+
+```json
+{
+  "schemaVersion": "1.0.0",
+  "tests": [
+    {
+      "test": "specs/channels/channels.switch.spec.ts",
+      "touchedFiles": ["channels/src/components/channel_switcher/channel_switcher.tsx"]
+    }
+  ]
+}
+```
+
+Traceability ingest input example (`traceability-input.json`):
+
+```json
+{
+  "runs": [
+    {
+      "test": "specs/channels/channels.switch.spec.ts",
+      "touchedFiles": ["channels/src/components/channel_switcher/channel_switcher.tsx"]
+    }
+  ]
+}
+```
 
 Flow catalog entries can also include optional audience and flag metadata:
 
@@ -214,7 +391,7 @@ Flow catalog entries can also include optional audience and flag metadata:
 ### 1. Create Custom Provider
 
 ```typescript
-import { LLMProvider } from 'e2e-ai-agents';
+import { LLMProvider } from '@mattermost/e2e-agents';
 
 export class MyCustomProvider implements LLMProvider {
     async generateText(prompt: string) {
@@ -245,7 +422,7 @@ export class MyCustomProvider implements LLMProvider {
 ### 2. Register with Factory
 
 ```typescript
-import { LLMProviderFactory } from 'e2e-ai-agents';
+import { LLMProviderFactory } from '@mattermost/e2e-agents';
 
 LLMProviderFactory.register('my-provider', (config) => {
     return new MyCustomProvider(config);
@@ -263,7 +440,7 @@ const provider = LLMProviderFactory.create({
 ```typescript
 // Playwright example
 import { test } from '@playwright/test';
-import { LLMProviderFactory } from 'e2e-ai-agents';
+import { LLMProviderFactory } from '@mattermost/e2e-agents';
 
 const llm = LLMProviderFactory.create({
     type: 'anthropic',
@@ -288,7 +465,7 @@ test('use LLM to verify UI', async ({ page }) => {
 For Playwright test agents (v1.56+):
 
 ```typescript
-import { E2EAgentsMCPServer } from 'e2e-ai-agents/mcp';
+import { E2EAgentsMCPServer } from '@mattermost/e2e-agents/mcp';
 
 const server = new E2EAgentsMCPServer();
 const tools = server.getTools();
@@ -339,7 +516,7 @@ Note: If `OLLAMA_BASE_URL` points to the root host (for example, `http://localho
 ## Error Handling
 
 ```typescript
-import { LLMProviderError, UnsupportedCapabilityError } from 'e2e-ai-agents';
+import { LLMProviderError, UnsupportedCapabilityError } from '@mattermost/e2e-agents';
 
 try {
     await provider.analyzeImage([...], 'Analyze');
@@ -392,7 +569,7 @@ Supported levels: `ERROR`, `WARN`, `INFO`, `DEBUG` (default: `INFO`)
 The library includes a simple TTL cache for repository context:
 
 ```typescript
-import { SimpleCache } from 'e2e-ai-agents/agent/cache_utils';
+import { SimpleCache } from '@mattermost/e2e-agents/agent/cache_utils';
 
 // Create a 10-minute cache
 const cache = new SimpleCache(10 * 60 * 1000);

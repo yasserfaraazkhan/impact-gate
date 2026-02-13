@@ -1,0 +1,100 @@
+name: e2e-impact-plan
+
+on:
+  pull_request:
+    paths:
+      - 'webapp/**'
+      - 'e2e-tests/**'
+
+jobs:
+  recommend-and-run:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build recommendation
+        id: plan
+        run: |
+          npx e2e-ai-agents suggest \
+            --path ./webapp \
+            --tests-root ./e2e-tests/playwright \
+            --since origin/master \
+            --github-output "$GITHUB_OUTPUT" \
+            --ci-comment-path .e2e-ai-agents/pr-comment.md
+
+      - name: Run targeted tests
+        if: steps.plan.outputs.run_set == 'targeted'
+        run: |
+          mkdir -p ./.e2e-ai-agents
+          node -e "const fs=require('fs'); const plan=JSON.parse(fs.readFileSync('./e2e-tests/playwright/.e2e-ai-agents/plan.json','utf8')); const tests=plan.recommendedTests.map((t)=>t.replace(/ \\(flags:.*\\)$/, '')); fs.writeFileSync('/tmp/recommended-tests.txt', tests.join('\n'));"
+          if [ -s /tmp/recommended-tests.txt ]; then
+            TEST_ARGS=$(tr '\n' ' ' < /tmp/recommended-tests.txt)
+            npx playwright test $TEST_ARGS --reporter=json > ./.e2e-ai-agents/playwright-report.json
+          else
+            echo "No recommended targeted tests; running smoke fallback"
+            npx playwright test --grep @smoke --reporter=json > ./.e2e-ai-agents/playwright-report.json
+          fi
+
+      - name: Run smoke tests
+        if: steps.plan.outputs.run_set == 'smoke'
+        run: |
+          mkdir -p ./.e2e-ai-agents
+          npx playwright test --grep @smoke --reporter=json > ./.e2e-ai-agents/playwright-report.json
+
+      - name: Run full tests
+        if: steps.plan.outputs.run_set == 'full'
+        run: |
+          mkdir -p ./.e2e-ai-agents
+          npx playwright test --reporter=json > ./.e2e-ai-agents/playwright-report.json
+
+      - name: Build traceability input (optional)
+        if: always()
+        run: |
+          if [ -f ./.e2e-ai-agents/playwright-report.json ]; then
+            npx e2e-ai-agents traceability-capture \
+              --path ./webapp \
+              --tests-root ./e2e-tests/playwright \
+              --traceability-report ./.e2e-ai-agents/playwright-report.json \
+              --since origin/master
+          else
+            echo "No Playwright JSON report found; skipping traceability capture."
+          fi
+
+      - name: Update traceability manifest (optional)
+        if: always()
+        run: |
+          if [ -f ./e2e-tests/playwright/.e2e-ai-agents/traceability-input.json ]; then
+            npx e2e-ai-agents traceability-ingest \
+              --path ./webapp \
+              --tests-root ./e2e-tests/playwright \
+              --traceability-input ./e2e-tests/playwright/.e2e-ai-agents/traceability-input.json \
+              --traceability-min-hits 2
+          else
+            echo "No traceability input file found; skipping ingest."
+          fi
+
+      - name: PR comment
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('./.e2e-ai-agents/pr-comment.md', 'utf8');
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: context.issue.number,
+              body,
+            });

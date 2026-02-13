@@ -26,11 +26,12 @@
 import {writeFileSync, mkdirSync, existsSync} from 'fs';
 import {join, basename} from 'path';
 
-import {LLMProviderFactory} from '../index.js';
-import type {LLMProvider, ProviderConfig, HybridConfig} from '../index.js';
+import {LLMProviderFactory} from '../provider_factory.js';
+import type {LLMProvider, ProviderConfig} from '../provider_interface.js';
+import type {HybridConfig} from '../provider_factory.js';
 
-import {SpecificationParser} from '../e2e-test-gen/spec_parser';
-import type {FeatureSpecification, BusinessScenario} from '../e2e-test-gen/types';
+import {SpecificationParser} from '../e2e-test-gen/spec_parser.js';
+import type {FeatureSpecification, BusinessScenario} from '../e2e-test-gen/types.js';
 
 /**
  * Configuration for SpecBridge

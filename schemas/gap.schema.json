@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mattermost.com/schemas/e2e-agents/gap.schema.json",
+  "title": "GapReport",
+  "allOf": [
+    {
+      "$ref": "./impact.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "const": "gap"
+        }
+      }
+    }
+  ]
+}

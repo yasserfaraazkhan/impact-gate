@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "1.0.0",
+  "ownersBySubsystem": {
+    "channels": ["@channels-team"],
+    "threads": ["@threads-team"],
+    "admin_console": ["@system-console-team"],
+    "integrations": ["@integrations-team"]
+  }
+}

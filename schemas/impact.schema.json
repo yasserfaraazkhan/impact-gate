@@ -1,0 +1,418 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mattermost.com/schemas/e2e-agents/impact.schema.json",
+  "title": "ImpactReport",
+  "type": "object",
+  "required": [
+    "mode",
+    "changedFiles",
+    "flows",
+    "coverage",
+    "gaps",
+    "dataTestIds",
+    "framework",
+    "testPatterns",
+    "warnings"
+  ],
+  "properties": {
+    "mode": {
+      "const": "impact"
+    },
+    "changedFiles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "flows": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/flowImpact"
+      }
+    },
+    "coverage": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/flowCoverage"
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/flowImpact"
+      }
+    },
+    "dataTestIds": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/dataTestIdSuggestion"
+      }
+    },
+    "framework": {
+      "type": "string"
+    },
+    "testPatterns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "specPDF": {
+      "type": "string"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "flowCatalog": {
+      "type": "string"
+    },
+    "recommendedTests": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "impactModel": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "flowMapping",
+        "testMapping",
+        "confidenceClass"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "1.0.0"
+        },
+        "flowMapping": {
+          "enum": ["catalog", "heuristic"]
+        },
+        "testMapping": {
+          "enum": ["catalog", "traceability", "heuristic"]
+        },
+        "confidenceClass": {
+          "enum": ["high", "medium", "low"]
+        },
+        "traceability": {
+          "type": "object",
+          "required": [
+            "source",
+            "enabled",
+            "manifestPath",
+            "manifestFound",
+            "manifestTests",
+            "manifestEdges",
+            "matchedFlows",
+            "totalFlows",
+            "matchedTests",
+            "coverageRatio"
+          ],
+          "properties": {
+            "source": {"const": "manifest"},
+            "enabled": {"type": "boolean"},
+            "manifestPath": {"type": "string"},
+            "manifestFound": {"type": "boolean"},
+            "manifestTests": {"type": "number"},
+            "manifestEdges": {"type": "number"},
+            "matchedFlows": {"type": "number"},
+            "totalFlows": {"type": "number"},
+            "matchedTests": {"type": "number"},
+            "coverageRatio": {"type": "number"}
+          },
+          "additionalProperties": false
+        },
+        "dependencyGraph": {
+          "type": "object",
+          "required": [
+            "source",
+            "enabled",
+            "seedFiles",
+            "expandedFiles",
+            "analyzedFiles",
+            "analyzedEdges",
+            "maxDepth",
+            "truncated"
+          ],
+          "properties": {
+            "source": {
+              "const": "static-dependency-graph"
+            },
+            "enabled": {"type": "boolean"},
+            "seedFiles": {"type": "number"},
+            "expandedFiles": {"type": "number"},
+            "analyzedFiles": {"type": "number"},
+            "analyzedEdges": {"type": "number"},
+            "maxDepth": {"type": "number"},
+            "truncated": {"type": "boolean"}
+          },
+          "additionalProperties": false
+        },
+        "subsystemRisk": {
+          "type": "object",
+          "required": [
+            "source",
+            "enabled",
+            "mapPath",
+            "mapFound",
+            "rulesLoaded",
+            "filesMatched",
+            "ruleMatches",
+            "boostedFlows"
+          ],
+          "properties": {
+            "source": {
+              "const": "map"
+            },
+            "enabled": {"type": "boolean"},
+            "mapPath": {"type": "string"},
+            "mapFound": {"type": "boolean"},
+            "rulesLoaded": {"type": "number"},
+            "filesMatched": {"type": "number"},
+            "ruleMatches": {"type": "number"},
+            "boostedFlows": {"type": "number"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "testSuggestions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/gapTestSuggestion"
+      }
+    },
+    "pipeline": {
+      "$ref": "#/$defs/pipelineSummary"
+    },
+    "applied": {
+      "$ref": "#/$defs/appliedSummary"
+    }
+  },
+  "$defs": {
+    "flowImpact": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "score",
+        "priority",
+        "reasons",
+        "keywords",
+        "files"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "screen",
+            "flow"
+          ]
+        },
+        "score": {
+          "type": "number"
+        },
+        "priority": {
+          "enum": [
+            "P0",
+            "P1",
+            "P2"
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "keywords": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "flowCoverage": {
+      "type": "object",
+      "required": [
+        "flowId",
+        "flowName",
+        "priority",
+        "coveredBy"
+      ],
+      "properties": {
+        "flowId": {
+          "type": "string"
+        },
+        "flowName": {
+          "type": "string"
+        },
+        "priority": {
+          "enum": [
+            "P0",
+            "P1",
+            "P2"
+          ]
+        },
+        "coveredBy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source": {
+          "enum": ["catalog", "traceability", "heuristic"]
+        }
+      },
+      "additionalProperties": true
+    },
+    "dataTestIdSuggestion": {
+      "type": "object",
+      "required": [
+        "file",
+        "line",
+        "testId",
+        "snippet"
+      ],
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "line": {
+          "type": "number"
+        },
+        "testId": {
+          "type": "string"
+        },
+        "snippet": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "gapTestSuggestion": {
+      "type": "object",
+      "required": [
+        "flowId",
+        "flowName",
+        "priority",
+        "rationale",
+        "sourceFiles",
+        "suggestedTestPath",
+        "framework",
+        "skeleton"
+      ],
+      "properties": {
+        "flowId": {"type": "string"},
+        "flowName": {"type": "string"},
+        "priority": {"enum": ["P0", "P1", "P2"]},
+        "rationale": {"type": "string"},
+        "sourceFiles": {"type": "array", "items": {"type": "string"}},
+        "suggestedTestPath": {"type": "string"},
+        "framework": {"type": "string"},
+        "skeleton": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "pipelineSummary": {
+      "type": "object",
+      "required": [
+        "runner",
+        "results",
+        "warnings"
+      ],
+      "properties": {
+        "runner": {
+          "type": "string"
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "flowId",
+              "flowName",
+              "generatedDir",
+              "generateStatus"
+            ],
+            "properties": {
+              "flowId": {
+                "type": "string"
+              },
+              "flowName": {
+                "type": "string"
+              },
+              "generatedDir": {
+                "type": "string"
+              },
+              "generateStatus": {
+                "type": "string"
+              },
+              "healStatus": {
+                "type": "string"
+              },
+              "error": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "appliedSummary": {
+      "type": "object",
+      "required": [
+        "patchedFiles",
+        "generatedTests",
+        "skippedTests"
+      ],
+      "properties": {
+        "patchedFiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "generatedTests": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "skippedTests": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

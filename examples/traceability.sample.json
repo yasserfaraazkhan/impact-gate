@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0.0",
+  "tests": [
+    {
+      "test": "specs/channels/channels.switch.spec.ts",
+      "touchedFiles": [
+        "channels/src/components/channel_switcher/channel_switcher.tsx",
+        "channels/src/components/channel_switcher/channel_switcher_dropdown.tsx"
+      ]
+    },
+    {
+      "test": "specs/messaging/messaging.realtime.spec.ts",
+      "touchedFiles": [
+        "channels/src/components/post_view/post_message_view.tsx",
+        "channels/src/actions/websocket_actions.ts"
+      ]
+    }
+  ]
+}

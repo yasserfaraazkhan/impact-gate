@@ -2,9 +2,10 @@
 // See LICENSE.txt for license information.
 
 import {existsSync, mkdirSync, writeFileSync} from 'fs';
-import {join} from 'path';
+import {join, resolve} from 'path';
 import type {FrameworkType} from './config.js';
 import type {FlowImpact} from './analysis.js';
+import {isPathWithinRoot} from './utils.js';
 
 export interface GeneratedTest {
     path: string;
@@ -35,13 +36,19 @@ function inferTestExtension(patterns: string[], framework: FrameworkType): strin
 function createPlaywrightTest(flow: FlowImpact, testIds: string[]): string {
     const idsComment = testIds.length > 0 ? `// Suggested data-testid: ${testIds.join(', ')}` : '// TODO: add data-testid selectors';
     return [
-        "import {test, expect} from '@playwright/test';",
+        "import {test, expect} from '@mattermost/playwright-lib';",
         '',
-        `test('${flow.priority}: ${flow.name} basic flow', async ({page}) => {`,
-        "  await page.goto('/');",
+        '/**',
+        ` * @objective Validate ${flow.name} flow`,
+        ' */',
+        `test('${flow.priority}: ${flow.name} basic flow', {tag: '@ai-assisted'}, async ({pw}) => {`,
+        '  const {user, team} = await pw.initSetup();',
+        '  const {channelsPage} = await pw.testBrowser.login(user);',
+        "  await channelsPage.goto(team.name);",
         `  ${idsComment}`,
-        '  // TODO: implement steps',
-        '  await expect(page).toHaveURL(/.*/);',
+        '  // # TODO: implement steps',
+        '  // * TODO: implement assertions',
+        '  await expect(channelsPage.page).toHaveURL(/.*/);',
         '});',
         '',
     ].join('\n');
@@ -89,7 +96,9 @@ export function generateTests(
     testPatterns: string[],
     testIdsByFlow: Map<string, string[]>,
 ): GeneratedTest[] {
-    const testDir = inferTestDir(testPatterns);
+    const inferredTestDir = inferTestDir(testPatterns);
+    const safeTestDir = isPathWithinRoot(appRoot, resolve(appRoot, inferredTestDir)) ? inferredTestDir : 'tests';
+    const testDir = safeTestDir;
     const extension = inferTestExtension(testPatterns, framework);
     const generated: GeneratedTest[] = [];
 
@@ -100,7 +109,11 @@ export function generateTests(
 
         const testIds = testIdsByFlow.get(flow.id) || [];
         const fileName = framework === 'cypress' ? `${flow.id}.cy.${extension}` : `${flow.id}.spec.${extension}`;
-        const fullPath = join(appRoot, testDir, fileName);
+        const fullPath = resolve(appRoot, testDir, fileName);
+        if (!isPathWithinRoot(appRoot, fullPath)) {
+            generated.push({path: fullPath, flowId: flow.id, created: false, reason: 'outside-root'});
+            continue;
+        }
 
         if (existsSync(fullPath)) {
             generated.push({path: fullPath, flowId: flow.id, created: false, reason: 'exists'});

@@ -90,6 +90,37 @@ export interface RiskConfig {
     criticalKeywords: string[];
 }
 
+export interface PolicyConfig {
+    minConfidenceForTargeted: number;
+    safeMergeMinConfidence: number;
+    forceFullOnWarningsAtOrAbove: number;
+    forceFullOnP0WithGaps: boolean;
+    forceFullOnRiskyFiles: boolean;
+    riskyFilePatterns: string[];
+}
+
+export interface DependencyGraphImpactConfig {
+    enabled: boolean;
+    maxDepth: number;
+    maxExpandedFiles: number;
+    filePatterns: string[];
+    excludePatterns: string[];
+    aliasRoots: string[];
+    pathAliases: Record<string, string[]>;
+}
+
+export interface TraceabilityImpactConfig {
+    enabled: boolean;
+    manifestPath: string;
+    minSignalsPerTest: number;
+}
+
+export interface SubsystemRiskImpactConfig {
+    enabled: boolean;
+    mapPath: string;
+    maxRulesPerFile: number;
+}
+
 export interface GitConfig {
     since: string;
     includeUncommitted?: boolean;
@@ -110,11 +141,15 @@ export interface AgentConfig {
     catalogScoring: CatalogScoringConfig;
     impact: {
         allowFallback: boolean;
+        dependencyGraph: DependencyGraphImpactConfig;
+        traceability: TraceabilityImpactConfig;
+        subsystemRisk: SubsystemRiskImpactConfig;
     };
     pipeline: PipelineConfig;
     llm: LLMConfig;
     specPDF?: string;
     risk: RiskConfig;
+    policy: PolicyConfig;
     flags: FlagConfig;
     audience: AudienceConfig;
     blastRadius: BlastRadiusConfig;
@@ -162,6 +197,35 @@ const DEFAULT_CONFIG: AgentConfig = {
     },
     impact: {
         allowFallback: false,
+        dependencyGraph: {
+            enabled: true,
+            maxDepth: 3,
+            maxExpandedFiles: 1000,
+            filePatterns: ['**/*.{ts,tsx,js,jsx}'],
+            excludePatterns: [
+                '**/node_modules/**',
+                '**/.git/**',
+                '**/dist/**',
+                '**/build/**',
+                '**/coverage/**',
+                '**/__tests__/**',
+                '**/tests/**',
+                '**/*.spec.*',
+                '**/*.test.*',
+            ],
+            aliasRoots: ['src'],
+            pathAliases: {},
+        },
+        traceability: {
+            enabled: true,
+            manifestPath: '.e2e-ai-agents/traceability.json',
+            minSignalsPerTest: 1,
+        },
+        subsystemRisk: {
+            enabled: false,
+            mapPath: '.e2e-ai-agents/subsystem-risk-map.json',
+            maxRulesPerFile: 4,
+        },
     },
     pipeline: {
         enabled: false,
@@ -198,6 +262,24 @@ const DEFAULT_CONFIG: AgentConfig = {
             'notifications',
         ],
     },
+    policy: {
+        minConfidenceForTargeted: 60,
+        safeMergeMinConfidence: 85,
+        forceFullOnWarningsAtOrAbove: 2,
+        forceFullOnP0WithGaps: true,
+        forceFullOnRiskyFiles: true,
+        riskyFilePatterns: [
+            '**/auth/**',
+            '**/login/**',
+            '**/permissions/**',
+            '**/admin/**',
+            '**/security/**',
+            '**/migrations/**',
+            '**/schema/**',
+            '**/*.sql',
+            '**/webhook/**',
+        ],
+    },
     flags: {
         defaultState: 'on',
     },
@@ -230,6 +312,7 @@ export interface ConfigOverrides {
     specPDF?: string;
     gitSince?: string;
     pipeline?: Partial<PipelineConfig>;
+    policy?: Partial<PolicyConfig>;
 }
 
 function safeReadJson(path: string): Record<string, unknown> | undefined {
@@ -275,6 +358,22 @@ function mergeConfig(base: AgentConfig, patch: Partial<AgentConfig>): AgentConfi
         impact: {
             ...base.impact,
             ...(patch.impact || {}),
+            dependencyGraph: {
+                ...base.impact.dependencyGraph,
+                ...(patch.impact?.dependencyGraph || {}),
+                pathAliases: {
+                    ...base.impact.dependencyGraph.pathAliases,
+                    ...(patch.impact?.dependencyGraph?.pathAliases || {}),
+                },
+            },
+            traceability: {
+                ...base.impact.traceability,
+                ...(patch.impact?.traceability || {}),
+            },
+            subsystemRisk: {
+                ...base.impact.subsystemRisk,
+                ...(patch.impact?.subsystemRisk || {}),
+            },
         },
         pipeline: {
             ...base.pipeline,
@@ -287,6 +386,10 @@ function mergeConfig(base: AgentConfig, patch: Partial<AgentConfig>): AgentConfi
         risk: {
             ...base.risk,
             ...(patch.risk || {}),
+        },
+        policy: {
+            ...base.policy,
+            ...(patch.policy || {}),
         },
         flags: {
             ...base.flags,
@@ -439,8 +542,83 @@ function extractConfigPatch(raw: Record<string, unknown>): Partial<AgentConfig> 
 
     if (raw.impact && typeof raw.impact === 'object') {
         const impact = raw.impact as Record<string, unknown>;
+        const dependencyGraphRaw =
+            impact.dependencyGraph && typeof impact.dependencyGraph === 'object'
+                ? impact.dependencyGraph as Record<string, unknown>
+                : undefined;
+        const traceabilityRaw =
+            impact.traceability && typeof impact.traceability === 'object'
+                ? impact.traceability as Record<string, unknown>
+                : undefined;
+        const subsystemRiskRaw =
+            impact.subsystemRisk && typeof impact.subsystemRisk === 'object'
+                ? impact.subsystemRisk as Record<string, unknown>
+                : undefined;
+        const pathAliasesRaw =
+            dependencyGraphRaw?.pathAliases && typeof dependencyGraphRaw.pathAliases === 'object'
+                ? dependencyGraphRaw.pathAliases as Record<string, unknown>
+                : undefined;
+        const parsedPathAliases: Record<string, string[]> = {};
+        if (pathAliasesRaw) {
+            for (const [key, value] of Object.entries(pathAliasesRaw)) {
+                if (typeof value === 'string') {
+                    parsedPathAliases[key] = [value];
+                    continue;
+                }
+                if (Array.isArray(value)) {
+                    const targets = value.filter((item) => typeof item === 'string');
+                    if (targets.length > 0) {
+                        parsedPathAliases[key] = targets;
+                    }
+                }
+            }
+        }
         patch.impact = {
             allowFallback: impact.allowFallback !== undefined ? Boolean(impact.allowFallback) : DEFAULT_CONFIG.impact.allowFallback,
+            dependencyGraph: {
+                enabled:
+                    dependencyGraphRaw?.enabled !== undefined
+                        ? Boolean(dependencyGraphRaw.enabled)
+                        : DEFAULT_CONFIG.impact.dependencyGraph.enabled,
+                maxDepth:
+                    coerceNumber(dependencyGraphRaw?.maxDepth) ?? DEFAULT_CONFIG.impact.dependencyGraph.maxDepth,
+                maxExpandedFiles:
+                    coerceNumber(dependencyGraphRaw?.maxExpandedFiles) ?? DEFAULT_CONFIG.impact.dependencyGraph.maxExpandedFiles,
+                filePatterns: Array.isArray(dependencyGraphRaw?.filePatterns)
+                    ? dependencyGraphRaw?.filePatterns.filter((pattern) => typeof pattern === 'string')
+                    : DEFAULT_CONFIG.impact.dependencyGraph.filePatterns,
+                excludePatterns: Array.isArray(dependencyGraphRaw?.excludePatterns)
+                    ? dependencyGraphRaw?.excludePatterns.filter((pattern) => typeof pattern === 'string')
+                    : DEFAULT_CONFIG.impact.dependencyGraph.excludePatterns,
+                aliasRoots: Array.isArray(dependencyGraphRaw?.aliasRoots)
+                    ? dependencyGraphRaw?.aliasRoots.filter((pattern) => typeof pattern === 'string')
+                    : DEFAULT_CONFIG.impact.dependencyGraph.aliasRoots,
+                pathAliases: pathAliasesRaw
+                    ? parsedPathAliases
+                    : DEFAULT_CONFIG.impact.dependencyGraph.pathAliases,
+            },
+            traceability: {
+                enabled: traceabilityRaw?.enabled !== undefined
+                    ? Boolean(traceabilityRaw.enabled)
+                    : DEFAULT_CONFIG.impact.traceability.enabled,
+                manifestPath:
+                    typeof traceabilityRaw?.manifestPath === 'string'
+                        ? traceabilityRaw.manifestPath
+                        : DEFAULT_CONFIG.impact.traceability.manifestPath,
+                minSignalsPerTest:
+                    coerceNumber(traceabilityRaw?.minSignalsPerTest) ?? DEFAULT_CONFIG.impact.traceability.minSignalsPerTest,
+            },
+            subsystemRisk: {
+                enabled: subsystemRiskRaw?.enabled !== undefined
+                    ? Boolean(subsystemRiskRaw.enabled)
+                    : DEFAULT_CONFIG.impact.subsystemRisk.enabled,
+                mapPath:
+                    typeof subsystemRiskRaw?.mapPath === 'string'
+                        ? subsystemRiskRaw.mapPath
+                        : DEFAULT_CONFIG.impact.subsystemRisk.mapPath,
+                maxRulesPerFile:
+                    coerceNumber(subsystemRiskRaw?.maxRulesPerFile) ?? DEFAULT_CONFIG.impact.subsystemRisk.maxRulesPerFile,
+            },
         };
     }
 
@@ -487,6 +665,28 @@ function extractConfigPatch(raw: Record<string, unknown>): Partial<AgentConfig> 
             criticalKeywords: Array.isArray(risk.criticalKeywords)
                 ? risk.criticalKeywords.filter((keyword) => typeof keyword === 'string')
                 : DEFAULT_CONFIG.risk.criticalKeywords,
+        };
+    }
+
+    if (raw.policy && typeof raw.policy === 'object') {
+        const policy = raw.policy as Record<string, unknown>;
+        patch.policy = {
+            minConfidenceForTargeted:
+                coerceNumber(policy.minConfidenceForTargeted) ?? DEFAULT_CONFIG.policy.minConfidenceForTargeted,
+            safeMergeMinConfidence: coerceNumber(policy.safeMergeMinConfidence) ?? DEFAULT_CONFIG.policy.safeMergeMinConfidence,
+            forceFullOnWarningsAtOrAbove:
+                coerceNumber(policy.forceFullOnWarningsAtOrAbove) ?? DEFAULT_CONFIG.policy.forceFullOnWarningsAtOrAbove,
+            forceFullOnP0WithGaps:
+                policy.forceFullOnP0WithGaps !== undefined
+                    ? Boolean(policy.forceFullOnP0WithGaps)
+                    : DEFAULT_CONFIG.policy.forceFullOnP0WithGaps,
+            forceFullOnRiskyFiles:
+                policy.forceFullOnRiskyFiles !== undefined
+                    ? Boolean(policy.forceFullOnRiskyFiles)
+                    : DEFAULT_CONFIG.policy.forceFullOnRiskyFiles,
+            riskyFilePatterns: Array.isArray(policy.riskyFilePatterns)
+                ? policy.riskyFilePatterns.filter((pattern) => typeof pattern === 'string')
+                : DEFAULT_CONFIG.policy.riskyFilePatterns,
         };
     }
 
@@ -603,6 +803,28 @@ export function resolveConfig(cwd: string, configPath?: string, overrides?: Conf
         }
         config.pipeline = {...config.pipeline, ...pipelinePatch};
     }
+    if (overrides?.policy) {
+        const policyPatch: Partial<PolicyConfig> = {};
+        if (overrides.policy.minConfidenceForTargeted !== undefined) {
+            policyPatch.minConfidenceForTargeted = overrides.policy.minConfidenceForTargeted;
+        }
+        if (overrides.policy.safeMergeMinConfidence !== undefined) {
+            policyPatch.safeMergeMinConfidence = overrides.policy.safeMergeMinConfidence;
+        }
+        if (overrides.policy.forceFullOnWarningsAtOrAbove !== undefined) {
+            policyPatch.forceFullOnWarningsAtOrAbove = overrides.policy.forceFullOnWarningsAtOrAbove;
+        }
+        if (overrides.policy.forceFullOnP0WithGaps !== undefined) {
+            policyPatch.forceFullOnP0WithGaps = overrides.policy.forceFullOnP0WithGaps;
+        }
+        if (overrides.policy.forceFullOnRiskyFiles !== undefined) {
+            policyPatch.forceFullOnRiskyFiles = overrides.policy.forceFullOnRiskyFiles;
+        }
+        if (overrides.policy.riskyFilePatterns && overrides.policy.riskyFilePatterns.length > 0) {
+            policyPatch.riskyFilePatterns = overrides.policy.riskyFilePatterns;
+        }
+        config.policy = {...config.policy, ...policyPatch};
+    }
     if (overrides?.specPDF) {
         config.specPDF = overrides.specPDF;
     }
@@ -629,6 +851,7 @@ export function resolveConfig(cwd: string, configPath?: string, overrides?: Conf
     if (config.flowCatalogPath) {
         config.flowCatalogPath = resolve(configDir, config.flowCatalogPath);
     }
+    config.impact.subsystemRisk.mapPath = resolve(configDir, config.impact.subsystemRisk.mapPath);
 
     return {
         config,

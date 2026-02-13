@@ -41,3 +41,21 @@ export {CustomProvider} from './custom_provider.js';
 // Factory
 export {LLMProviderFactory, validateProviderSetup} from './provider_factory.js';
 export type {HybridConfig} from './provider_factory.js';
+
+// Agent API (impact, gap, suggest, traceability ingest)
+export {analyzeImpact, findGaps, recommendTests, handoffGeneratedTests, ingestTraceability, captureTraceability} from './api.js';
+export type {
+    AgentApiOptions,
+    AnalyzeResult,
+    RecommendTestsResult,
+    TraceabilityIngestApiOptions,
+    TraceabilityCaptureApiOptions,
+} from './api.js';
+export {appendFeedbackAndRecompute, readCalibration} from './agent/feedback.js';
+export type {RecommendationFeedbackEntry, CalibrationSummary} from './agent/feedback.js';
+export {finalizeGeneratedTests} from './agent/handoff.js';
+export type {FinalizeGeneratedTestsOptions, FinalizeGeneratedTestsResult} from './agent/handoff.js';
+export {ingestTraceabilityInput} from './agent/traceability_ingest.js';
+export type {TraceabilityIngestOptions, TraceabilityIngestResult, TraceabilityIngestEntry} from './agent/traceability_ingest.js';
+export {captureTraceabilityInput} from './agent/traceability_capture.js';
+export type {TraceabilityCaptureOptions, TraceabilityCaptureResult} from './agent/traceability_capture.js';

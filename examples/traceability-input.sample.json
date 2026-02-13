@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "1.0.0",
+  "runs": [
+    {
+      "test": "specs/channels/channels.switch.spec.ts",
+      "touchedFiles": [
+        "channels/src/components/channel_switcher/channel_switcher.tsx",
+        "channels/src/components/channel_switcher/channel_switcher_dropdown.tsx"
+      ],
+      "timestamp": "2026-02-11T12:00:00.000Z"
+    },
+    {
+      "test": "specs/messaging/messaging.realtime.spec.ts",
+      "coveredFiles": [
+        "channels/src/components/post_view/post_message_view.tsx",
+        "channels/src/actions/websocket_actions.ts"
+      ],
+      "timestamp": "2026-02-11T12:05:00.000Z"
+    }
+  ]
+}
