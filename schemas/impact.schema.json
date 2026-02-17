@@ -18,6 +18,28 @@
     "mode": {
       "const": "impact"
     },
+    "runMetadata": {
+      "type": "object",
+      "required": [
+        "runId",
+        "startedAt",
+        "completedAt",
+        "durationMs",
+        "sinceRef",
+        "appPath",
+        "testsRoot"
+      ],
+      "properties": {
+        "runId": {"type": "string"},
+        "startedAt": {"type": "string", "format": "date-time"},
+        "completedAt": {"type": "string", "format": "date-time"},
+        "durationMs": {"type": "number"},
+        "sinceRef": {"type": "string"},
+        "appPath": {"type": "string"},
+        "testsRoot": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
     "changedFiles": {
       "type": "array",
       "items": {
@@ -369,6 +391,21 @@
                 "type": "string"
               },
               "error": {
+                "type": "string"
+              },
+              "failureCategory": {
+                "enum": [
+                  "config",
+                  "environment",
+                  "generation",
+                  "validation",
+                  "runtime",
+                  "quality",
+                  "path-safety",
+                  "unknown"
+                ]
+              },
+              "failureCode": {
                 "type": "string"
               }
             },

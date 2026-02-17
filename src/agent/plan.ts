@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {mkdirSync, writeFileSync} from 'fs';
+import {appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync} from 'fs';
 import {dirname, join} from 'path';
 import {minimatch} from 'minimatch';
 import type {ReportData} from './report.js';
@@ -24,6 +24,8 @@ export interface DecisionSummary {
 
 export interface PlanReport {
     schemaVersion: '1.0.0';
+    runId: string;
+    sourceRunId?: string;
     generatedAt: string;
     source: 'impact';
     runSet: RecommendedRunSet;
@@ -33,6 +35,13 @@ export interface PlanReport {
     requiredNewTests: string[];
     policy: PolicyEvaluation;
     decision: DecisionSummary;
+    enforcement: {
+        mode: PolicyConfig['enforcementMode'];
+        blockOnActions: CiAction[];
+        matchedAction: boolean;
+        shouldFail: boolean;
+        summary: string;
+    };
     insights?: {
         flaky?: {
             highRiskRecommendedTests: Array<{
@@ -99,6 +108,8 @@ const DEFAULT_POLICY: PolicyConfig = {
         '**/*.sql',
         '**/webhook/**',
     ],
+    enforcementMode: 'advisory',
+    blockOnActions: ['must-add-tests'],
 };
 
 function countPriority(flows: ReportData['flows']): {p0: number; p1: number; p2: number} {
@@ -256,6 +267,63 @@ function buildDecision(
     };
 }
 
+function evaluateEnforcement(decision: DecisionSummary, policy: PolicyConfig): PlanReport['enforcement'] {
+    const blockOnActions: CiAction[] = (policy.blockOnActions && policy.blockOnActions.length > 0)
+        ? [...policy.blockOnActions]
+        : ['must-add-tests'];
+    const matchedAction = blockOnActions.includes(decision.action);
+    if (policy.enforcementMode === 'block' && matchedAction) {
+        return {
+            mode: policy.enforcementMode,
+            blockOnActions,
+            matchedAction,
+            shouldFail: true,
+            summary: `Blocking mode active: decision "${decision.action}" is configured to fail CI.`,
+        };
+    }
+    if (policy.enforcementMode === 'warn' && matchedAction) {
+        return {
+            mode: policy.enforcementMode,
+            blockOnActions,
+            matchedAction,
+            shouldFail: false,
+            summary: `Warning mode active: decision "${decision.action}" is advisory-only for CI.`,
+        };
+    }
+    if (policy.enforcementMode === 'block') {
+        return {
+            mode: policy.enforcementMode,
+            blockOnActions,
+            matchedAction,
+            shouldFail: false,
+            summary: `Blocking mode active, but decision "${decision.action}" is not configured for CI failure.`,
+        };
+    }
+    if (policy.enforcementMode === 'warn') {
+        return {
+            mode: policy.enforcementMode,
+            blockOnActions,
+            matchedAction,
+            shouldFail: false,
+            summary: `Warning mode active, but decision "${decision.action}" is not configured for warning.`,
+        };
+    }
+    return {
+        mode: policy.enforcementMode,
+        blockOnActions,
+        matchedAction,
+        shouldFail: false,
+        summary: 'Advisory mode active: recommendations do not fail CI by default.',
+    };
+}
+
+export function refreshPlanEnforcement(plan: PlanReport): PlanReport {
+    return {
+        ...plan,
+        enforcement: evaluateEnforcement(plan.decision, plan.policy.applied),
+    };
+}
+
 export function buildPlanFromImpactReport(impact: ReportData, policyOverride?: Partial<PolicyConfig>): PlanReport {
     if (impact.mode !== 'impact') {
         throw new Error(`Plan generation requires impact report data, received mode=${impact.mode}`);
@@ -266,11 +334,16 @@ export function buildPlanFromImpactReport(impact: ReportData, policyOverride?: P
     const confidence = computeConfidence(impact, p0, p1);
     const runSet = pickRunSet(impact, p0, confidence, policy);
     const decision = buildDecision(runSet.runSet, confidence, impact, policy);
+    const enforcement = evaluateEnforcement(decision, policy);
 
     const requiredNewTests = impact.gaps.map((flow) => `${flow.id}: ${flow.name}`);
+    const sourceRunId = impact.runMetadata?.runId;
+    const runId = `plan-${sourceRunId || Date.now().toString(36)}`;
 
     return {
         schemaVersion: '1.0.0',
+        runId,
+        sourceRunId,
         generatedAt: new Date().toISOString(),
         source: 'impact',
         runSet: runSet.runSet,
@@ -284,6 +357,7 @@ export function buildPlanFromImpactReport(impact: ReportData, policyOverride?: P
             applied: policy,
         },
         decision,
+        enforcement,
         metrics: {
             changedFiles: impact.changedFiles.length,
             impactedFlows: impact.flows.length,
@@ -337,6 +411,8 @@ export function renderCiSummaryMarkdown(plan: PlanReport): string {
     lines.push(`- Run set: \`${plan.runSet}\``);
     lines.push(`- Confidence: \`${plan.confidence}\``);
     lines.push(`- Summary: ${plan.decision.summary}`);
+    lines.push(`- Enforcement: mode=\`${plan.enforcement.mode}\`, shouldFail=\`${plan.enforcement.shouldFail}\``);
+    lines.push(`- Enforcement detail: ${plan.enforcement.summary}`);
 
     if (plan.policy.triggeredRules.length > 0) {
         lines.push(`- Policy triggers: ${plan.policy.triggeredRules.join(', ')}`);
@@ -424,6 +500,120 @@ export function renderCiSummaryMarkdown(plan: PlanReport): string {
     }
 
     return lines.join('\n');
+}
+
+export interface PlanMetricEvent {
+    schemaVersion: '1.0.0';
+    timestamp: string;
+    runId: string;
+    sourceRunId?: string;
+    action: CiAction;
+    runSet: RecommendedRunSet;
+    confidence: number;
+    changedFiles: number;
+    impactedFlows: number;
+    uncoveredP0P1Flows: number;
+    warnings: number;
+    enforcementMode: PolicyConfig['enforcementMode'];
+    enforcementShouldFail: boolean;
+}
+
+export interface PlanMetricsSummary {
+    schemaVersion: '1.0.0';
+    generatedAt: string;
+    totalRuns: number;
+    averageConfidence: number;
+    byAction: Record<CiAction, number>;
+    byRunSet: Record<RecommendedRunSet, number>;
+    blockingRecommendations: number;
+    blockingRate: number;
+}
+
+const PLAN_METRICS_EVENTS_PATH = '.e2e-ai-agents/metrics.jsonl';
+const PLAN_METRICS_SUMMARY_PATH = '.e2e-ai-agents/metrics-summary.json';
+
+function parsePlanMetricLine(line: string): PlanMetricEvent | null {
+    const trimmed = line.trim();
+    if (!trimmed) {
+        return null;
+    }
+    try {
+        const parsed = JSON.parse(trimmed) as PlanMetricEvent;
+        if (!parsed || parsed.schemaVersion !== '1.0.0' || typeof parsed.runId !== 'string') {
+            return null;
+        }
+        return parsed;
+    } catch {
+        return null;
+    }
+}
+
+export function appendPlanMetrics(appRoot: string, plan: PlanReport): {eventsPath: string; summaryPath: string} {
+    const baseDir = join(appRoot, '.e2e-ai-agents');
+    mkdirSync(baseDir, {recursive: true});
+    const eventsPath = join(appRoot, PLAN_METRICS_EVENTS_PATH);
+    const summaryPath = join(appRoot, PLAN_METRICS_SUMMARY_PATH);
+
+    const event: PlanMetricEvent = {
+        schemaVersion: '1.0.0',
+        timestamp: new Date().toISOString(),
+        runId: plan.runId,
+        sourceRunId: plan.sourceRunId,
+        action: plan.decision.action,
+        runSet: plan.runSet,
+        confidence: plan.confidence,
+        changedFiles: plan.metrics.changedFiles,
+        impactedFlows: plan.metrics.impactedFlows,
+        uncoveredP0P1Flows: plan.metrics.uncoveredP0P1Flows,
+        warnings: plan.metrics.warnings,
+        enforcementMode: plan.enforcement.mode,
+        enforcementShouldFail: plan.enforcement.shouldFail,
+    };
+
+    appendFileSync(eventsPath, `${JSON.stringify(event)}\n`, 'utf-8');
+
+    const allEvents: PlanMetricEvent[] = existsSync(eventsPath)
+        ? readFileSync(eventsPath, 'utf-8')
+            .split('\n')
+            .map(parsePlanMetricLine)
+            .filter((item): item is PlanMetricEvent => Boolean(item))
+        : [event];
+
+    const byAction: Record<CiAction, number> = {
+        'run-now': 0,
+        'must-add-tests': 0,
+        'safe-to-merge': 0,
+    };
+    const byRunSet: Record<RecommendedRunSet, number> = {
+        smoke: 0,
+        targeted: 0,
+        full: 0,
+    };
+    let totalConfidence = 0;
+    let blockingRecommendations = 0;
+    for (const metricEvent of allEvents) {
+        byAction[metricEvent.action] += 1;
+        byRunSet[metricEvent.runSet] += 1;
+        totalConfidence += metricEvent.confidence;
+        if (metricEvent.enforcementShouldFail) {
+            blockingRecommendations += 1;
+        }
+    }
+
+    const totalRuns = allEvents.length;
+    const summary: PlanMetricsSummary = {
+        schemaVersion: '1.0.0',
+        generatedAt: new Date().toISOString(),
+        totalRuns,
+        averageConfidence: totalRuns > 0 ? Number((totalConfidence / totalRuns).toFixed(2)) : 0,
+        byAction,
+        byRunSet,
+        blockingRecommendations,
+        blockingRate: totalRuns > 0 ? Number((blockingRecommendations / totalRuns).toFixed(4)) : 0,
+    };
+
+    writeFileSync(summaryPath, JSON.stringify(summary, null, 2), 'utf-8');
+    return {eventsPath, summaryPath};
 }
 
 export function writeCiSummary(appRoot: string, markdown: string, relativePath = '.e2e-ai-agents/ci-summary.md'): string {

@@ -6,6 +6,7 @@ import {join} from 'path';
 import {resolveConfig, type ConfigOverrides} from './agent/config.js';
 import {runGap, runImpact} from './agent/runner.js';
 import {
+    appendPlanMetrics,
     attachDeveloperActions,
     buildPlanFromImpactReport,
     renderCiSummaryMarkdown,
@@ -125,6 +126,7 @@ export async function recommendTests(options: AgentApiOptions = {}): Promise<Rec
     const planPath = writePlanReport(reportRoot, plan);
     const ciSummaryMarkdown = renderCiSummaryMarkdown(plan);
     const ciSummaryPath = writeCiSummary(reportRoot, ciSummaryMarkdown);
+    appendPlanMetrics(reportRoot, plan);
     return {
         report,
         reportPath: impactPath,

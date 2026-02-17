@@ -127,11 +127,14 @@ function buildRecommendedTestsFromCoverage(flows: FlowImpact[], coverage: FlowCo
         const flow = flowMap.get(entry.flowId);
         const flagSummary = formatFlags(flow?.flags || []);
         for (const test of entry.coveredBy) {
-            if (!testNotes.has(test)) {
-                testNotes.set(test, new Set());
+            const normalizedTest = normalizePath(test)
+                .replace(/^\.\//, '')
+                .replace(/^e2e-tests\/playwright\//, '');
+            if (!testNotes.has(normalizedTest)) {
+                testNotes.set(normalizedTest, new Set());
             }
             if (flagSummary !== 'none') {
-                testNotes.get(test)?.add(flagSummary);
+                testNotes.get(normalizedTest)?.add(flagSummary);
             }
         }
     }
@@ -216,12 +219,25 @@ export interface RunOptions {
     apply: boolean;
 }
 
+function createRunId(mode: 'impact' | 'gap'): string {
+    const ciRunId = process.env.GITHUB_RUN_ID;
+    const entropy = Math.random().toString(36).slice(2, 8);
+    const ts = Date.now().toString(36);
+    if (ciRunId) {
+        return `${mode}-gh-${ciRunId}-${ts}-${entropy}`;
+    }
+    return `${mode}-local-${ts}-${entropy}`;
+}
+
 export async function runImpact(_config: AgentConfig, _options: RunOptions): Promise<void> {
     ensureAppRoot(_config.path);
     if (_config.testsRoot) {
         ensureAppRoot(_config.testsRoot);
     }
     const deadline = Date.now() + _config.timeLimitMinutes * 60 * 1000;
+    const runStartedAt = new Date().toISOString();
+    const runStartedTs = Date.now();
+    const runId = createRunId('impact');
 
     const warnings: string[] = [];
     const testsRoot = _config.testsRoot || _config.path;
@@ -309,7 +325,7 @@ export async function runImpact(_config: AgentConfig, _options: RunOptions): Pro
                 coverageMap.set(entry.flowId, entry.coveredBy);
             }
             gaps = computeGaps(flows, coverageMap);
-            recommendedTests = buildRecommendedTestsWithFlags(flows, testsByFlow);
+            recommendedTests = buildRecommendedTestsFromCoverage(flows, coverage);
         } else {
             const traceability = mapTraceabilityToFlows(testsRoot, _config.impact.traceability, flows);
             warnings.push(...traceability.warnings);
@@ -365,6 +381,15 @@ export async function runImpact(_config: AgentConfig, _options: RunOptions): Pro
     const reportRoot = testsRoot;
     const report = writeReport(reportRoot, _config, {
         mode: 'impact',
+        runMetadata: {
+            runId,
+            startedAt: runStartedAt,
+            completedAt: new Date().toISOString(),
+            durationMs: Date.now() - runStartedTs,
+            sinceRef: _config.git.since,
+            appPath: _config.path,
+            testsRoot,
+        },
         changedFiles,
         flows: sortFlows(flows),
         coverage,
@@ -413,6 +438,9 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
         ensureAppRoot(_config.testsRoot);
     }
     const deadline = Date.now() + _config.timeLimitMinutes * 60 * 1000;
+    const runStartedAt = new Date().toISOString();
+    const runStartedTs = Date.now();
+    const runId = createRunId('gap');
 
     const warnings: string[] = [];
     const testsRoot = _config.testsRoot || _config.path;
@@ -513,7 +541,7 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
                 coverageMap.set(entry.flowId, entry.coveredBy);
             }
             gaps = computeGaps(flows, coverageMap);
-            recommendedTests = buildRecommendedTestsWithFlags(flows, testsByFlow);
+            recommendedTests = buildRecommendedTestsFromCoverage(flows, coverage);
         } else {
             const traceability = mapTraceabilityToFlows(testsRoot, _config.impact.traceability, flows);
             warnings.push(...traceability.warnings);
@@ -569,6 +597,15 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
     const reportRoot = testsRoot;
     const report = writeReport(reportRoot, _config, {
         mode: 'gap',
+        runMetadata: {
+            runId,
+            startedAt: runStartedAt,
+            completedAt: new Date().toISOString(),
+            durationMs: Date.now() - runStartedTs,
+            sinceRef: _config.git.since,
+            appPath: _config.path,
+            testsRoot,
+        },
         changedFiles,
         flows: sortFlows(flows),
         coverage,

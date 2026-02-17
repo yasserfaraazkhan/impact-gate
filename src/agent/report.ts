@@ -12,6 +12,15 @@ import {formatFlags} from './flags.js';
 
 export interface ReportData {
     mode: 'impact' | 'gap';
+    runMetadata?: {
+        runId: string;
+        startedAt: string;
+        completedAt: string;
+        durationMs: number;
+        sinceRef: string;
+        appPath: string;
+        testsRoot: string;
+    };
     changedFiles: string[];
     flows: FlowImpact[];
     coverage: FlowCoverage[];
@@ -73,6 +82,8 @@ export interface ReportData {
             generateStatus: string;
             healStatus?: string;
             error?: string;
+            failureCategory?: string;
+            failureCode?: string;
         }>;
         warnings: string[];
         mcp?: {
@@ -135,6 +146,12 @@ export function writeReport(appRoot: string, config: AgentConfig, data: ReportDa
     const markdownLines: string[] = [];
     markdownLines.push(`# ${data.mode === 'impact' ? 'Impact Analysis' : 'Gap Analysis'} Report`);
     markdownLines.push('');
+    if (data.runMetadata) {
+        markdownLines.push(`Run ID: ${data.runMetadata.runId}`);
+        markdownLines.push(`Run window: ${data.runMetadata.startedAt} -> ${data.runMetadata.completedAt}`);
+        markdownLines.push(`Run duration (ms): ${data.runMetadata.durationMs}`);
+        markdownLines.push(`Since ref: ${data.runMetadata.sinceRef}`);
+    }
     markdownLines.push(`Framework: ${data.framework}`);
     markdownLines.push(`Test Patterns: ${data.testPatterns.join(', ') || 'None'}`);
     if (data.flowCatalog) {
@@ -206,6 +223,11 @@ export function writeReport(appRoot: string, config: AgentConfig, data: ReportDa
             markdownLines.push(`- ${result.flowId} (${result.flowName}): ${status} -> ${result.generatedDir}`);
             if (result.error) {
                 markdownLines.push(`  Error: ${result.error}`);
+            }
+            if (result.failureCategory || result.failureCode) {
+                markdownLines.push(
+                    `  Failure taxonomy: category=${result.failureCategory || 'unknown'} code=${result.failureCode || 'unknown'}`,
+                );
             }
         }
         if (data.pipeline.warnings.length > 0) {

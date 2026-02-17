@@ -98,6 +98,8 @@ export interface PolicyConfig {
     forceFullOnP0WithGaps: boolean;
     forceFullOnRiskyFiles: boolean;
     riskyFilePatterns: string[];
+    enforcementMode: 'advisory' | 'warn' | 'block';
+    blockOnActions: Array<'run-now' | 'must-add-tests' | 'safe-to-merge'>;
 }
 
 export interface DependencyGraphImpactConfig {
@@ -233,6 +235,7 @@ const DEFAULT_CONFIG: AgentConfig = {
         scenarios: 3,
         outputDir: 'specs/functional/ai-assisted',
         heal: true,
+        project: 'chrome',
         mcp: false,
         mcpAllowFallback: false,
     },
@@ -281,6 +284,8 @@ const DEFAULT_CONFIG: AgentConfig = {
             '**/*.sql',
             '**/webhook/**',
         ],
+        enforcementMode: 'advisory',
+        blockOnActions: ['must-add-tests'],
     },
     flags: {
         defaultState: 'on',
@@ -446,6 +451,20 @@ function normalizeFlagState(value: unknown): FlagState | undefined {
     const normalized = value.trim().toLowerCase();
     if (normalized === 'on' || normalized === 'off' || normalized === 'unknown') {
         return normalized as FlagState;
+    }
+    return undefined;
+}
+
+function normalizePolicyEnforcementMode(value: unknown): PolicyConfig['enforcementMode'] | undefined {
+    if (value === 'advisory' || value === 'warn' || value === 'block') {
+        return value;
+    }
+    return undefined;
+}
+
+function normalizePolicyBlockAction(value: unknown): 'run-now' | 'must-add-tests' | 'safe-to-merge' | undefined {
+    if (value === 'run-now' || value === 'must-add-tests' || value === 'safe-to-merge') {
+        return value;
     }
     return undefined;
 }
@@ -676,6 +695,11 @@ function extractConfigPatch(raw: Record<string, unknown>): Partial<AgentConfig> 
 
     if (raw.policy && typeof raw.policy === 'object') {
         const policy = raw.policy as Record<string, unknown>;
+        const blockOnActions = Array.isArray(policy.blockOnActions)
+            ? policy.blockOnActions
+                .map((value) => normalizePolicyBlockAction(value))
+                .filter((value): value is 'run-now' | 'must-add-tests' | 'safe-to-merge' => Boolean(value))
+            : DEFAULT_CONFIG.policy.blockOnActions;
         patch.policy = {
             minConfidenceForTargeted:
                 coerceNumber(policy.minConfidenceForTargeted) ?? DEFAULT_CONFIG.policy.minConfidenceForTargeted,
@@ -693,6 +717,8 @@ function extractConfigPatch(raw: Record<string, unknown>): Partial<AgentConfig> 
             riskyFilePatterns: Array.isArray(policy.riskyFilePatterns)
                 ? policy.riskyFilePatterns.filter((pattern) => typeof pattern === 'string')
                 : DEFAULT_CONFIG.policy.riskyFilePatterns,
+            enforcementMode: normalizePolicyEnforcementMode(policy.enforcementMode) ?? DEFAULT_CONFIG.policy.enforcementMode,
+            blockOnActions: blockOnActions.length > 0 ? blockOnActions : DEFAULT_CONFIG.policy.blockOnActions,
         };
     }
 
@@ -834,6 +860,12 @@ export function resolveConfig(cwd: string, configPath?: string, overrides?: Conf
         }
         if (overrides.policy.riskyFilePatterns && overrides.policy.riskyFilePatterns.length > 0) {
             policyPatch.riskyFilePatterns = overrides.policy.riskyFilePatterns;
+        }
+        if (overrides.policy.enforcementMode !== undefined) {
+            policyPatch.enforcementMode = overrides.policy.enforcementMode;
+        }
+        if (overrides.policy.blockOnActions && overrides.policy.blockOnActions.length > 0) {
+            policyPatch.blockOnActions = overrides.policy.blockOnActions;
         }
         config.policy = {...config.policy, ...policyPatch};
     }

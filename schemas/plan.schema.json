@@ -5,6 +5,7 @@
   "type": "object",
   "required": [
     "schemaVersion",
+    "runId",
     "generatedAt",
     "source",
     "runSet",
@@ -14,11 +15,18 @@
     "requiredNewTests",
     "policy",
     "decision",
+    "enforcement",
     "metrics"
   ],
   "properties": {
     "schemaVersion": {
       "const": "1.0.0"
+    },
+    "runId": {
+      "type": "string"
+    },
+    "sourceRunId": {
+      "type": "string"
     },
     "generatedAt": {
       "type": "string",
@@ -108,6 +116,15 @@
               "items": {
                 "type": "string"
               }
+            },
+            "enforcementMode": {
+              "enum": ["advisory", "warn", "block"]
+            },
+            "blockOnActions": {
+              "type": "array",
+              "items": {
+                "enum": ["run-now", "must-add-tests", "safe-to-merge"]
+              }
             }
           },
           "additionalProperties": false
@@ -132,6 +149,37 @@
         },
         "title": {
           "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "enforcement": {
+      "type": "object",
+      "required": [
+        "mode",
+        "blockOnActions",
+        "matchedAction",
+        "shouldFail",
+        "summary"
+      ],
+      "properties": {
+        "mode": {
+          "enum": ["advisory", "warn", "block"]
+        },
+        "blockOnActions": {
+          "type": "array",
+          "items": {
+            "enum": ["run-now", "must-add-tests", "safe-to-merge"]
+          }
+        },
+        "matchedAction": {
+          "type": "boolean"
+        },
+        "shouldFail": {
+          "type": "boolean"
         },
         "summary": {
           "type": "string"

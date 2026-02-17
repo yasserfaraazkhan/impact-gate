@@ -15,6 +15,8 @@ export interface PipelineResult {
     generateStatus: 'success' | 'skipped' | 'failed';
     healStatus?: 'success' | 'skipped' | 'failed';
     error?: string;
+    failureCategory?: 'config' | 'environment' | 'generation' | 'validation' | 'runtime' | 'quality' | 'path-safety' | 'unknown';
+    failureCode?: string;
 }
 
 export interface PipelineSummary {
@@ -72,6 +74,9 @@ interface ValidationResult {
 
 interface ApiSurfaceCatalog {
     pwProps: Set<string>;
+    pwNestedMethods: Map<string, Set<string>>;
+    initSetupKeys: Set<string>;
+    initSetupVariableMethods: Map<string, Set<string>>;
     testBrowserMethods: Set<string>;
     channelsPageMembers: Set<string>;
     sidebarRightMembers: Set<string>;
@@ -85,6 +90,42 @@ function createMcpStatus(
         requested,
         active: requested && (backend === 'e2e-test-gen' || backend === 'playwright-agents'),
         backend,
+    };
+}
+
+function classifyPipelineFailure(result: PipelineResult): PipelineResult {
+    if (result.failureCategory || result.failureCode) {
+        return result;
+    }
+    if (!result.error) {
+        return result;
+    }
+    const errorText = result.error.toLowerCase();
+    if (errorText.includes('outside testsroot')) {
+        return {...result, failureCategory: 'path-safety', failureCode: 'path_outside_tests_root'};
+    }
+    if (errorText.includes('playwright binary') || errorText.includes('not found')) {
+        return {...result, failureCategory: 'environment', failureCode: 'dependency_missing'};
+    }
+    if (errorText.includes('compile validation')) {
+        return {...result, failureCategory: 'validation', failureCode: 'compile_validation_failed'};
+    }
+    if (errorText.includes('runtime validation') || errorText.includes('playwright test failed')) {
+        return {...result, failureCategory: 'runtime', failureCode: 'runtime_validation_failed'};
+    }
+    if (errorText.includes('quality checks failed') || errorText.includes('invalid test content')) {
+        return {...result, failureCategory: 'quality', failureCode: 'quality_guard_failed'};
+    }
+    if (errorText.includes('generate failed') || errorText.includes('did not produce expected test file')) {
+        return {...result, failureCategory: 'generation', failureCode: 'generation_failed'};
+    }
+    return {...result, failureCategory: 'unknown', failureCode: 'unknown'};
+}
+
+function finalizePipelineSummary(summary: PipelineSummary): PipelineSummary {
+    return {
+        ...summary,
+        results: summary.results.map(classifyPipelineFailure),
     };
 }
 
@@ -198,6 +239,15 @@ function buildNativeStrategyOrder(flow: FlowImpact): NativeSpecStrategy[] {
 }
 
 function createDefaultApiSurfaceCatalog(): ApiSurfaceCatalog {
+    const pwNestedMethods = new Map<string, Set<string>>();
+    pwNestedMethods.set('apiClient', new Set([
+        'createPost',
+        'createDirectChannel',
+        'createChannel',
+        'getChannels',
+        'getChannelByName',
+        'getPostsSince',
+    ]));
     return {
         pwProps: new Set([
             'initSetup',
@@ -207,7 +257,20 @@ function createDefaultApiSurfaceCatalog(): ApiSurfaceCatalog {
             'apiCreateChannel',
             'apiCreateUser',
             'apiLogin',
+            'apiClient',
         ]),
+        pwNestedMethods,
+        initSetupKeys: new Set([
+            'user',
+            'team',
+            'adminClient',
+            'adminUser',
+            'adminConfig',
+            'userClient',
+            'offTopicUrl',
+            'townSquareUrl',
+        ]),
+        initSetupVariableMethods: new Map<string, Set<string>>(),
         testBrowserMethods: new Set([
             'login',
             'openNewBrowserContext',
@@ -243,9 +306,70 @@ function collectMatches(content: string, pattern: RegExp): Set<string> {
     return out;
 }
 
+function addNestedMethod(catalog: ApiSurfaceCatalog, objectName: string, methodName: string): void {
+    const methods = catalog.pwNestedMethods.get(objectName) || new Set<string>();
+    methods.add(methodName);
+    catalog.pwNestedMethods.set(objectName, methods);
+}
+
+function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+interface InitSetupBinding {
+    key: string;
+    variable: string;
+}
+
+function parseInitSetupBindings(content: string): InitSetupBinding[] {
+    const bindings: InitSetupBinding[] = [];
+    for (const match of content.matchAll(/(?:const|let|var)\s*\{\s*([^}]+)\s*\}\s*=\s*await\s+pw\.initSetup\s*\(/g)) {
+        const raw = match[1];
+        if (!raw) {
+            continue;
+        }
+        for (const part of raw.split(',')) {
+            const cleaned = part.trim();
+            if (!cleaned) {
+                continue;
+            }
+            const [leftRaw, rightRaw] = cleaned.split(':');
+            const key = (leftRaw || '').trim();
+            const variableCandidate = (rightRaw || leftRaw || '').trim().split('=')[0]?.trim();
+            if (!key || !variableCandidate) {
+                continue;
+            }
+            bindings.push({key, variable: variableCandidate});
+        }
+    }
+    return bindings;
+}
+
+function collectDestructuredInitSetupKeys(content: string): Set<string> {
+    return new Set(parseInitSetupBindings(content).map((binding) => binding.key));
+}
+
+function addInitSetupVariableMethod(
+    catalog: ApiSurfaceCatalog,
+    variable: string,
+    methodName: string,
+): void {
+    const methods = catalog.initSetupVariableMethods.get(variable) || new Set<string>();
+    methods.add(methodName);
+    catalog.initSetupVariableMethods.set(variable, methods);
+}
+
 function collectApiSurfaceFromContent(content: string, catalog: ApiSurfaceCatalog): void {
     for (const prop of collectMatches(content, /\bpw\.([A-Za-z_][A-Za-z0-9_]*)\b/g)) {
         catalog.pwProps.add(prop);
+    }
+    for (const match of content.matchAll(/\bpw\.([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\b/g)) {
+        const objectName = match[1];
+        const methodName = match[2];
+        if (!objectName || !methodName) {
+            continue;
+        }
+        addNestedMethod(catalog, objectName, methodName);
     }
     for (const method of collectMatches(content, /\bpw\.testBrowser\.([A-Za-z_][A-Za-z0-9_]*)\b/g)) {
         catalog.testBrowserMethods.add(method);
@@ -255,6 +379,13 @@ function collectApiSurfaceFromContent(content: string, catalog: ApiSurfaceCatalo
     }
     for (const member of collectMatches(content, /\bchannelsPage\.sidebarRight\.([A-Za-z_][A-Za-z0-9_]*)\b/g)) {
         catalog.sidebarRightMembers.add(member);
+    }
+    for (const binding of parseInitSetupBindings(content)) {
+        catalog.initSetupKeys.add(binding.key);
+        const methodPattern = new RegExp(`\\b${escapeRegExp(binding.variable)}\\.([A-Za-z_][A-Za-z0-9_]*)\\b`, 'g');
+        for (const method of collectMatches(content, methodPattern)) {
+            addInitSetupVariableMethod(catalog, binding.variable, method);
+        }
     }
 }
 
@@ -362,17 +493,49 @@ function validateGeneratedSpecContent(content: string, apiSurface?: ApiSurfaceCa
         const unknownBrowserMethods = Array.from(
             collectMatches(content, /\bpw\.testBrowser\.([A-Za-z_][A-Za-z0-9_]*)\b/g),
         ).filter((method) => !apiSurface.testBrowserMethods.has(method));
+        const unknownNestedPwMembers: string[] = [];
+        for (const match of content.matchAll(/\bpw\.([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\b/g)) {
+            const objectName = match[1];
+            const methodName = match[2];
+            if (!objectName || !methodName || objectName === 'testBrowser') {
+                continue;
+            }
+            const knownMethods = apiSurface.pwNestedMethods.get(objectName);
+            if (!knownMethods || !knownMethods.has(methodName)) {
+                unknownNestedPwMembers.push(`pw.${objectName}.${methodName}`);
+            }
+        }
         const unknownChannelMembers = Array.from(
             collectMatches(content, /\bchannelsPage\.([A-Za-z_][A-Za-z0-9_]*)\b/g),
         ).filter((member) => !apiSurface.channelsPageMembers.has(member));
         const unknownSidebarMembers = Array.from(
             collectMatches(content, /\bchannelsPage\.sidebarRight\.([A-Za-z_][A-Za-z0-9_]*)\b/g),
         ).filter((member) => !apiSurface.sidebarRightMembers.has(member));
+        const initSetupBindings = parseInitSetupBindings(content);
+        const unknownInitSetupKeys = initSetupBindings
+            .map((binding) => binding.key)
+            .filter((key) => !apiSurface.initSetupKeys.has(key));
+        const unknownInitSetupVariableMethods: string[] = [];
+        for (const binding of initSetupBindings) {
+            const knownMethods = apiSurface.initSetupVariableMethods.get(binding.variable);
+            if (!knownMethods || knownMethods.size === 0) {
+                continue;
+            }
+            const methodPattern = new RegExp(`\\b${escapeRegExp(binding.variable)}\\.([A-Za-z_][A-Za-z0-9_]*)\\b`, 'g');
+            for (const method of collectMatches(content, methodPattern)) {
+                if (!knownMethods.has(method)) {
+                    unknownInitSetupVariableMethods.push(`${binding.variable}.${method}`);
+                }
+            }
+        }
         const unknown = [
             ...unknownPwProps.map((value) => `pw.${value}`),
             ...unknownBrowserMethods.map((value) => `pw.testBrowser.${value}`),
+            ...unknownNestedPwMembers,
             ...unknownChannelMembers.map((value) => `channelsPage.${value}`),
             ...unknownSidebarMembers.map((value) => `channelsPage.sidebarRight.${value}`),
+            ...unknownInitSetupKeys.map((value) => `pw.initSetup.{${value}}`),
+            ...unknownInitSetupVariableMethods,
         ];
         if (unknown.length > 0) {
             issues.push({
@@ -560,11 +723,11 @@ function summarizeCommandOutput(stdout: string, stderr: string): string {
     return lines.join('\n').slice(0, 2000);
 }
 
-function runCommand(command: string, args: string[], cwd: string): CommandResult {
+function runCommand(command: string, args: string[], cwd: string, timeoutMs = 60 * 60 * 1000): CommandResult {
     const result = spawnSync(command, args, {
         cwd,
         encoding: 'utf-8',
-        timeout: 60 * 60 * 1000,
+        timeout: timeoutMs,
         stdio: 'pipe',
     });
     return {
@@ -572,6 +735,44 @@ function runCommand(command: string, args: string[], cwd: string): CommandResult
         stdout: result.stdout || '',
         stderr: result.stderr || '',
         error: result.error ? result.error.message : undefined,
+    };
+}
+
+function runPlaywrightRuntimeValidation(
+    testsRoot: string,
+    testFile: string,
+    pipeline: PipelineConfig,
+    playwrightBinary: string | null,
+): ValidationResult {
+    if (!playwrightBinary) {
+        return {
+            status: 'failed',
+            detail: 'Playwright binary not found; cannot execute runtime validation.',
+        };
+    }
+    const relativeSpecPath = normalizePath(relative(testsRoot, testFile));
+    if (relativeSpecPath.startsWith('../') || relativeSpecPath.startsWith('..\\')) {
+        return {
+            status: 'failed',
+            detail: 'Generated spec path resolved outside testsRoot during runtime validation.',
+        };
+    }
+
+    const args = ['test', relativeSpecPath, '--workers', '1', '--retries', '0', '--max-failures', '1', '--reporter', 'line'];
+    if (pipeline.headless === false) {
+        args.push('--headed');
+    }
+    if (pipeline.project) {
+        args.push('--project', pipeline.project);
+    }
+    const commandResult = runCommand(playwrightBinary, args, testsRoot, 10 * 60 * 1000);
+    if (commandResult.status === 0) {
+        return {status: 'passed'};
+    }
+    const summary = summarizeCommandOutput(commandResult.stdout, commandResult.stderr);
+    return {
+        status: 'failed',
+        detail: summary || commandResult.error || `playwright test failed with status ${commandResult.status}`,
     };
 }
 
@@ -596,6 +797,9 @@ function runPlaywrightListValidation(
     }
 
     const args = ['test', '--list', relativeSpecPath];
+    if (pipeline.headless === false) {
+        args.push('--headed');
+    }
     if (pipeline.project) {
         args.push('--project', pipeline.project);
     }
@@ -818,12 +1022,12 @@ export function runTargetedSpecHeal(
     const mcp = createMcpStatus('package-native', Boolean(pipeline.mcp));
     if (targets.length === 0) {
         warnings.add('No targeted specs provided for heal.');
-        return {
+        return finalizePipelineSummary({
             runner: 'package-native',
             results,
             warnings: Array.from(warnings),
             mcp,
-        };
+        });
     }
 
     const playwrightBinary = pipeline.heal ? resolvePlaywrightBinary(testsRoot) : null;
@@ -898,12 +1102,12 @@ export function runTargetedSpecHeal(
         );
     }
 
-    return {
+    return finalizePipelineSummary({
         runner: 'package-native',
         results,
         warnings: Array.from(warnings),
         mcp,
-    };
+    });
 }
 
 function findSpecFiles(root: string): string[] {
@@ -1076,7 +1280,6 @@ function runPlaywrightAgentsFlow(
     seedFile: string,
     apiSurface: ApiSurfaceCatalog,
     playwrightBinary: string | null,
-    allowRuntimeHeal: boolean,
 ): PipelineResult {
     mkdirSync(outputDir, {recursive: true});
     const slug = toSafeSlug(flow.id);
@@ -1093,7 +1296,7 @@ function runPlaywrightAgentsFlow(
         };
     }
 
-    const prompt = buildPlaywrightAgentsPrompt(flow, seedFile, planFile, targetTestFile, allowRuntimeHeal);
+    const prompt = buildPlaywrightAgentsPrompt(flow, seedFile, planFile, targetTestFile, Boolean(pipeline.heal));
     const runArgs = [
         '-p',
         '--permission-mode',
@@ -1137,7 +1340,7 @@ function runPlaywrightAgentsFlow(
 
     const relativeActualTestFile = normalizePath(relative(testsRoot, actualTestFile));
     let qualityIssues = validateGeneratedSpecContent(readFileSync(actualTestFile, 'utf-8'), apiSurface);
-    if (qualityIssues.length > 0 && allowRuntimeHeal) {
+    if (qualityIssues.length > 0 && pipeline.heal) {
         const healResult = runCommand(
             'claude',
             [
@@ -1170,9 +1373,9 @@ function runPlaywrightAgentsFlow(
         };
     }
 
-    if (allowRuntimeHeal) {
-        let validation = runPlaywrightListValidation(testsRoot, actualTestFile, pipeline, playwrightBinary);
-        if (validation.status === 'failed') {
+    if (pipeline.heal) {
+        let compileValidation = runPlaywrightListValidation(testsRoot, actualTestFile, pipeline, playwrightBinary);
+        if (compileValidation.status === 'failed') {
             const healResult = runCommand(
                 'claude',
                 [
@@ -1186,21 +1389,55 @@ function runPlaywrightAgentsFlow(
                     '--add-dir',
                     testsRoot,
                     '--',
-                    buildPlaywrightHealerPrompt(relativeActualTestFile, validation.detail || 'playwright --list failed'),
+                    buildPlaywrightHealerPrompt(relativeActualTestFile, compileValidation.detail || 'playwright --list failed'),
                 ],
                 testsRoot,
             );
             if (healResult.status === 0 && existsSync(actualTestFile)) {
-                validation = runPlaywrightListValidation(testsRoot, actualTestFile, pipeline, playwrightBinary);
+                compileValidation = runPlaywrightListValidation(testsRoot, actualTestFile, pipeline, playwrightBinary);
             }
-            if (validation.status === 'failed') {
+            if (compileValidation.status === 'failed') {
                 return {
                     flowId: flow.id,
                     flowName: flow.name,
                     generatedDir: outputDir,
                     generateStatus: 'failed',
                     healStatus: 'failed',
-                    error: `Playwright agents heal failed: ${validation.detail || 'playwright validation failed'}`,
+                    error: `Playwright agents compile validation failed: ${compileValidation.detail || 'playwright --list failed'}`,
+                };
+            }
+        }
+
+        let runtimeValidation = runPlaywrightRuntimeValidation(testsRoot, actualTestFile, pipeline, playwrightBinary);
+        if (runtimeValidation.status === 'failed') {
+            const healResult = runCommand(
+                'claude',
+                [
+                    '-p',
+                    '--permission-mode',
+                    'bypassPermissions',
+                    '--agent',
+                    'playwright-test-healer',
+                    '--mcp-config',
+                    '.mcp.json',
+                    '--add-dir',
+                    testsRoot,
+                    '--',
+                    buildPlaywrightHealerPrompt(relativeActualTestFile, runtimeValidation.detail || 'playwright runtime failed'),
+                ],
+                testsRoot,
+            );
+            if (healResult.status === 0 && existsSync(actualTestFile)) {
+                runtimeValidation = runPlaywrightRuntimeValidation(testsRoot, actualTestFile, pipeline, playwrightBinary);
+            }
+            if (runtimeValidation.status === 'failed') {
+                return {
+                    flowId: flow.id,
+                    flowName: flow.name,
+                    generatedDir: outputDir,
+                    generateStatus: 'failed',
+                    healStatus: 'failed',
+                    error: `Playwright agents runtime validation failed: ${runtimeValidation.detail || 'playwright test failed'}`,
                 };
             }
         }
@@ -1256,14 +1493,10 @@ function runPlaywrightAgentsPipeline(
         return {runner: 'unknown', results, warnings, mcp: createMcpStatus('unknown', true)};
     }
 
-    const allowRuntimeHeal = Boolean(pipeline.heal && pipeline.baseUrl);
-    const playwrightBinary = allowRuntimeHeal ? resolvePlaywrightBinary(testsRoot) : null;
+    const playwrightBinary = pipeline.heal ? resolvePlaywrightBinary(testsRoot) : null;
     const apiSurface = buildApiSurfaceCatalog(testsRoot, seedFile);
-    if (allowRuntimeHeal && !playwrightBinary) {
+    if (pipeline.heal && !playwrightBinary) {
         warnings.push('Playwright binary was not found. Healer runtime validation may be limited.');
-    }
-    if (pipeline.heal && !allowRuntimeHeal) {
-        warnings.push('Skipping runtime healer in official MCP mode because no --pipeline-base-url was provided.');
     }
 
     const outputBase = resolve(testsRoot, pipeline.outputDir || 'specs/functional/ai-assisted');
@@ -1312,7 +1545,6 @@ function runPlaywrightAgentsPipeline(
                 seedFile,
                 apiSurface,
                 playwrightBinary,
-                allowRuntimeHeal,
             ),
         );
     }
@@ -1329,26 +1561,26 @@ export function runPlaywrightPipeline(
     if (pipeline.mcp) {
         const agentsSummary = runPlaywrightAgentsPipeline(testsRoot, flows, pipeline);
         if (agentsSummary.runner !== 'unknown' || agentsSummary.results.length > 0) {
-            return agentsSummary;
+            return finalizePipelineSummary(agentsSummary);
         }
         if (!pipeline.mcpAllowFallback) {
             const warnings = [
                 ...agentsSummary.warnings,
                 'Official Playwright MCP mode is strict; fallback generation is disabled unless pipeline.mcpAllowFallback=true.',
             ];
-            return {
+            return finalizePipelineSummary({
                 runner: 'unknown',
                 results: agentsSummary.results,
                 warnings,
                 mcp: createMcpStatus('unknown', true),
-            };
+            });
         }
         mcpFallbackWarnings.push(...agentsSummary.warnings);
     }
 
     const cliPath = hasE2eTestGenCLI(testsRoot);
     if (!cliPath) {
-        return runPackageNativePipeline(testsRoot, flows, pipeline, mcpFallbackWarnings);
+        return finalizePipelineSummary(runPackageNativePipeline(testsRoot, flows, pipeline, mcpFallbackWarnings));
     }
 
     const warnings: string[] = [...mcpFallbackWarnings];
@@ -1356,7 +1588,12 @@ export function runPlaywrightPipeline(
     const outputBase = resolve(testsRoot, pipeline.outputDir || 'specs/functional/ai-assisted');
     if (!isPathWithinRoot(testsRoot, outputBase)) {
         warnings.push(`Pipeline outputDir resolves outside testsRoot and was blocked: ${pipeline.outputDir}`);
-        return {runner: 'unknown', results, warnings, mcp: createMcpStatus('unknown', Boolean(pipeline.mcp))};
+        return finalizePipelineSummary({
+            runner: 'unknown',
+            results,
+            warnings,
+            mcp: createMcpStatus('unknown', Boolean(pipeline.mcp)),
+        });
     }
 
     for (const flow of flows) {
@@ -1460,5 +1697,10 @@ export function runPlaywrightPipeline(
         });
     }
 
-    return {runner: 'e2e-test-gen', results, warnings, mcp: createMcpStatus('e2e-test-gen', Boolean(pipeline.mcp))};
+    return finalizePipelineSummary({
+        runner: 'e2e-test-gen',
+        results,
+        warnings,
+        mcp: createMcpStatus('e2e-test-gen', Boolean(pipeline.mcp)),
+    });
 }

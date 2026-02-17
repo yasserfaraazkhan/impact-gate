@@ -212,7 +212,9 @@ Optional config file `e2e-ai-agents.config.json` (JSON):
     "forceFullOnWarningsAtOrAbove": 2,
     "forceFullOnP0WithGaps": true,
     "forceFullOnRiskyFiles": true,
-    "riskyFilePatterns": ["**/auth/**", "**/permissions/**", "**/security/**", "**/*.sql"]
+    "riskyFilePatterns": ["**/auth/**", "**/permissions/**", "**/security/**", "**/*.sql"],
+    "enforcementMode": "advisory",
+    "blockOnActions": ["must-add-tests"]
   },
   "flags": { "defaultState": "on" },
   "audience": { "defaultRoles": ["member"] },
@@ -257,12 +259,15 @@ Notes:
 - `impact/gap` pipeline output now includes `pipeline.mcp` (`requested`, `active`, `backend`) so MCP activation is explicit.
 - `suggest` writes `.e2e-ai-agents/plan.json` with `runSet` (`smoke|targeted|full`) and confidence.
 - `suggest` also writes `.e2e-ai-agents/ci-summary.md` with CI status: `run-now`, `must-add-tests`, or `safe-to-merge`.
-- CLI policy overrides: `--policy-min-confidence`, `--policy-safe-merge-confidence`, `--policy-force-full-on-warnings`, `--policy-risky-patterns`.
+- CLI policy overrides: `--policy-min-confidence`, `--policy-safe-merge-confidence`, `--policy-force-full-on-warnings`, `--policy-risky-patterns`, `--policy-enforcement-mode`, `--policy-block-actions`.
 - GitHub Actions output wiring: `--github-output $GITHUB_OUTPUT`.
 - Optional merge gating: `--fail-on-must-add-tests` exits non-zero when uncovered P0/P1 gaps are detected. Leave this flag unset for advisory-only mode.
+- `suggest` now appends run metrics to `.e2e-ai-agents/metrics.jsonl` and writes aggregated `.e2e-ai-agents/metrics-summary.json`.
 - `impact/gap` now include actionable `testSuggestions` with linked source files and skeleton test code.
 - `impact/gap` now include `impactModel` metadata (`flowMapping`, `testMapping`, `confidenceClass`, traceability stats, dependency graph stats).
+- `impact/gap` now include `runMetadata` (run id/timestamps/duration/since ref) for auditability.
 - `impact/gap` now include optional `impactModel.subsystemRisk` stats (map status, matched files/rules, boosted flows).
+- `impact/gap` pipeline result rows now include failure taxonomy (`failureCategory`, `failureCode`) when generation/heal fails.
 - `feedback` appends outcomes to `.e2e-ai-agents/feedback.json` and recomputes `.e2e-ai-agents/calibration.json`.
 - `feedback` also computes intelligent flaky scores into `.e2e-ai-agents/flaky-tests.json`.
 - `traceability-capture` converts Playwright JSON execution report + optional coverage map into `.e2e-ai-agents/traceability-input.json`.

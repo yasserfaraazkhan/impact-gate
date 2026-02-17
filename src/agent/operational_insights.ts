@@ -3,7 +3,7 @@
 
 import {existsSync, readFileSync} from 'fs';
 import {join} from 'path';
-import type {PlanReport} from './plan.js';
+import {refreshPlanEnforcement, type PlanReport} from './plan.js';
 import type {CalibrationSummary} from './feedback.js';
 import {inferSubsystemFromTestPath} from './test_path.js';
 
@@ -181,5 +181,5 @@ export function applyOperationalInsights(plan: PlanReport, appRoot: string): Pla
     }
 
     enhanced.insights = insights;
-    return enhanced;
+    return refreshPlanEnforcement(enhanced);
 }

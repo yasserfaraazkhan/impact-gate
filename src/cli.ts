@@ -9,7 +9,14 @@ import {resolveConfig, type AnalysisMode, type FrameworkType} from './agent/conf
 import {AnthropicProvider} from './anthropic_provider.js';
 import {LLMProviderError} from './provider_interface.js';
 import {runGap, runImpact} from './agent/runner.js';
-import {attachDeveloperActions, buildPlanFromImpactReport, renderCiSummaryMarkdown, writeCiSummary, writePlanReport} from './agent/plan.js';
+import {
+    appendPlanMetrics,
+    attachDeveloperActions,
+    buildPlanFromImpactReport,
+    renderCiSummaryMarkdown,
+    writeCiSummary,
+    writePlanReport,
+} from './agent/plan.js';
 import type {ReportData} from './agent/report.js';
 import {applyOperationalInsights} from './agent/operational_insights.js';
 import {appendFeedbackAndRecompute, type RecommendationFeedbackEntry} from './agent/feedback.js';
@@ -64,6 +71,8 @@ interface ParsedArgs {
     policySafeMergeConfidence?: number;
     policyWarningsThreshold?: number;
     policyRiskyPatterns?: string[];
+    policyEnforcementMode?: 'advisory' | 'warn' | 'block';
+    policyBlockActions?: Array<'run-now' | 'must-add-tests' | 'safe-to-merge'>;
     ciCommentPath?: string;
     githubOutputPath?: string;
     failOnMustAddTests?: boolean;
@@ -166,6 +175,7 @@ function printUsage(): void {
             '  --pipeline-base-url   Base URL for Playwright runs',
             '  --pipeline-browser    Browser: chrome|chromium|firefox|webkit',
             '  --pipeline-headless   Run in headless mode',
+            '  --pipeline-headed     Run in headed mode',
             '  --pipeline-project    Playwright project name',
             '  --pipeline-parallel   Enable parallel mode in generator',
             '  --pipeline-dry-run    Do not execute pipeline (report only)',
@@ -180,6 +190,8 @@ function printUsage(): void {
             '  --policy-safe-merge-confidence <n> Confidence needed for safe-to-merge',
             '  --policy-force-full-on-warnings <n> Escalate to full at warning count',
             '  --policy-risky-patterns <globs>     Comma-separated risky file globs',
+            '  --policy-enforcement-mode <mode>    advisory | warn | block',
+            '  --policy-block-actions <actions>    Comma-separated CI actions to block/warn',
             '  --ci-comment-path <path>            Write CI markdown summary',
             '  --github-output <path>              Write GitHub Actions outputs',
             '  --fail-on-must-add-tests            Exit non-zero on must-add-tests decision',
@@ -329,6 +341,10 @@ function parseArgs(argv: string[]): ParsedArgs {
             parsed.pipelineHeadless = true;
             continue;
         }
+        if (arg === '--pipeline-headed') {
+            parsed.pipelineHeadless = false;
+            continue;
+        }
         if (arg === '--pipeline-project' && next) {
             parsed.pipelineProject = next;
             i += 1;
@@ -402,6 +418,23 @@ function parseArgs(argv: string[]): ParsedArgs {
         }
         if (arg === '--policy-risky-patterns' && next) {
             parsed.policyRiskyPatterns = next.split(',').map((value) => value.trim()).filter(Boolean);
+            i += 1;
+            continue;
+        }
+        if (arg === '--policy-enforcement-mode' && next) {
+            if (next === 'advisory' || next === 'warn' || next === 'block') {
+                parsed.policyEnforcementMode = next;
+            }
+            i += 1;
+            continue;
+        }
+        if (arg === '--policy-block-actions' && next) {
+            parsed.policyBlockActions = next
+                .split(',')
+                .map((value) => value.trim())
+                .filter((value): value is 'run-now' | 'must-add-tests' | 'safe-to-merge' => (
+                    value === 'run-now' || value === 'must-add-tests' || value === 'safe-to-merge'
+                ));
             i += 1;
             continue;
         }
@@ -921,12 +954,16 @@ async function main(): Promise<void> {
             args.policyMinConfidence !== undefined ||
             args.policySafeMergeConfidence !== undefined ||
             args.policyWarningsThreshold !== undefined ||
-            (args.policyRiskyPatterns && args.policyRiskyPatterns.length > 0)
+            (args.policyRiskyPatterns && args.policyRiskyPatterns.length > 0) ||
+            args.policyEnforcementMode !== undefined ||
+            (args.policyBlockActions && args.policyBlockActions.length > 0)
                 ? {
                       minConfidenceForTargeted: args.policyMinConfidence,
                       safeMergeMinConfidence: args.policySafeMergeConfidence,
                       forceFullOnWarningsAtOrAbove: args.policyWarningsThreshold,
                       riskyFilePatterns: args.policyRiskyPatterns,
+                      enforcementMode: args.policyEnforcementMode,
+                      blockOnActions: args.policyBlockActions,
                   }
                 : undefined,
     });
@@ -958,24 +995,33 @@ async function main(): Promise<void> {
         const planPath = writePlanReport(reportRoot, plan);
         const summaryMarkdown = renderCiSummaryMarkdown(plan);
         const summaryPath = writeCiSummary(reportRoot, summaryMarkdown, args.ciCommentPath);
+        const metrics = appendPlanMetrics(reportRoot, plan);
         const ghaOutput = args.githubOutputPath || process.env.GITHUB_OUTPUT;
         if (ghaOutput) {
             appendFileSync(ghaOutput, `run_set=${plan.runSet}\n`);
             appendFileSync(ghaOutput, `action=${plan.decision.action}\n`);
             appendFileSync(ghaOutput, `confidence=${plan.confidence}\n`);
+            appendFileSync(ghaOutput, `enforcement_mode=${plan.enforcement.mode}\n`);
+            appendFileSync(ghaOutput, `enforcement_should_fail=${plan.enforcement.shouldFail}\n`);
             appendFileSync(ghaOutput, `recommended_tests_count=${plan.recommendedTests.length}\n`);
             appendFileSync(ghaOutput, `required_new_tests_count=${plan.requiredNewTests.length}\n`);
             appendFileSync(ghaOutput, `plan_path=${planPath}\n`);
             appendFileSync(ghaOutput, `summary_path=${summaryPath}\n`);
+            appendFileSync(ghaOutput, `metrics_events_path=${metrics.eventsPath}\n`);
+            appendFileSync(ghaOutput, `metrics_summary_path=${metrics.summaryPath}\n`);
         }
         // eslint-disable-next-line no-console
         console.log(`Suggested run set: ${plan.runSet} (confidence ${plan.confidence})`);
         // eslint-disable-next-line no-console
         console.log(`Decision: ${plan.decision.action} - ${plan.decision.summary}`);
         // eslint-disable-next-line no-console
+        console.log(`Enforcement: ${plan.enforcement.mode} (shouldFail=${plan.enforcement.shouldFail})`);
+        // eslint-disable-next-line no-console
         console.log(`Plan data: ${planPath}`);
         // eslint-disable-next-line no-console
         console.log(`CI summary: ${summaryPath}`);
+        // eslint-disable-next-line no-console
+        console.log(`Plan metrics: ${metrics.summaryPath}`);
         if (plan.nextActions) {
             // eslint-disable-next-line no-console
             console.log(`Next action (run existing): ${plan.nextActions.runRecommendedTests || plan.nextActions.runSmokeSuite}`);
@@ -984,7 +1030,8 @@ async function main(): Promise<void> {
             // eslint-disable-next-line no-console
             console.log(`Next action (heal): ${plan.nextActions.healGeneratedTests}`);
         }
-        if (args.failOnMustAddTests && plan.decision.action === 'must-add-tests') {
+        const failOnLegacyFlag = args.failOnMustAddTests && plan.decision.action === 'must-add-tests';
+        if (failOnLegacyFlag || plan.enforcement.shouldFail) {
             process.exit(2);
         }
         return;
