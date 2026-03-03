@@ -110,10 +110,10 @@
           "const": "1.0.0"
         },
         "flowMapping": {
-          "enum": ["catalog", "heuristic"]
+          "enum": ["catalog", "heuristic", "ai"]
         },
         "testMapping": {
-          "enum": ["catalog", "traceability", "heuristic"]
+          "enum": ["catalog", "traceability", "heuristic", "ai"]
         },
         "confidenceClass": {
           "enum": ["high", "medium", "low"]
@@ -300,7 +300,7 @@
           }
         },
         "source": {
-          "enum": ["catalog", "traceability", "heuristic"]
+          "enum": ["catalog", "traceability", "heuristic", "ai"]
         }
       },
       "additionalProperties": true

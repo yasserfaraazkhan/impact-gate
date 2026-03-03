@@ -37,8 +37,8 @@ export interface ReportData {
     recommendedTests?: string[];
     impactModel?: {
         schemaVersion: '1.0.0';
-        flowMapping: 'catalog' | 'heuristic';
-        testMapping: 'catalog' | 'traceability' | 'heuristic';
+        flowMapping: 'catalog' | 'heuristic' | 'ai';
+        testMapping: 'catalog' | 'traceability' | 'heuristic' | 'ai';
         confidenceClass: 'high' | 'medium' | 'low';
         traceability?: {
             source: 'manifest';

@@ -5,7 +5,7 @@
 import {appendFileSync, existsSync, readFileSync, writeFileSync} from 'fs';
 import {dirname, join, resolve} from 'path';
 
-import {resolveConfig, type AnalysisMode, type FrameworkType} from './agent/config.js';
+import {resolveConfig, type AnalysisMode, type AnalysisProfile, type FrameworkType} from './agent/config.js';
 import {AnthropicProvider} from './anthropic_provider.js';
 import {LLMProviderError} from './provider_interface.js';
 import {runGap, runImpact} from './agent/runner.js';
@@ -44,6 +44,7 @@ interface ParsedArgs {
     command?: Command;
     configPath?: string;
     path?: string;
+    profile?: AnalysisProfile;
     testsRoot?: string;
     framework?: FrameworkType;
     timeLimitMinutes?: number;
@@ -67,6 +68,9 @@ interface ParsedArgs {
     pipelineDryRun?: boolean;
     pipelineMcp?: boolean;
     pipelineMcpAllowFallback?: boolean;
+    pipelineMcpOnly?: boolean;
+    pipelineMcpTimeoutMs?: number;
+    pipelineMcpRetries?: number;
     policyMinConfidence?: number;
     policySafeMergeConfidence?: number;
     policyWarningsThreshold?: number;
@@ -162,6 +166,8 @@ function printUsage(): void {
             'Options:',
             '  --config <path>       Path to e2e-ai-agents.config.json (auto-discovered if present)',
             '  --path <app-root>     Path to the web app (required)',
+            '  --profile <name>     default | mattermost',
+            '  --mattermost         Shortcut for --profile mattermost',
             '  --tests-root <path>   Path to tests root (optional)',
             '  --framework <name>    auto | playwright | cypress | selenium',
             '  --patterns <globs>    Comma-separated test patterns',
@@ -181,6 +187,9 @@ function printUsage(): void {
             '  --pipeline-dry-run    Do not execute pipeline (report only)',
             '  --pipeline-mcp        Use Playwright MCP server for exploration/healing',
             '  --pipeline-mcp-allow-fallback  Allow non-MCP fallback if official MCP setup fails',
+            '  --pipeline-mcp-only   Require MCP for UI exploration (fail if unavailable)',
+            '  --pipeline-mcp-timeout-ms <n>  Timeout per MCP CLI invocation in milliseconds',
+            '  --pipeline-mcp-retries <n>  Retry count for retryable MCP CLI failures',
             '  --spec <path>         Optional spec PDF for context',
             '  --since <git-ref>     Git ref for impact analysis (default HEAD~1)',
             '  --time <minutes>      Time limit in minutes',
@@ -265,6 +274,17 @@ function parseArgs(argv: string[]): ParsedArgs {
             i += 1;
             continue;
         }
+        if (arg === '--profile' && next) {
+            if (next === 'default' || next === 'mattermost') {
+                parsed.profile = next;
+            }
+            i += 1;
+            continue;
+        }
+        if (arg === '--mattermost') {
+            parsed.profile = 'mattermost';
+            continue;
+        }
         if (arg === '--tests-root' && next) {
             parsed.testsRoot = next;
             i += 1;
@@ -309,6 +329,20 @@ function parseArgs(argv: string[]): ParsedArgs {
         }
         if (arg === '--pipeline-mcp-allow-fallback') {
             parsed.pipelineMcpAllowFallback = true;
+            continue;
+        }
+        if (arg === '--pipeline-mcp-only') {
+            parsed.pipelineMcpOnly = true;
+            continue;
+        }
+        if (arg === '--pipeline-mcp-timeout-ms' && next) {
+            parsed.pipelineMcpTimeoutMs = Number(next);
+            i += 1;
+            continue;
+        }
+        if (arg === '--pipeline-mcp-retries' && next) {
+            parsed.pipelineMcpRetries = Number(next);
+            i += 1;
             continue;
         }
         if (arg === '--pipeline-scenarios' && next) {
@@ -572,6 +606,7 @@ async function main(): Promise<void> {
 
         const {config} = resolveConfig(process.cwd(), autoConfig, {
             path: args.path,
+            profile: args.profile,
             testsRoot: args.testsRoot,
             mode: 'impact',
         });
@@ -611,6 +646,7 @@ async function main(): Promise<void> {
 
         const {config} = resolveConfig(process.cwd(), autoConfig, {
             path: args.path,
+            profile: args.profile,
             testsRoot: args.testsRoot,
             mode: 'impact',
             gitSince: args.gitSince,
@@ -654,6 +690,7 @@ async function main(): Promise<void> {
 
         const {config} = resolveConfig(process.cwd(), autoConfig, {
             path: args.path,
+            profile: args.profile,
             testsRoot: args.testsRoot,
             mode: 'impact',
         });
@@ -694,6 +731,7 @@ async function main(): Promise<void> {
         }
         const {config} = resolveConfig(process.cwd(), autoConfig, {
             path: args.path,
+            profile: args.profile,
             testsRoot: args.testsRoot,
             mode: 'gap',
         });
@@ -735,6 +773,7 @@ async function main(): Promise<void> {
         }
         const {config} = resolveConfig(process.cwd(), autoConfig, {
             path: args.path,
+            profile: args.profile,
             testsRoot: args.testsRoot,
             mode: 'gap',
             framework: args.framework,
@@ -761,6 +800,7 @@ async function main(): Promise<void> {
                 dryRun: args.pipelineDryRun,
                 mcp: args.pipelineMcp,
                 mcpAllowFallback: args.pipelineMcpAllowFallback,
+                mcpOnly: args.pipelineMcpOnly,
             },
         });
         if (args.allowFallback) {
@@ -862,6 +902,7 @@ async function main(): Promise<void> {
 
         const {config} = resolveConfig(process.cwd(), autoConfig, {
             path: args.path,
+            profile: args.profile,
             testsRoot: args.testsRoot,
             mode: 'gap',
             framework: args.framework,
@@ -877,6 +918,7 @@ async function main(): Promise<void> {
                 dryRun: args.pipelineDryRun,
                 mcp: args.pipelineMcp,
                 mcpAllowFallback: args.pipelineMcpAllowFallback,
+                mcpOnly: args.pipelineMcpOnly,
             },
         });
 
@@ -919,8 +961,10 @@ async function main(): Promise<void> {
     }
 
     const forcePipelineFromApproval = args.command === 'approve-and-generate' || args.command === 'generate';
+    const forceAIPipelineFromApproval = args.command === 'approve-and-generate' || args.command === 'generate';
     const {config} = resolveConfig(process.cwd(), autoConfig, {
         path: args.path,
+        profile: args.profile,
         testsRoot: args.testsRoot,
         mode: (args.command === 'gap' || args.command === 'approve-and-generate' || args.command === 'generate') ? 'gap' : 'impact',
         framework: args.framework,
@@ -946,8 +990,11 @@ async function main(): Promise<void> {
                   project: args.pipelineProject,
                   parallel: args.pipelineParallel,
                   dryRun: args.pipelineDryRun,
-                  mcp: args.pipelineMcp !== undefined ? args.pipelineMcp : forcePipelineFromApproval,
+                  mcp: args.pipelineMcp !== undefined ? args.pipelineMcp : forceAIPipelineFromApproval,
                   mcpAllowFallback: args.pipelineMcpAllowFallback,
+                  mcpOnly: args.pipelineMcpOnly !== undefined ? args.pipelineMcpOnly : forceAIPipelineFromApproval,
+                  mcpCommandTimeoutMs: args.pipelineMcpTimeoutMs,
+                  mcpRetries: args.pipelineMcpRetries,
               }
             : undefined,
         policy:

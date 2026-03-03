@@ -134,6 +134,7 @@ Run AI-driven impact analysis or gap analysis on any frontend repo.
 npx e2e-ai-agents impact --path /path/to/webapp
 npx e2e-ai-agents gap --path /path/to/webapp
 npx e2e-ai-agents plan --path /path/to/webapp
+npx e2e-ai-agents suggest --path /path/to/webapp --mattermost
 npx e2e-ai-agents generate --path /path/to/webapp --pipeline
 npx e2e-ai-agents heal --path /path/to/webapp --traceability-report ./playwright-report.json
 npx e2e-ai-agents suggest --path /path/to/webapp
@@ -143,6 +144,26 @@ npx e2e-ai-agents feedback --path /path/to/webapp --feedback-input ./feedback.js
 npx e2e-ai-agents traceability-capture --path /path/to/webapp --traceability-report ./playwright-report.json
 npx e2e-ai-agents traceability-ingest --path /path/to/webapp --traceability-input ./traceability-input.json
 ```
+
+Local approval workflow (dev/QA + AI) with one review artifact:
+
+```bash
+# 1) Suggest and generate local review + pending approval JSON
+node scripts/local-impact-workflow.js suggest --config ./e2e-ai-agents.config.json --since master
+
+# 2) Approve or reject after review
+node scripts/local-impact-workflow.js approve --config ./e2e-ai-agents.config.json --decision approve --note "QA approved"
+
+# 3) Generate/heal only after approval
+node scripts/local-impact-workflow.js generate --config ./e2e-ai-agents.config.json --since master --pipeline-dry-run
+# Generates in MCP-only mode by default (AI generation/healing only).
+# Optional: tune MCP timeout per call:
+# node scripts/local-impact-workflow.js generate --config ./e2e-ai-agents.config.json --since master --pipeline-mcp-timeout-ms 120000
+```
+
+Generated local artifacts:
+- `<tests-root>/.e2e-ai-agents/local-impact-review.md`
+- `<tests-root>/.e2e-ai-agents/local-impact-approval.json`
 
 If tests live outside the app root:
 
@@ -155,6 +176,7 @@ Optional config file `e2e-ai-agents.config.json` (JSON):
 ```json
 {
   "path": ".",
+  "profile": "default",
   "testsRoot": ".",
   "flowCatalogPath": ".e2e-ai-agents/flows.json",
   "mode": "impact",
@@ -195,6 +217,31 @@ Optional config file `e2e-ai-agents.config.json` (JSON):
       "enabled": false,
       "mapPath": ".e2e-ai-agents/subsystem-risk-map.json",
       "maxRulesPerFile": 4
+    },
+    "aiFlow": {
+      "enabled": true,
+      "strict": true,
+      "provider": "anthropic",
+      "contextFiles": [
+        "CLAUDE.OPTIONAL.md",
+        ".claude/CLAUDE.OPTIONAL.md"
+      ],
+      "maxFilesPerRequest": 220,
+      "maxFlowsPerRequest": 80,
+      "maxTokens": 4000,
+      "temperature": 0
+    },
+    "aiMapping": {
+      "enabled": false,
+      "provider": "anthropic",
+      "contextFiles": [
+        "CLAUDE.OPTIONAL.md",
+        ".claude/CLAUDE.OPTIONAL.md"
+      ],
+      "maxFlowsPerRequest": 30,
+      "maxCandidateTests": 400,
+      "maxTokens": 4000,
+      "temperature": 0
     }
   },
   "pipeline": {
@@ -203,7 +250,10 @@ Optional config file `e2e-ai-agents.config.json` (JSON):
     "outputDir": "specs/functional/ai-assisted",
     "heal": true,
     "mcp": false,
-    "mcpAllowFallback": false
+    "mcpAllowFallback": false,
+    "mcpOnly": false,
+    "mcpCommandTimeoutMs": 180000,
+    "mcpRetries": 1
   },
   "llm": { "provider": "anthropic", "fallback": "ollama" },
   "policy": {
@@ -235,6 +285,8 @@ Notes:
 - Impact mode expects a git diff; use `--since` or add `"impact": { "allowFallback": true }` to fall back to scanning.
 - Impact analysis now uses static reverse dependency graph expansion (configurable via `impact.dependencyGraph`) to propagate changed-file impact, including alias imports via `aliasRoots` and `pathAliases`.
 - Impact analysis can use coverage-style traceability manifests (`impact.traceability`) for file->test mapping with heuristic fallback for uncovered flows.
+- Impact analysis can run AI-first flow mapping (`impact.aiFlow`) so impacted flows and priorities come from LLM reasoning rather than heuristic scoring.
+- Impact analysis can use optional Anthropic-powered AI mapping (`impact.aiMapping`) to map impacted flows to existing tests when traceability is missing/low; context is loaded from optional markdown files such as `CLAUDE.OPTIONAL.md`.
 - Impact analysis can apply subsystem-aware risk boosts and priority floors from a map (`impact.subsystemRisk`) to capture known high-blast-radius areas.
 - Diffing is computed from `merge-base(<since>, HEAD)` when available, which is the standard PR-impact baseline.
 - Reports are written under `testsRoot/.e2e-ai-agents/reports` (or app root if `testsRoot` is not set).
@@ -242,6 +294,8 @@ Notes:
 - Selector/data-testid patches are only applied when `--apply` is passed.
 - `plan` is a direct alias for `suggest`.
 - `generate` is a direct alias for `approve-and-generate`.
+- Mattermost-first strict mode is available with `--mattermost` (or `"profile": "mattermost"` in config).
+- In Mattermost mode, heuristic-only test mapping is treated as insufficient evidence and recommendations are escalated to broad runs.
 - `heal` targets flaky/failed specs from a Playwright JSON report (`--traceability-report`).
 - `--apply` remains available as a legacy shortcut for direct `gap` execution.
 - Use `--pipeline` to run the Playwright generation pipeline.
@@ -254,6 +308,8 @@ Notes:
 - In MCP mode, fallback is strict by default: if official agent setup fails, generation stops instead of silently degrading.
 - Use `--pipeline-mcp-allow-fallback` (or config `pipeline.mcpAllowFallback=true`) only when you explicitly want fallback generation.
 - MCP prerequisites: Playwright config in `testsRoot` and Claude CLI installed/authenticated.
+- Use `--pipeline-mcp-timeout-ms` (or config `pipeline.mcpCommandTimeoutMs`) to limit per-command MCP wait time and fail fast in strict mode.
+- Use `--pipeline-mcp-retries` (or config `pipeline.mcpRetries`) to retry transient MCP failures while staying in AI-only mode.
 - Official MCP outputs are validated against discovered local API surface (`pw.*`, `pw.testBrowser.*`, `channelsPage.*`) to block invented methods (for example `pw.mainClient.*`).
 - If fallback is enabled and official MCP agent execution is unavailable, pipeline falls back to `e2e-test-gen` (if present) or package-native generation with warnings in report output.
 - `impact/gap` pipeline output now includes `pipeline.mcp` (`requested`, `active`, `backend`) so MCP activation is explicit.
@@ -365,6 +421,8 @@ CI integration template:
 - Subsystem risk map schema: [schemas/subsystem-risk-map.schema.json](schemas/subsystem-risk-map.schema.json)
 - Subsystem risk map example: [examples/subsystem-risk-map.sample.json](examples/subsystem-risk-map.sample.json)
 - End-to-end verification steps: [examples/verification/README.md](examples/verification/README.md)
+- Impact checklist playbook: [examples/verification/IMPACT_ANALYSIS_CHECKLIST.md](examples/verification/IMPACT_ANALYSIS_CHECKLIST.md)
+- Checklist validator command: `npm run impact:checklist -- --root <tests-root>`
 
 Traceability manifest example (`.e2e-ai-agents/traceability.json`):
 

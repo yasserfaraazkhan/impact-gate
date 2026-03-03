@@ -20,6 +20,8 @@ import {buildGapTestSuggestions, type GapTestSuggestion} from './gap_suggestions
 import {expandByDependencyGraph, type DependencyGraphExpansion} from './dependency_graph.js';
 import {mapTraceabilityToFlows, type TraceabilityStats} from './traceability.js';
 import {normalizePath} from './utils.js';
+import {mapAITestsToFlows} from './ai_mapping.js';
+import {mapAIFlowsFromFiles} from './ai_flow_analysis.js';
 
 const PRIORITY_RANK: Record<FlowPriority, number> = {
     P0: 0,
@@ -171,9 +173,76 @@ function mergeCoverageWithHeuristicFallback(traceability: FlowCoverage[], heuris
     return Array.from(byFlow.values());
 }
 
+function createUnmappedCoverage(flows: FlowImpact[]): FlowCoverage[] {
+    return flows.map((flow) => ({
+        flowId: flow.id,
+        flowName: flow.name,
+        priority: flow.priority,
+        coveredBy: [],
+        score: 0,
+        source: 'heuristic',
+    }));
+}
+
+function applyMattermostEvidencePolicy(
+    config: AgentConfig,
+    state: {
+        warnings: string[];
+        flows: FlowImpact[];
+        coverage: FlowCoverage[];
+        recommendedTests: string[];
+        testMappingSource: 'catalog' | 'traceability' | 'heuristic' | 'ai';
+        traceabilityStats?: TraceabilityStats;
+    },
+): {coverage: FlowCoverage[]; recommendedTests: string[]; testMappingSource: 'catalog' | 'traceability' | 'heuristic' | 'ai'} {
+    if (config.profile !== 'mattermost') {
+        return {
+            coverage: state.coverage,
+            recommendedTests: state.recommendedTests,
+            testMappingSource: state.testMappingSource,
+        };
+    }
+
+    const output = {
+        coverage: state.coverage,
+        recommendedTests: state.recommendedTests,
+        testMappingSource: state.testMappingSource,
+    };
+
+    if (state.testMappingSource === 'ai') {
+        const traceabilityWarningPrefix = 'Traceability manifest not found or invalid:';
+        for (let i = state.warnings.length - 1; i >= 0; i -= 1) {
+            if (state.warnings[i].startsWith(traceabilityWarningPrefix)) {
+                state.warnings.splice(i, 1);
+            }
+        }
+    }
+
+    if ((!state.traceabilityStats || !state.traceabilityStats.manifestFound) && state.testMappingSource !== 'ai') {
+        state.warnings.push(
+            'Mattermost profile: traceability manifest is missing; targeted recommendations require traceability evidence.',
+        );
+    } else if (state.traceabilityStats && state.traceabilityStats.coverageRatio < 0.6 && state.testMappingSource !== 'ai') {
+        state.warnings.push(
+            `Mattermost profile: traceability coverage ratio ${state.traceabilityStats.coverageRatio} is below 0.6; forcing broad run.`,
+        );
+        output.recommendedTests = [];
+    }
+
+    if (state.testMappingSource === 'heuristic') {
+        state.warnings.push(
+            'Mattermost profile: heuristic-only test mapping is disallowed; forcing broad run recommendation.',
+        );
+        output.coverage = createUnmappedCoverage(state.flows);
+        output.recommendedTests = [];
+    }
+
+    return output;
+}
+
 function classifyImpactModelConfidence(
-    flowMapping: 'catalog' | 'heuristic',
-    testMapping: 'catalog' | 'traceability' | 'heuristic',
+    flowMapping: 'catalog' | 'heuristic' | 'ai',
+    testMapping: 'catalog' | 'traceability' | 'heuristic' | 'ai',
     dependencyGraph: DependencyGraphExpansion | undefined,
     traceability: TraceabilityStats | undefined,
     warnings: string[],
@@ -181,11 +250,15 @@ function classifyImpactModelConfidence(
     let score = 0;
     if (flowMapping === 'catalog') {
         score += 2;
+    } else if (flowMapping === 'ai') {
+        score += 2;
     }
     if (testMapping === 'catalog') {
         score += 2;
     } else if (testMapping === 'traceability') {
         score += 3;
+    } else if (testMapping === 'ai') {
+        score += 2;
     }
     if (traceability) {
         if (!traceability.manifestFound) {
@@ -277,9 +350,6 @@ export async function runImpact(_config: AgentConfig, _options: RunOptions): Pro
         warnings.push(...dependencyGraph.warnings);
         if (dependencyGraph.expandedFiles.length > 0) {
             analysisTargets = uniquePaths([...analysisTargets, ...dependencyGraph.expandedFiles]);
-            warnings.push(
-                `Dependency graph expanded impacted files by ${dependencyGraph.expandedFiles.length} (depth=${dependencyGraph.maxDepth}).`,
-            );
         }
     }
 
@@ -298,8 +368,8 @@ export async function runImpact(_config: AgentConfig, _options: RunOptions): Pro
     let testsByFlow: Map<string, string[]> | undefined;
     let testSuggestions: GapTestSuggestion[] = [];
     const catalog = loadFlowCatalog(_config);
-    const flowMappingSource: 'catalog' | 'heuristic' = catalog ? 'catalog' : 'heuristic';
-    let testMappingSource: 'catalog' | 'traceability' | 'heuristic' = 'heuristic';
+    let flowMappingSource: 'catalog' | 'heuristic' | 'ai' = catalog ? 'catalog' : 'heuristic';
+    let testMappingSource: 'catalog' | 'traceability' | 'heuristic' | 'ai' = 'heuristic';
     let traceabilityStats: TraceabilityStats | undefined;
     if (catalog) {
         flowCatalogSource = catalog.source;
@@ -309,10 +379,29 @@ export async function runImpact(_config: AgentConfig, _options: RunOptions): Pro
         warnings.push(...mapping.warnings);
     } else {
         flows = analysis.flows;
+        if (_config.impact.aiFlow.enabled) {
+            const aiFlow = await mapAIFlowsFromFiles(
+                _config.path,
+                testsRoot,
+                _config.impact.aiFlow,
+                analysis.files,
+                changedAppFiles,
+            );
+            warnings.push(...aiFlow.warnings);
+            if (aiFlow.used) {
+                flows = aiFlow.flows;
+                flowMappingSource = 'ai';
+            } else if (_config.impact.aiFlow.strict || _config.profile === 'mattermost') {
+                throw new Error('AI flow analysis is required but unavailable. Check Anthropic/LLM provider configuration.');
+            }
+        }
+    }
+    if (_config.profile === 'mattermost' && flowMappingSource === 'heuristic') {
+        throw new Error('Mattermost profile requires AI or catalog flow mapping; heuristic flow mapping is disabled.');
     }
 
     flows = applyBlastRadius(flows, analysis.files, _config);
-    if (!catalog) {
+    if (flowMappingSource === 'heuristic') {
         flows = applyPriorityThresholds(flows, _config);
     }
 
@@ -335,13 +424,58 @@ export async function runImpact(_config: AgentConfig, _options: RunOptions): Pro
                 testMappingSource = 'traceability';
                 if (traceability.stats.coverageRatio < 0.8) {
                     const tests = discoverTests(testsRoot, testPatterns.patterns);
-                    const heuristicCoverage = mapTestsToFlows(flows, tests);
-                    coverage = mergeCoverageWithHeuristicFallback(coverage, heuristicCoverage);
-                    warnings.push('Applied heuristic fallback for flows not covered by traceability mapping.');
+                    if (_config.impact.aiMapping.enabled) {
+                        const aiMapping = await mapAITestsToFlows(
+                            _config.path,
+                            testsRoot,
+                            _config.impact.aiMapping,
+                            flows,
+                            tests,
+                        );
+                        warnings.push(...aiMapping.warnings);
+                        if (aiMapping.used) {
+                            coverage = mergeCoverageWithHeuristicFallback(coverage, aiMapping.coverage);
+                            testMappingSource = 'ai';
+                        } else if (_config.profile === 'mattermost') {
+                            warnings.push(
+                                'Mattermost profile: AI mapping unavailable; heuristic traceability fallback is disabled.',
+                            );
+                        } else {
+                            const heuristicCoverage = mapTestsToFlows(flows, tests);
+                            coverage = mergeCoverageWithHeuristicFallback(coverage, heuristicCoverage);
+                            warnings.push('Applied heuristic fallback for flows not covered by traceability mapping.');
+                        }
+                    } else if (_config.profile === 'mattermost') {
+                        warnings.push(
+                            'Mattermost profile: heuristic traceability fallback is disabled; using traceability-only mappings.',
+                        );
+                    } else {
+                        const tests = discoverTests(testsRoot, testPatterns.patterns);
+                        const heuristicCoverage = mapTestsToFlows(flows, tests);
+                        coverage = mergeCoverageWithHeuristicFallback(coverage, heuristicCoverage);
+                        warnings.push('Applied heuristic fallback for flows not covered by traceability mapping.');
+                    }
                 }
             } else {
                 const tests = discoverTests(testsRoot, testPatterns.patterns);
-                coverage = mapTestsToFlows(flows, tests);
+                if (_config.impact.aiMapping.enabled) {
+                    const aiMapping = await mapAITestsToFlows(
+                        _config.path,
+                        testsRoot,
+                        _config.impact.aiMapping,
+                        flows,
+                        tests,
+                    );
+                    warnings.push(...aiMapping.warnings);
+                    if (aiMapping.used) {
+                        coverage = aiMapping.coverage;
+                        testMappingSource = 'ai';
+                    } else {
+                        coverage = mapTestsToFlows(flows, tests);
+                    }
+                } else {
+                    coverage = mapTestsToFlows(flows, tests);
+                }
             }
             const coverageMap = new Map<string, string[]>();
             for (const entry of coverage) {
@@ -350,6 +484,25 @@ export async function runImpact(_config: AgentConfig, _options: RunOptions): Pro
             gaps = computeGaps(flows, coverageMap);
             recommendedTests = buildRecommendedTestsFromCoverage(flows, coverage);
         }
+    }
+
+    const mattermostAdjusted = applyMattermostEvidencePolicy(_config, {
+        warnings,
+        flows,
+        coverage,
+        recommendedTests,
+        testMappingSource,
+        traceabilityStats,
+    });
+    coverage = mattermostAdjusted.coverage;
+    recommendedTests = mattermostAdjusted.recommendedTests;
+    testMappingSource = mattermostAdjusted.testMappingSource;
+    if (Date.now() <= deadline) {
+        const coverageMap = new Map<string, string[]>();
+        for (const entry of coverage) {
+            coverageMap.set(entry.flowId, entry.coveredBy);
+        }
+        gaps = computeGaps(flows, coverageMap);
     }
 
     if (Date.now() <= deadline) {
@@ -480,9 +633,6 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
         warnings.push(...dependencyGraph.warnings);
         if (dependencyGraph.expandedFiles.length > 0) {
             analysisTargets = uniquePaths([...analysisTargets, ...dependencyGraph.expandedFiles]);
-            warnings.push(
-                `Dependency graph expanded impacted files by ${dependencyGraph.expandedFiles.length} (depth=${dependencyGraph.maxDepth}).`,
-            );
         }
     }
 
@@ -501,8 +651,8 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
     let testsByFlow: Map<string, string[]> | undefined;
     let testSuggestions: GapTestSuggestion[] = [];
     const catalog = loadFlowCatalog(_config);
-    const flowMappingSource: 'catalog' | 'heuristic' = catalog ? 'catalog' : 'heuristic';
-    let testMappingSource: 'catalog' | 'traceability' | 'heuristic' = 'heuristic';
+    let flowMappingSource: 'catalog' | 'heuristic' | 'ai' = catalog ? 'catalog' : 'heuristic';
+    let testMappingSource: 'catalog' | 'traceability' | 'heuristic' | 'ai' = 'heuristic';
     let traceabilityStats: TraceabilityStats | undefined;
     if (catalog) {
         flowCatalogSource = catalog.source;
@@ -525,10 +675,29 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
         warnings.push(...mapping.warnings);
     } else {
         flows = analysis.flows;
+        if (_config.impact.aiFlow.enabled) {
+            const aiFlow = await mapAIFlowsFromFiles(
+                _config.path,
+                testsRoot,
+                _config.impact.aiFlow,
+                analysis.files,
+                changedAppFiles,
+            );
+            warnings.push(...aiFlow.warnings);
+            if (aiFlow.used) {
+                flows = aiFlow.flows;
+                flowMappingSource = 'ai';
+            } else if (_config.impact.aiFlow.strict || _config.profile === 'mattermost') {
+                throw new Error('AI flow analysis is required but unavailable. Check Anthropic/LLM provider configuration.');
+            }
+        }
+    }
+    if (_config.profile === 'mattermost' && flowMappingSource === 'heuristic') {
+        throw new Error('Mattermost profile requires AI or catalog flow mapping; heuristic flow mapping is disabled.');
     }
 
     flows = applyBlastRadius(flows, analysis.files, _config);
-    if (!catalog) {
+    if (flowMappingSource === 'heuristic') {
         flows = applyPriorityThresholds(flows, _config);
     }
 
@@ -551,13 +720,58 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
                 testMappingSource = 'traceability';
                 if (traceability.stats.coverageRatio < 0.8) {
                     const tests = discoverTests(testsRoot, testPatterns.patterns);
-                    const heuristicCoverage = mapTestsToFlows(flows, tests);
-                    coverage = mergeCoverageWithHeuristicFallback(coverage, heuristicCoverage);
-                    warnings.push('Applied heuristic fallback for flows not covered by traceability mapping.');
+                    if (_config.impact.aiMapping.enabled) {
+                        const aiMapping = await mapAITestsToFlows(
+                            _config.path,
+                            testsRoot,
+                            _config.impact.aiMapping,
+                            flows,
+                            tests,
+                        );
+                        warnings.push(...aiMapping.warnings);
+                        if (aiMapping.used) {
+                            coverage = mergeCoverageWithHeuristicFallback(coverage, aiMapping.coverage);
+                            testMappingSource = 'ai';
+                        } else if (_config.profile === 'mattermost') {
+                            warnings.push(
+                                'Mattermost profile: AI mapping unavailable; heuristic traceability fallback is disabled.',
+                            );
+                        } else {
+                            const heuristicCoverage = mapTestsToFlows(flows, tests);
+                            coverage = mergeCoverageWithHeuristicFallback(coverage, heuristicCoverage);
+                            warnings.push('Applied heuristic fallback for flows not covered by traceability mapping.');
+                        }
+                    } else if (_config.profile === 'mattermost') {
+                        warnings.push(
+                            'Mattermost profile: heuristic traceability fallback is disabled; using traceability-only mappings.',
+                        );
+                    } else {
+                        const tests = discoverTests(testsRoot, testPatterns.patterns);
+                        const heuristicCoverage = mapTestsToFlows(flows, tests);
+                        coverage = mergeCoverageWithHeuristicFallback(coverage, heuristicCoverage);
+                        warnings.push('Applied heuristic fallback for flows not covered by traceability mapping.');
+                    }
                 }
             } else {
                 const tests = discoverTests(testsRoot, testPatterns.patterns);
-                coverage = mapTestsToFlows(flows, tests);
+                if (_config.impact.aiMapping.enabled) {
+                    const aiMapping = await mapAITestsToFlows(
+                        _config.path,
+                        testsRoot,
+                        _config.impact.aiMapping,
+                        flows,
+                        tests,
+                    );
+                    warnings.push(...aiMapping.warnings);
+                    if (aiMapping.used) {
+                        coverage = aiMapping.coverage;
+                        testMappingSource = 'ai';
+                    } else {
+                        coverage = mapTestsToFlows(flows, tests);
+                    }
+                } else {
+                    coverage = mapTestsToFlows(flows, tests);
+                }
             }
             const coverageMap = new Map<string, string[]>();
             for (const entry of coverage) {
@@ -566,6 +780,25 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
             gaps = computeGaps(flows, coverageMap);
             recommendedTests = buildRecommendedTestsFromCoverage(flows, coverage);
         }
+    }
+
+    const mattermostAdjusted = applyMattermostEvidencePolicy(_config, {
+        warnings,
+        flows,
+        coverage,
+        recommendedTests,
+        testMappingSource,
+        traceabilityStats,
+    });
+    coverage = mattermostAdjusted.coverage;
+    recommendedTests = mattermostAdjusted.recommendedTests;
+    testMappingSource = mattermostAdjusted.testMappingSource;
+    if (Date.now() <= deadline) {
+        const coverageMap = new Map<string, string[]>();
+        for (const entry of coverage) {
+            coverageMap.set(entry.flowId, entry.coveredBy);
+        }
+        gaps = computeGaps(flows, coverageMap);
     }
 
     if (Date.now() <= deadline) {

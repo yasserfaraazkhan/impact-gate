@@ -38,6 +38,8 @@
     "build:cjs": "tsc -p tsconfig.json",
     "build:esm": "tsc -p tsconfig.esm.json && node scripts/write-esm-package.js",
     "clean": "rm -rf dist",
+    "impact:checklist": "node scripts/impact-checklist.js",
+    "impact:local": "node scripts/local-impact-workflow.js",
     "prebuild": "npm run clean",
     "pretest": "npm run build",
     "test": "node --test test/*.js",

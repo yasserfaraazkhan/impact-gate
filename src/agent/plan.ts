@@ -135,11 +135,15 @@ function computeConfidence(impact: ReportData, p0: number, p1: number): number {
     if (impact.impactModel) {
         if (impact.impactModel.flowMapping === 'catalog') {
             confidence += 4;
+        } else if (impact.impactModel.flowMapping === 'ai') {
+            confidence += 4;
         }
         if (impact.impactModel.testMapping === 'catalog') {
             confidence += 4;
         } else if (impact.impactModel.testMapping === 'traceability') {
             confidence += 6;
+        } else if (impact.impactModel.testMapping === 'ai') {
+            confidence += 4;
         }
         if (impact.impactModel.confidenceClass === 'medium') {
             confidence -= 4;
@@ -196,7 +200,7 @@ function pickRunSet(
     }
     if (impact.impactModel?.confidenceClass === 'low') {
         triggeredRules.push('low-traceability');
-        reasons.push('Impact mapping confidence is low (heuristic traceability).');
+        reasons.push('Impact mapping confidence is low.');
     }
     if (impact.impactModel?.traceability?.manifestFound && impact.impactModel.traceability.coverageRatio < 0.4) {
         triggeredRules.push('traceability-low-coverage');
@@ -386,9 +390,9 @@ export function attachDeveloperActions(
             runRecommendedTests,
             runSmokeSuite: 'npx playwright test --grep @smoke --project=chrome',
             runFullSuite: 'npx playwright test --project=chrome',
-            approveAndGenerate: `npx e2e-ai-agents approve-and-generate --path "${context.appPath}" --tests-root "${context.testsRoot}" --pipeline --pipeline-mcp${safeSince}`,
-            generateMissingTests: `npx e2e-ai-agents approve-and-generate --path "${context.appPath}" --tests-root "${context.testsRoot}" --pipeline${safeSince}`,
-            healGeneratedTests: `npx e2e-ai-agents approve-and-generate --path "${context.appPath}" --tests-root "${context.testsRoot}" --pipeline --pipeline-mcp${safeSince}`,
+            approveAndGenerate: `npx e2e-ai-agents approve-and-generate --path "${context.appPath}" --tests-root "${context.testsRoot}" --pipeline --pipeline-mcp --pipeline-mcp-only${safeSince}`,
+            generateMissingTests: `npx e2e-ai-agents approve-and-generate --path "${context.appPath}" --tests-root "${context.testsRoot}" --pipeline --pipeline-mcp --pipeline-mcp-only${safeSince}`,
+            healGeneratedTests: `npx e2e-ai-agents approve-and-generate --path "${context.appPath}" --tests-root "${context.testsRoot}" --pipeline --pipeline-mcp --pipeline-mcp-only${safeSince}`,
             commitGeneratedTests: `npx e2e-ai-agents finalize-generated-tests --path "${context.appPath}" --tests-root "${context.testsRoot}" --commit-message "test(e2e): add generated coverage and healed specs"`,
             openPullRequest: `npx e2e-ai-agents finalize-generated-tests --path "${context.appPath}" --tests-root "${context.testsRoot}" --create-pr`,
         },

@@ -19,7 +19,7 @@ export interface FlowCoverage {
     coveredBy: string[];
     score: number;
     expectedTests?: string[];
-    source?: 'catalog' | 'traceability' | 'heuristic';
+    source?: 'catalog' | 'traceability' | 'heuristic' | 'ai';
 }
 
 export function discoverTests(appRoot: string, patterns: string[]): TestFile[] {

@@ -101,6 +101,9 @@ function classifyPipelineFailure(result: PipelineResult): PipelineResult {
         return result;
     }
     const errorText = result.error.toLowerCase();
+    if (errorText.includes('etimedout') || errorText.includes('timed out')) {
+        return {...result, failureCategory: 'environment', failureCode: 'mcp_timeout'};
+    }
     if (errorText.includes('outside testsroot')) {
         return {...result, failureCategory: 'path-safety', failureCode: 'path_outside_tests_root'};
     }
@@ -738,6 +741,52 @@ function runCommand(command: string, args: string[], cwd: string, timeoutMs = 60
     };
 }
 
+function resolveMcpCommandTimeoutMs(pipeline: PipelineConfig): number {
+    const value = pipeline.mcpCommandTimeoutMs;
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+        return 180000;
+    }
+    return Math.max(60000, Math.min(15 * 60 * 1000, Math.round(value)));
+}
+
+function resolveMcpRetries(pipeline: PipelineConfig): number {
+    const value = pipeline.mcpRetries;
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+        return 1;
+    }
+    return Math.max(0, Math.min(5, Math.round(value)));
+}
+
+function isRetryableMcpFailure(result: CommandResult): boolean {
+    const haystack = [result.error || '', result.stderr || '', result.stdout || ''].join('\n').toLowerCase();
+    return haystack.includes('etimedout') ||
+        haystack.includes('timed out') ||
+        haystack.includes('econnreset') ||
+        haystack.includes('429') ||
+        haystack.includes('rate limit') ||
+        haystack.includes('temporar');
+}
+
+function runCommandWithRetries(
+    command: string,
+    args: string[],
+    cwd: string,
+    timeoutMs: number,
+    retries: number,
+): CommandResult {
+    let result = runCommand(command, args, cwd, timeoutMs);
+    for (let attempt = 1; attempt <= retries; attempt += 1) {
+        if (result.status === 0) {
+            return result;
+        }
+        if (!isRetryableMcpFailure(result)) {
+            return result;
+        }
+        result = runCommand(command, args, cwd, timeoutMs);
+    }
+    return result;
+}
+
 function runPlaywrightRuntimeValidation(
     testsRoot: string,
     testFile: string,
@@ -1159,12 +1208,12 @@ function hasPlaywrightConfig(testsRoot: string): boolean {
     return candidates.some((candidate) => existsSync(join(testsRoot, candidate)));
 }
 
-function bootstrapPlaywrightAgentDefinitions(testsRoot: string, pipeline: PipelineConfig): CommandResult {
+function bootstrapPlaywrightAgentDefinitions(testsRoot: string, pipeline: PipelineConfig, timeoutMs: number): CommandResult {
     const args = ['playwright', 'init-agents', '--loop=claude', '--prompts'];
     if (pipeline.project) {
         args.push('--project', pipeline.project);
     }
-    return runCommand('npx', args, testsRoot);
+    return runCommand('npx', args, testsRoot, timeoutMs);
 }
 
 function resolveAgentSeedSpec(testsRoot: string): string | null {
@@ -1280,6 +1329,8 @@ function runPlaywrightAgentsFlow(
     seedFile: string,
     apiSurface: ApiSurfaceCatalog,
     playwrightBinary: string | null,
+    mcpTimeoutMs: number,
+    mcpRetries: number,
 ): PipelineResult {
     mkdirSync(outputDir, {recursive: true});
     const slug = toSafeSlug(flow.id);
@@ -1308,7 +1359,7 @@ function runPlaywrightAgentsFlow(
         '--',
         prompt,
     ];
-    const runResult = runCommand('claude', runArgs, testsRoot);
+    const runResult = runCommandWithRetries('claude', runArgs, testsRoot, mcpTimeoutMs, mcpRetries);
     if (runResult.status !== 0) {
         return {
             flowId: flow.id,
@@ -1341,7 +1392,7 @@ function runPlaywrightAgentsFlow(
     const relativeActualTestFile = normalizePath(relative(testsRoot, actualTestFile));
     let qualityIssues = validateGeneratedSpecContent(readFileSync(actualTestFile, 'utf-8'), apiSurface);
     if (qualityIssues.length > 0 && pipeline.heal) {
-        const healResult = runCommand(
+        const healResult = runCommandWithRetries(
             'claude',
             [
                 '-p',
@@ -1357,6 +1408,8 @@ function runPlaywrightAgentsFlow(
                 buildPlaywrightHealerPrompt(relativeActualTestFile, qualityIssues.map((issue) => issue.message).join(' | ')),
             ],
             testsRoot,
+            mcpTimeoutMs,
+            mcpRetries,
         );
         if (healResult.status === 0 && existsSync(actualTestFile)) {
             qualityIssues = validateGeneratedSpecContent(readFileSync(actualTestFile, 'utf-8'), apiSurface);
@@ -1376,7 +1429,7 @@ function runPlaywrightAgentsFlow(
     if (pipeline.heal) {
         let compileValidation = runPlaywrightListValidation(testsRoot, actualTestFile, pipeline, playwrightBinary);
         if (compileValidation.status === 'failed') {
-            const healResult = runCommand(
+            const healResult = runCommandWithRetries(
                 'claude',
                 [
                     '-p',
@@ -1392,6 +1445,8 @@ function runPlaywrightAgentsFlow(
                     buildPlaywrightHealerPrompt(relativeActualTestFile, compileValidation.detail || 'playwright --list failed'),
                 ],
                 testsRoot,
+                mcpTimeoutMs,
+                mcpRetries,
             );
             if (healResult.status === 0 && existsSync(actualTestFile)) {
                 compileValidation = runPlaywrightListValidation(testsRoot, actualTestFile, pipeline, playwrightBinary);
@@ -1410,7 +1465,7 @@ function runPlaywrightAgentsFlow(
 
         let runtimeValidation = runPlaywrightRuntimeValidation(testsRoot, actualTestFile, pipeline, playwrightBinary);
         if (runtimeValidation.status === 'failed') {
-            const healResult = runCommand(
+            const healResult = runCommandWithRetries(
                 'claude',
                 [
                     '-p',
@@ -1426,6 +1481,8 @@ function runPlaywrightAgentsFlow(
                     buildPlaywrightHealerPrompt(relativeActualTestFile, runtimeValidation.detail || 'playwright runtime failed'),
                 ],
                 testsRoot,
+                mcpTimeoutMs,
+                mcpRetries,
             );
             if (healResult.status === 0 && existsSync(actualTestFile)) {
                 runtimeValidation = runPlaywrightRuntimeValidation(testsRoot, actualTestFile, pipeline, playwrightBinary);
@@ -1459,6 +1516,8 @@ function runPlaywrightAgentsPipeline(
 ): PipelineSummary {
     const warnings: string[] = [];
     const results: PipelineResult[] = [];
+    const mcpTimeoutMs = resolveMcpCommandTimeoutMs(pipeline);
+    const mcpRetries = resolveMcpRetries(pipeline);
 
     if (!hasCommand('claude', testsRoot)) {
         warnings.push('Claude CLI is required for official Playwright planner/generator/healer execution but was not found.');
@@ -1471,7 +1530,7 @@ function runPlaywrightAgentsPipeline(
     }
 
     if (!hasPlaywrightAgentDefinitions(testsRoot)) {
-        const bootstrap = bootstrapPlaywrightAgentDefinitions(testsRoot, pipeline);
+        const bootstrap = bootstrapPlaywrightAgentDefinitions(testsRoot, pipeline, mcpTimeoutMs);
         if (bootstrap.status !== 0) {
             warnings.push(
                 summarizeCommandOutput(bootstrap.stdout, bootstrap.stderr) ||
@@ -1545,8 +1604,14 @@ function runPlaywrightAgentsPipeline(
                 seedFile,
                 apiSurface,
                 playwrightBinary,
+                mcpTimeoutMs,
+                mcpRetries,
             ),
         );
+        if (pipeline.mcpOnly && results[results.length - 1].generateStatus === 'failed') {
+            warnings.push(`MCP-only mode: stopping after first failed flow (${flow.id}).`);
+            break;
+        }
     }
 
     return {runner: 'playwright-agents', results, warnings, mcp: createMcpStatus('playwright-agents', true)};
@@ -1558,11 +1623,43 @@ export function runPlaywrightPipeline(
     pipeline: PipelineConfig,
 ): PipelineSummary {
     const mcpFallbackWarnings: string[] = [];
+
+    // MCP-only mode requires MCP to be enabled
+    if (pipeline.mcpOnly && !pipeline.mcp) {
+        const warnings = [
+            '❌ MCP-Only Mode Error: --pipeline-mcp-only requires --pipeline-mcp flag',
+            'Run with: npm run gen:tests -- --pipeline-mcp',
+        ];
+        return finalizePipelineSummary({
+            runner: 'unknown',
+            results: [],
+            warnings,
+            mcp: createMcpStatus('unknown', false),
+        });
+    }
+
     if (pipeline.mcp) {
         const agentsSummary = runPlaywrightAgentsPipeline(testsRoot, flows, pipeline);
         if (agentsSummary.runner !== 'unknown' || agentsSummary.results.length > 0) {
             return finalizePipelineSummary(agentsSummary);
         }
+
+        // Handle strict MCP-only mode
+        if (pipeline.mcpOnly) {
+            const warnings = [
+                ...agentsSummary.warnings,
+                '❌ MCP-Only Mode Error: Claude Code CLI / Playwright Agents MCP is not available',
+                'Please install Claude Code CLI: brew install anthropic/tap/claude-code',
+                'Or check that the MCP server is properly configured',
+            ];
+            return finalizePipelineSummary({
+                runner: 'unknown',
+                results: agentsSummary.results,
+                warnings,
+                mcp: createMcpStatus('unknown', true),
+            });
+        }
+
         if (!pipeline.mcpAllowFallback) {
             const warnings = [
                 ...agentsSummary.warnings,
