@@ -56,7 +56,9 @@ interface NativeSpecQualityIssue {
         | 'missing-test'
         | 'missing-tag'
         | 'tag-array-disallowed'
-        | 'unknown-api-surface';
+        | 'unknown-api-surface'
+        | 'fragile-system-console-visibility'
+        | 'fragile-selector';
     message: string;
 }
 
@@ -486,6 +488,24 @@ function validateGeneratedSpecContent(content: string, apiSurface?: ApiSurfaceCa
         issues.push({
             code: 'missing-tag',
             message: "Generated tests must include '@ai-assisted' either as tag option or in test title.",
+        });
+    }
+    if (/\bsystemConsolePage\.toBeVisible\s*\(/.test(content)) {
+        issues.push({
+            code: 'fragile-system-console-visibility',
+            message: 'Avoid systemConsolePage.toBeVisible(); it relies on legacy backstage navigation that may be absent.',
+        });
+    }
+    const fragileSelectors = [
+        '.backstage-navbar',
+        '.admin-console__wrapper',
+        '.left-panel',
+        '.panel-card',
+    ].filter((selector) => content.includes(selector));
+    if (fragileSelectors.length > 0) {
+        issues.push({
+            code: 'fragile-selector',
+            message: `Avoid brittle class selectors in generated tests: ${Array.from(new Set(fragileSelectors)).join(', ')}`,
         });
     }
 
@@ -1296,6 +1316,8 @@ function buildPlaywrightAgentsPrompt(
         "- The generated test must include a single tag string '@ai-assisted'.",
         '- Match fixture/import style from the seed file. Prefer existing page-object APIs over raw brittle selectors.',
         '- Only use `pw` and page-object methods that already exist in the seed/current specs (for example, do not invent APIs like `pw.mainClient.*`).',
+        '- For system-console/admin flows, avoid `systemConsolePage.toBeVisible()` and brittle class selectors (`.backstage-navbar`, `.admin-console__wrapper`, `.left-panel`, `.panel-card`).',
+        '- Prefer stable assertions using URL patterns, test IDs, roles, labels, and established page-object methods.',
         '- Keep the scenario strictly aligned to the flow and linked files, not broad unrelated flows.',
         '',
         'At the end, return a short summary that includes the generated test file path and whether healing succeeded.',
@@ -1310,6 +1332,8 @@ function buildPlaywrightHealerPrompt(testFile: string, extra?: string): string {
         '- Do not use test.describe or test.only.',
         "- Keep a single tag string '@ai-assisted'.",
         '- Use only existing Mattermost Playwright fixture/page-object APIs; do not invent new `pw.*` clients or methods.',
+        '- Avoid `systemConsolePage.toBeVisible()` and brittle class selectors (`.backstage-navbar`, `.admin-console__wrapper`, `.left-panel`, `.panel-card`).',
+        '- Prefer stable checks with URL/test IDs/roles/page-object methods.',
         '- Keep the test intent unchanged and focused.',
         '',
         'Run and fix this test until it compiles/passes, or mark test.fixme with a clear comment when behavior is truly broken.',
@@ -1335,7 +1359,63 @@ function runPlaywrightAgentsFlow(
     mkdirSync(outputDir, {recursive: true});
     const slug = toSafeSlug(flow.id);
     const planFile = normalizePath(relative(testsRoot, join(outputDir, `${slug}.plan.md`)));
+    const absolutePlanFile = join(testsRoot, planFile);
     const targetTestFile = normalizePath(relative(testsRoot, preferredTestFile));
+    const existingSpecFiles = findSpecFiles(outputDir);
+    const existingSpecSnapshots = new Map<string, string>();
+    for (const specFile of existingSpecFiles) {
+        try {
+            existingSpecSnapshots.set(specFile, readFileSync(specFile, 'utf-8'));
+        } catch {
+            continue;
+        }
+    }
+    const originalPlanContent = existsSync(absolutePlanFile) ? readFileSync(absolutePlanFile, 'utf-8') : null;
+
+    const restoreArtifactsOnFailure = () => {
+        for (const currentSpecFile of findSpecFiles(outputDir)) {
+            const originalSpecContent = existingSpecSnapshots.get(currentSpecFile);
+            if (originalSpecContent === undefined) {
+                rmSync(currentSpecFile, {force: true});
+                continue;
+            }
+            try {
+                if (readFileSync(currentSpecFile, 'utf-8') !== originalSpecContent) {
+                    writeFileSync(currentSpecFile, originalSpecContent, 'utf-8');
+                }
+            } catch {
+                // best-effort restore only
+            }
+        }
+        for (const [specFile, originalSpecContent] of existingSpecSnapshots.entries()) {
+            if (!existsSync(specFile)) {
+                writeFileSync(specFile, originalSpecContent, 'utf-8');
+            }
+        }
+        if (originalPlanContent === null) {
+            rmSync(absolutePlanFile, {force: true});
+        } else {
+            try {
+                if (!existsSync(absolutePlanFile) || readFileSync(absolutePlanFile, 'utf-8') !== originalPlanContent) {
+                    writeFileSync(absolutePlanFile, originalPlanContent, 'utf-8');
+                }
+            } catch {
+                // best-effort restore only
+            }
+        }
+    };
+
+    const failFlow = (error: string): PipelineResult => {
+        restoreArtifactsOnFailure();
+        return {
+            flowId: flow.id,
+            flowName: flow.name,
+            generatedDir: outputDir,
+            generateStatus: 'failed',
+            healStatus: pipeline.heal ? 'failed' : undefined,
+            error,
+        };
+    };
 
     if (pipeline.dryRun) {
         return {
@@ -1352,6 +1432,9 @@ function runPlaywrightAgentsFlow(
         '-p',
         '--permission-mode',
         'bypassPermissions',
+        '--setting-sources',
+        'project,local',
+        '--strict-mcp-config',
         '--mcp-config',
         '.mcp.json',
         '--add-dir',
@@ -1361,14 +1444,7 @@ function runPlaywrightAgentsFlow(
     ];
     const runResult = runCommandWithRetries('claude', runArgs, testsRoot, mcpTimeoutMs, mcpRetries);
     if (runResult.status !== 0) {
-        return {
-            flowId: flow.id,
-            flowName: flow.name,
-            generatedDir: outputDir,
-            generateStatus: 'failed',
-            healStatus: pipeline.heal ? 'failed' : undefined,
-            error: summarizeCommandOutput(runResult.stdout, runResult.stderr) || runResult.error || 'Playwright agents run failed',
-        };
+        return failFlow(summarizeCommandOutput(runResult.stdout, runResult.stderr) || runResult.error || 'Playwright agents run failed');
     }
 
     let actualTestFile = preferredTestFile;
@@ -1379,14 +1455,7 @@ function runPlaywrightAgentsFlow(
         }
     }
     if (!existsSync(actualTestFile)) {
-        return {
-            flowId: flow.id,
-            flowName: flow.name,
-            generatedDir: outputDir,
-            generateStatus: 'failed',
-            healStatus: pipeline.heal ? 'failed' : undefined,
-            error: `Playwright agents did not produce expected test file: ${targetTestFile}`,
-        };
+        return failFlow(`Playwright agents did not produce expected test file: ${targetTestFile}`);
     }
 
     const relativeActualTestFile = normalizePath(relative(testsRoot, actualTestFile));
@@ -1398,6 +1467,9 @@ function runPlaywrightAgentsFlow(
                 '-p',
                 '--permission-mode',
                 'bypassPermissions',
+                '--setting-sources',
+                'project,local',
+                '--strict-mcp-config',
                 '--agent',
                 'playwright-test-healer',
                 '--mcp-config',
@@ -1416,14 +1488,7 @@ function runPlaywrightAgentsFlow(
         }
     }
     if (qualityIssues.length > 0) {
-        return {
-            flowId: flow.id,
-            flowName: flow.name,
-            generatedDir: outputDir,
-            generateStatus: 'failed',
-            healStatus: pipeline.heal ? 'failed' : undefined,
-            error: `Playwright agents produced invalid test content: ${qualityIssues.map((issue) => issue.message).join(' | ')}`,
-        };
+        return failFlow(`Playwright agents produced invalid test content: ${qualityIssues.map((issue) => issue.message).join(' | ')}`);
     }
 
     if (pipeline.heal) {
@@ -1435,6 +1500,9 @@ function runPlaywrightAgentsFlow(
                     '-p',
                     '--permission-mode',
                     'bypassPermissions',
+                    '--setting-sources',
+                    'project,local',
+                    '--strict-mcp-config',
                     '--agent',
                     'playwright-test-healer',
                     '--mcp-config',
@@ -1452,14 +1520,7 @@ function runPlaywrightAgentsFlow(
                 compileValidation = runPlaywrightListValidation(testsRoot, actualTestFile, pipeline, playwrightBinary);
             }
             if (compileValidation.status === 'failed') {
-                return {
-                    flowId: flow.id,
-                    flowName: flow.name,
-                    generatedDir: outputDir,
-                    generateStatus: 'failed',
-                    healStatus: 'failed',
-                    error: `Playwright agents compile validation failed: ${compileValidation.detail || 'playwright --list failed'}`,
-                };
+                return failFlow(`Playwright agents compile validation failed: ${compileValidation.detail || 'playwright --list failed'}`);
             }
         }
 
@@ -1471,6 +1532,9 @@ function runPlaywrightAgentsFlow(
                     '-p',
                     '--permission-mode',
                     'bypassPermissions',
+                    '--setting-sources',
+                    'project,local',
+                    '--strict-mcp-config',
                     '--agent',
                     'playwright-test-healer',
                     '--mcp-config',
@@ -1488,14 +1552,7 @@ function runPlaywrightAgentsFlow(
                 runtimeValidation = runPlaywrightRuntimeValidation(testsRoot, actualTestFile, pipeline, playwrightBinary);
             }
             if (runtimeValidation.status === 'failed') {
-                return {
-                    flowId: flow.id,
-                    flowName: flow.name,
-                    generatedDir: outputDir,
-                    generateStatus: 'failed',
-                    healStatus: 'failed',
-                    error: `Playwright agents runtime validation failed: ${runtimeValidation.detail || 'playwright test failed'}`,
-                };
+                return failFlow(`Playwright agents runtime validation failed: ${runtimeValidation.detail || 'playwright test failed'}`);
             }
         }
     }

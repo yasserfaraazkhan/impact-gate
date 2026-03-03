@@ -962,7 +962,7 @@ async function main(): Promise<void> {
 
     const forcePipelineFromApproval = args.command === 'approve-and-generate' || args.command === 'generate';
     const forceAIPipelineFromApproval = args.command === 'approve-and-generate' || args.command === 'generate';
-    const {config} = resolveConfig(process.cwd(), autoConfig, {
+    const {config, configPath} = resolveConfig(process.cwd(), autoConfig, {
         path: args.path,
         profile: args.profile,
         testsRoot: args.testsRoot,
@@ -1037,6 +1037,7 @@ async function main(): Promise<void> {
             appPath: config.path,
             testsRoot: reportRoot,
             sinceRef: config.git.since,
+            configPath,
         });
         const plan = applyOperationalInsights(withActions, reportRoot);
         const planPath = writePlanReport(reportRoot, plan);

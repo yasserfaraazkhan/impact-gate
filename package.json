@@ -35,6 +35,7 @@
   ],
   "scripts": {
     "build": "npm run build:cjs && npm run build:esm",
+    "postbuild": "chmod +x dist/cli.js",
     "build:cjs": "tsc -p tsconfig.json",
     "build:esm": "tsc -p tsconfig.esm.json && node scripts/write-esm-package.js",
     "clean": "rm -rf dist",

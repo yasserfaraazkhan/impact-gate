@@ -376,9 +376,12 @@ export function buildPlanFromImpactReport(impact: ReportData, policyOverride?: P
 
 export function attachDeveloperActions(
     plan: PlanReport,
-    context: {appPath: string; testsRoot: string; sinceRef?: string},
+    context: {appPath: string; testsRoot: string; sinceRef?: string; configPath?: string},
 ): PlanReport {
     const safeSince = context.sinceRef ? ` --since "${context.sinceRef}"` : '';
+    const generateBaseCommand = context.configPath
+        ? `npx e2e-ai-agents approve-and-generate --config "${context.configPath}" --pipeline --pipeline-mcp --pipeline-mcp-only${safeSince}`
+        : `npx e2e-ai-agents approve-and-generate --path "${context.appPath}" --tests-root "${context.testsRoot}" --pipeline --pipeline-mcp --pipeline-mcp-only${safeSince}`;
     const runRecommendedTests = plan.recommendedTests.length > 0
         ? `node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('${context.testsRoot}/.e2e-ai-agents/plan.json','utf8')); const tests=p.recommendedTests.map((t)=>t.replace(/ \\(flags:.*\\)$/,'')); console.log(tests.join(' '));" | xargs npx playwright test`
         : undefined;
@@ -390,9 +393,9 @@ export function attachDeveloperActions(
             runRecommendedTests,
             runSmokeSuite: 'npx playwright test --grep @smoke --project=chrome',
             runFullSuite: 'npx playwright test --project=chrome',
-            approveAndGenerate: `npx e2e-ai-agents approve-and-generate --path "${context.appPath}" --tests-root "${context.testsRoot}" --pipeline --pipeline-mcp --pipeline-mcp-only${safeSince}`,
-            generateMissingTests: `npx e2e-ai-agents approve-and-generate --path "${context.appPath}" --tests-root "${context.testsRoot}" --pipeline --pipeline-mcp --pipeline-mcp-only${safeSince}`,
-            healGeneratedTests: `npx e2e-ai-agents approve-and-generate --path "${context.appPath}" --tests-root "${context.testsRoot}" --pipeline --pipeline-mcp --pipeline-mcp-only${safeSince}`,
+            approveAndGenerate: generateBaseCommand,
+            generateMissingTests: generateBaseCommand,
+            healGeneratedTests: generateBaseCommand,
             commitGeneratedTests: `npx e2e-ai-agents finalize-generated-tests --path "${context.appPath}" --tests-root "${context.testsRoot}" --commit-message "test(e2e): add generated coverage and healed specs"`,
             openPullRequest: `npx e2e-ai-agents finalize-generated-tests --path "${context.appPath}" --tests-root "${context.testsRoot}" --create-pr`,
         },
