@@ -173,6 +173,10 @@ function mergeCoverageWithHeuristicFallback(traceability: FlowCoverage[], heuris
     return Array.from(byFlow.values());
 }
 
+function buildMattermostFailClosedWarning(reason: string): string {
+    return `${reason} Mattermost strict mode will emit uncovered flows as must-add-tests without heuristic fallback.`;
+}
+
 function applyMattermostEvidencePolicy(
     config: AgentConfig,
     state: {
@@ -182,6 +186,7 @@ function applyMattermostEvidencePolicy(
         recommendedTests: string[];
         testMappingSource: 'catalog' | 'traceability' | 'heuristic' | 'ai';
         traceabilityStats?: TraceabilityStats;
+        failClosedTargeting?: boolean;
     },
 ): {coverage: FlowCoverage[]; recommendedTests: string[]; testMappingSource: 'catalog' | 'traceability' | 'heuristic' | 'ai'} {
     if (config.profile !== 'mattermost') {
@@ -196,6 +201,14 @@ function applyMattermostEvidencePolicy(
         throw new Error(
             'Mattermost profile requires AI or catalog evidence for test selection. Heuristic-only mapping is not allowed.',
         );
+    }
+
+    if (state.failClosedTargeting) {
+        return {
+            coverage: state.coverage,
+            recommendedTests: state.recommendedTests,
+            testMappingSource: state.testMappingSource,
+        };
     }
 
     if (state.testMappingSource !== 'catalog' && !state.traceabilityStats?.manifestFound) {
@@ -360,6 +373,7 @@ export async function runImpact(_config: AgentConfig, _options: RunOptions): Pro
     let flowMappingSource: 'catalog' | 'heuristic' | 'ai' = catalog ? 'catalog' : 'heuristic';
     let testMappingSource: 'catalog' | 'traceability' | 'heuristic' | 'ai' = 'heuristic';
     let traceabilityStats: TraceabilityStats | undefined;
+    let mattermostFailClosedTargeting = false;
     if (catalog) {
         flowCatalogSource = catalog.source;
         const mapping = mapChangesToCatalogFlows(catalog, analysisTargets, 'impact', _config);
@@ -429,18 +443,21 @@ export async function runImpact(_config: AgentConfig, _options: RunOptions): Pro
                             coverage = mergeCoverageWithHeuristicFallback(coverage, aiMapping.coverage);
                             testMappingSource = 'ai';
                         } else if (_config.profile === 'mattermost') {
-                            throw new Error(
-                                'Mattermost profile requires AI mapping when traceability coverage is incomplete. Refresh AI mapping inputs or provider configuration.',
-                            );
+                            warnings.push(buildMattermostFailClosedWarning(
+                                'Mattermost profile requires AI mapping when traceability coverage is incomplete, but AI mapping did not produce target tests.',
+                            ));
+                            testMappingSource = 'ai';
+                            mattermostFailClosedTargeting = true;
                         } else {
                             const heuristicCoverage = mapTestsToFlows(flows, tests);
                             coverage = mergeCoverageWithHeuristicFallback(coverage, heuristicCoverage);
                             warnings.push('Applied heuristic fallback for flows not covered by traceability mapping.');
                         }
                     } else if (_config.profile === 'mattermost') {
-                        throw new Error(
-                            'Mattermost profile requires AI mapping when traceability coverage is incomplete. Enable AI mapping for targeted selection.',
-                        );
+                        warnings.push(buildMattermostFailClosedWarning(
+                            'Mattermost profile requires AI mapping when traceability coverage is incomplete, but AI mapping is disabled.',
+                        ));
+                        mattermostFailClosedTargeting = true;
                     } else {
                         const tests = discoverTests(testsRoot, testPatterns.patterns);
                         const heuristicCoverage = mapTestsToFlows(flows, tests);
@@ -463,16 +480,20 @@ export async function runImpact(_config: AgentConfig, _options: RunOptions): Pro
                         coverage = aiMapping.coverage;
                         testMappingSource = 'ai';
                     } else if (_config.profile === 'mattermost') {
-                        throw new Error(
-                            'Mattermost profile requires AI mapping because traceability evidence did not produce target tests.',
-                        );
+                        warnings.push(buildMattermostFailClosedWarning(
+                            'Mattermost profile requires AI mapping because traceability evidence did not produce target tests, but AI mapping returned no valid matches.',
+                        ));
+                        testMappingSource = 'ai';
+                        mattermostFailClosedTargeting = true;
                     } else {
                         coverage = mapTestsToFlows(flows, tests);
                     }
                 } else if (_config.profile === 'mattermost') {
-                    throw new Error(
-                        'Mattermost profile requires traceability evidence or AI mapping to produce target tests.',
-                    );
+                    warnings.push(buildMattermostFailClosedWarning(
+                        'Mattermost profile requires traceability evidence or AI mapping to produce target tests, but AI mapping is disabled.',
+                    ));
+                    testMappingSource = 'traceability';
+                    mattermostFailClosedTargeting = true;
                 } else {
                     coverage = mapTestsToFlows(flows, tests);
                 }
@@ -493,6 +514,7 @@ export async function runImpact(_config: AgentConfig, _options: RunOptions): Pro
         recommendedTests,
         testMappingSource,
         traceabilityStats,
+        failClosedTargeting: mattermostFailClosedTargeting,
     });
     coverage = mattermostAdjusted.coverage;
     recommendedTests = mattermostAdjusted.recommendedTests;
@@ -654,6 +676,7 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
     let flowMappingSource: 'catalog' | 'heuristic' | 'ai' = catalog ? 'catalog' : 'heuristic';
     let testMappingSource: 'catalog' | 'traceability' | 'heuristic' | 'ai' = 'heuristic';
     let traceabilityStats: TraceabilityStats | undefined;
+    let mattermostFailClosedTargeting = false;
     if (catalog) {
         flowCatalogSource = catalog.source;
         const catalogMode = changedAppFiles.length > 0 ? 'impact' : 'gap';
@@ -736,18 +759,21 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
                             coverage = mergeCoverageWithHeuristicFallback(coverage, aiMapping.coverage);
                             testMappingSource = 'ai';
                         } else if (_config.profile === 'mattermost') {
-                            throw new Error(
-                                'Mattermost profile requires AI mapping when traceability coverage is incomplete. Refresh AI mapping inputs or provider configuration.',
-                            );
+                            warnings.push(buildMattermostFailClosedWarning(
+                                'Mattermost profile requires AI mapping when traceability coverage is incomplete, but AI mapping did not produce target tests.',
+                            ));
+                            testMappingSource = 'ai';
+                            mattermostFailClosedTargeting = true;
                         } else {
                             const heuristicCoverage = mapTestsToFlows(flows, tests);
                             coverage = mergeCoverageWithHeuristicFallback(coverage, heuristicCoverage);
                             warnings.push('Applied heuristic fallback for flows not covered by traceability mapping.');
                         }
                     } else if (_config.profile === 'mattermost') {
-                        throw new Error(
-                            'Mattermost profile requires AI mapping when traceability coverage is incomplete. Enable AI mapping for targeted selection.',
-                        );
+                        warnings.push(buildMattermostFailClosedWarning(
+                            'Mattermost profile requires AI mapping when traceability coverage is incomplete, but AI mapping is disabled.',
+                        ));
+                        mattermostFailClosedTargeting = true;
                     } else {
                         const tests = discoverTests(testsRoot, testPatterns.patterns);
                         const heuristicCoverage = mapTestsToFlows(flows, tests);
@@ -770,16 +796,20 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
                         coverage = aiMapping.coverage;
                         testMappingSource = 'ai';
                     } else if (_config.profile === 'mattermost') {
-                        throw new Error(
-                            'Mattermost profile requires AI mapping because traceability evidence did not produce target tests.',
-                        );
+                        warnings.push(buildMattermostFailClosedWarning(
+                            'Mattermost profile requires AI mapping because traceability evidence did not produce target tests, but AI mapping returned no valid matches.',
+                        ));
+                        testMappingSource = 'ai';
+                        mattermostFailClosedTargeting = true;
                     } else {
                         coverage = mapTestsToFlows(flows, tests);
                     }
                 } else if (_config.profile === 'mattermost') {
-                    throw new Error(
-                        'Mattermost profile requires traceability evidence or AI mapping to produce target tests.',
-                    );
+                    warnings.push(buildMattermostFailClosedWarning(
+                        'Mattermost profile requires traceability evidence or AI mapping to produce target tests, but AI mapping is disabled.',
+                    ));
+                    testMappingSource = 'traceability';
+                    mattermostFailClosedTargeting = true;
                 } else {
                     coverage = mapTestsToFlows(flows, tests);
                 }
@@ -800,6 +830,7 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
         recommendedTests,
         testMappingSource,
         traceabilityStats,
+        failClosedTargeting: mattermostFailClosedTargeting,
     });
     coverage = mattermostAdjusted.coverage;
     recommendedTests = mattermostAdjusted.recommendedTests;
