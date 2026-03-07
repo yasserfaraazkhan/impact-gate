@@ -105,6 +105,9 @@ function readCatalog(path: string, config: AgentConfig): FlowCatalog | null {
         }
         const raw = JSON.parse(readFileSync(path, 'utf-8')) as {flows?: RawFlowCatalogEntry[]};
         if (!raw.flows || !Array.isArray(raw.flows)) {
+            if (config.profile === 'mattermost') {
+                throw new Error(`Mattermost profile requires a non-empty flow catalog schema at ${path}.`);
+            }
             catalogCache.set(path, {mtimeMs, catalog: null});
             return null;
         }
@@ -112,13 +115,19 @@ function readCatalog(path: string, config: AgentConfig): FlowCatalog | null {
             .map((flow) => normalizeEntry(flow, config))
             .filter((flow): flow is FlowCatalogEntry => Boolean(flow));
         if (flows.length === 0) {
+            if (config.profile === 'mattermost') {
+                throw new Error(`Mattermost profile requires at least one valid flow catalog entry at ${path}.`);
+            }
             catalogCache.set(path, {mtimeMs, catalog: null});
             return null;
         }
         const catalog = {flows, source: path};
         catalogCache.set(path, {mtimeMs, catalog});
         return catalog;
-    } catch {
+    } catch (error) {
+        if (config.profile === 'mattermost') {
+            throw error;
+        }
         return null;
     }
 }

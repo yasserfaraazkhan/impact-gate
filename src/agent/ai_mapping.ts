@@ -20,6 +20,19 @@ interface AIFlowMappingResponse {
     mappings: AIFlowMappingEntry[];
 }
 
+interface CandidateTestSignal {
+    path: string;
+    score: number;
+    matchedKeywords: string[];
+}
+
+interface CandidateSelectionResult {
+    tests: string[];
+    byFlow: Map<string, Set<string>>;
+    evidence: Array<{flowId: string; candidates: CandidateTestSignal[]}>;
+    warnings: string[];
+}
+
 export interface AIMappingResult {
     enabled: boolean;
     used: boolean;
@@ -35,6 +48,54 @@ const PRIORITY_RANK: Record<string, number> = {
     P1: 1,
     P2: 2,
 };
+
+const MIN_SINGLE_KEYWORD_LENGTH = 8;
+
+const LOW_SIGNAL_FLOW_KEYWORDS = new Set([
+    'app',
+    'apps',
+    'channel',
+    'channels',
+    'client',
+    'common',
+    'component',
+    'components',
+    'detail',
+    'details',
+    'dialog',
+    'feature',
+    'files',
+    'flow',
+    'group',
+    'groups',
+    'hooks',
+    'message',
+    'messages',
+    'modal',
+    'new',
+    'page',
+    'pages',
+    'panel',
+    'post',
+    'posts',
+    'query',
+    'result',
+    'results',
+    'screen',
+    'screens',
+    'section',
+    'src',
+    'tsx',
+    'ts',
+    'jsx',
+    'js',
+    'ui',
+    'use',
+    'user',
+    'users',
+    'view',
+    'webapp',
+]);
 
 function extractJson(text: string): AIFlowMappingResponse | null {
     const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
@@ -102,46 +163,76 @@ function flowKeywords(flow: FlowImpact): string[] {
         ...tokenize(flow.id || ''),
         ...tokenize(flow.name || ''),
         ...(flow.keywords || []),
-    ]).slice(0, 18);
+    ]).filter((keyword) => (
+        keyword.length >= 3 &&
+        !LOW_SIGNAL_FLOW_KEYWORDS.has(keyword)
+    )).slice(0, 18);
+}
+
+function matchedFlowKeywords(flow: FlowImpact, testPath: string): string[] {
+    const haystack = testPath.toLowerCase();
+    return flowKeywords(flow).filter((keyword) => keyword && haystack.includes(keyword.toLowerCase()));
 }
 
 function scoreTestPath(flow: FlowImpact, testPath: string): number {
-    const haystack = testPath.toLowerCase();
-    let score = 0;
-    for (const keyword of flowKeywords(flow)) {
-        if (keyword && haystack.includes(keyword.toLowerCase())) {
-            score += 1;
-        }
-    }
-    return score;
+    return matchedFlowKeywords(flow, testPath).length;
 }
 
-function selectCandidateTests(flows: FlowImpact[], tests: TestFile[], maxCandidateTests: number): string[] {
-    const selected = new Map<string, number>();
+function isStrongCandidateMatch(flow: FlowImpact, matchedKeywords: string[]): boolean {
+    if (matchedKeywords.length >= 2) {
+        return true;
+    }
+    if (matchedKeywords.length !== 1) {
+        return false;
+    }
+    const keywords = flowKeywords(flow);
+    return keywords.length === 1 && matchedKeywords[0].length >= MIN_SINGLE_KEYWORD_LENGTH;
+}
+
+function selectCandidateTests(flows: FlowImpact[], tests: TestFile[], maxCandidateTests: number): CandidateSelectionResult {
+    const selected = new Set<string>();
+    const byFlow = new Map<string, Set<string>>();
+    const evidence: Array<{flowId: string; candidates: CandidateTestSignal[]}> = [];
+    const warnings: string[] = [];
     const normalizedTests = tests.map((test) => normalizePath(test.path)).filter(Boolean);
+    const perFlowLimit = Math.max(2, Math.min(6, Math.floor(maxCandidateTests / Math.max(1, flows.length))));
+
     for (const flow of flows) {
+        const scored: CandidateTestSignal[] = [];
         for (const testPath of normalizedTests) {
-            const score = scoreTestPath(flow, testPath);
-            if (score <= 0) {
+            const matchedKeywords = matchedFlowKeywords(flow, testPath);
+            if (matchedKeywords.length === 0) {
                 continue;
             }
-            selected.set(testPath, Math.max(selected.get(testPath) || 0, score));
+            scored.push({
+                path: testPath,
+                score: matchedKeywords.length,
+                matchedKeywords,
+            });
+        }
+        const strongCandidates = scored
+            .filter((candidate) => isStrongCandidateMatch(flow, candidate.matchedKeywords))
+            .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
+            .slice(0, perFlowLimit);
+        if (strongCandidates.length === 0) {
+            if (scored.length > 0) {
+                warnings.push(`AI mapping withheld weak path-only candidates for ${flow.id}; traceability evidence is required to reuse existing tests.`);
+            }
+            continue;
+        }
+        byFlow.set(flow.id, new Set(strongCandidates.map((candidate) => candidate.path)));
+        evidence.push({flowId: flow.id, candidates: strongCandidates});
+        for (const candidate of strongCandidates) {
+            selected.add(candidate.path);
         }
     }
 
-    const scored = Array.from(selected.entries())
-        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-        .slice(0, maxCandidateTests)
-        .map(([path]) => path);
-
-    if (scored.length >= Math.min(20, maxCandidateTests)) {
-        return scored;
-    }
-
-    const fallback = Array.from(new Set(normalizedTests))
-        .sort((a, b) => a.localeCompare(b))
-        .slice(0, maxCandidateTests);
-    return fallback;
+    return {
+        tests: Array.from(selected).sort((a, b) => a.localeCompare(b)).slice(0, maxCandidateTests),
+        byFlow,
+        evidence,
+        warnings,
+    };
 }
 
 function buildCoverage(flows: FlowImpact[], mapped: Map<string, string[]>): FlowCoverage[] {
@@ -193,10 +284,12 @@ export async function mapAITestsToFlows(
             return (b.score || 0) - (a.score || 0);
         })
         .slice(0, Math.max(1, config.maxFlowsPerRequest));
-    const candidateTests = selectCandidateTests(prioritizedFlows, tests, Math.max(20, config.maxCandidateTests));
+    const candidateSelection = selectCandidateTests(prioritizedFlows, tests, Math.max(20, config.maxCandidateTests));
+    warnings.push(...candidateSelection.warnings);
+    const candidateTests = candidateSelection.tests;
 
     if (prioritizedFlows.length === 0 || candidateTests.length === 0) {
-        warnings.push('AI mapping skipped: no prioritized flows or candidate tests were available.');
+        warnings.push('AI mapping skipped: no prioritized flows or path-aligned candidate tests were available.');
         return {
             enabled: true,
             used: false,
@@ -239,12 +332,17 @@ export async function mapAITestsToFlows(
         'You are an expert Mattermost E2E test impact analyst.',
         'Map impacted flows to existing Playwright test file paths.',
         'Only use tests from CANDIDATE_TESTS. Never invent paths.',
+        'Prefer no mapping over a broad or generic mapping.',
         'Return strict JSON only with this shape:',
         '{"mappings":[{"flowId":"<flow id>","tests":["specs/..."],"reason":"short reason","confidence":0.0}]}',
         '',
         'Rules:',
         '- Keep at most 5 tests per flow.',
         '- Use exact flowId values from FLOWS.',
+        '- Only map a test when its path clearly matches the flow scenario. Generic subsystem similarity is not enough.',
+        '- A flow may only map to tests listed under FLOW_CANDIDATE_SIGNALS for that flow.',
+        '- Treat single-keyword or broad subsystem overlap as insufficient evidence.',
+        '- If the candidate path overlap is weak or ambiguous, return tests: [].',
         '- If unsure for a flow, return tests: [].',
         '',
         `FLOWS (${prioritizedFlows.length}):`,
@@ -263,6 +361,9 @@ export async function mapAITestsToFlows(
         '',
         `CANDIDATE_TESTS (${candidateTests.length}):`,
         JSON.stringify(candidateTests, null, 2),
+        '',
+        `FLOW_CANDIDATE_SIGNALS (${candidateSelection.evidence.length}):`,
+        JSON.stringify(candidateSelection.evidence, null, 2),
         '',
         contextBlock,
     ].join('\n');
@@ -303,7 +404,7 @@ export async function mapAITestsToFlows(
     }
 
     const allowedFlowIds = new Set(prioritizedFlows.map((flow) => flow.id));
-    const allowedTests = new Set(candidateTests.map((test) => normalizePath(test)));
+    const prioritizedFlowsById = new Map(prioritizedFlows.map((flow) => [flow.id, flow]));
     const mapped = new Map<string, string[]>();
     const matchedTests = new Set<string>();
 
@@ -311,13 +412,21 @@ export async function mapAITestsToFlows(
         if (!entry || !allowedFlowIds.has(entry.flowId) || !Array.isArray(entry.tests)) {
             continue;
         }
+        const flow = prioritizedFlowsById.get(entry.flowId);
+        const confidence = typeof entry.confidence === 'number' ? entry.confidence : undefined;
+        const allowedTestsForFlow = candidateSelection.byFlow.get(entry.flowId);
         const valid = Array.from(
             new Set(
                 entry.tests
                     .map((testPath) => normalizePath(testPath))
-                    .filter((testPath) => allowedTests.has(testPath)),
+                    .filter((testPath) => allowedTestsForFlow?.has(testPath))
+                    .filter((testPath) => (flow ? scoreTestPath(flow, testPath) > 0 : true)),
             ),
         ).slice(0, 5);
+        if (confidence !== undefined && confidence < 0.5) {
+            warnings.push(`AI mapping rejected low-confidence result for ${entry.flowId} (${confidence}).`);
+            continue;
+        }
         if (valid.length === 0) {
             continue;
         }
@@ -328,6 +437,9 @@ export async function mapAITestsToFlows(
     }
 
     const coverage = buildCoverage(flows, mapped);
+    if (mapped.size === 0) {
+        warnings.push(`AI mapping returned no valid test mappings (${provider.name}).`);
+    }
     return {
         enabled: true,
         used: mapped.size > 0,

@@ -50,6 +50,7 @@ interface ParsedArgs {
     timeLimitMinutes?: number;
     budgetUSD?: number;
     budgetTokens?: number;
+    llmProvider?: string;
     testPatterns?: string[];
     flowPatterns?: string[];
     flowExclude?: string[];
@@ -195,6 +196,7 @@ function printUsage(): void {
             '  --time <minutes>      Time limit in minutes',
             '  --budget-usd <amount> Max LLM budget in USD',
             '  --budget-tokens <n>   Max LLM tokens',
+            '  --llm-provider <name> LLM provider: auto | anthropic | openai | ollama',
             '  --policy-min-confidence <n>   Minimum confidence for targeted suite',
             '  --policy-safe-merge-confidence <n> Confidence needed for safe-to-merge',
             '  --policy-force-full-on-warnings <n> Escalate to full at warning count',
@@ -426,6 +428,11 @@ function parseArgs(argv: string[]): ParsedArgs {
             i += 1;
             continue;
         }
+        if (arg === '--llm-provider' && next) {
+            parsed.llmProvider = next;
+            i += 1;
+            continue;
+        }
         if (arg === '--policy-min-confidence' && next) {
             const value = Number(next);
             if (Number.isFinite(value)) {
@@ -609,6 +616,7 @@ async function main(): Promise<void> {
             profile: args.profile,
             testsRoot: args.testsRoot,
             mode: 'impact',
+            llmProvider: args.llmProvider,
         });
         const reportRoot = config.testsRoot || config.path;
         const raw = JSON.parse(readFileSync(args.feedbackInputPath, 'utf-8')) as RecommendationFeedbackEntry;
@@ -650,6 +658,7 @@ async function main(): Promise<void> {
             testsRoot: args.testsRoot,
             mode: 'impact',
             gitSince: args.gitSince,
+            llmProvider: args.llmProvider,
         });
         const reportRoot = config.testsRoot || config.path;
         const output = captureTraceabilityInput({
@@ -693,6 +702,7 @@ async function main(): Promise<void> {
             profile: args.profile,
             testsRoot: args.testsRoot,
             mode: 'impact',
+            llmProvider: args.llmProvider,
         });
         const reportRoot = config.testsRoot || config.path;
         const raw = JSON.parse(readFileSync(args.traceabilityInputPath, 'utf-8')) as unknown;
@@ -734,6 +744,7 @@ async function main(): Promise<void> {
             profile: args.profile,
             testsRoot: args.testsRoot,
             mode: 'gap',
+            llmProvider: args.llmProvider,
         });
         const result = finalizeGeneratedTests({
             appPath: config.path,
@@ -802,6 +813,7 @@ async function main(): Promise<void> {
                 mcpAllowFallback: args.pipelineMcpAllowFallback,
                 mcpOnly: args.pipelineMcpOnly,
             },
+            llmProvider: args.llmProvider,
         });
         if (args.allowFallback) {
             config.impact.allowFallback = true;
@@ -920,6 +932,7 @@ async function main(): Promise<void> {
                 mcpAllowFallback: args.pipelineMcpAllowFallback,
                 mcpOnly: args.pipelineMcpOnly,
             },
+            llmProvider: args.llmProvider,
         });
 
         const reportRoot = config.testsRoot || config.path;
@@ -979,6 +992,7 @@ async function main(): Promise<void> {
         flowCatalogPath: args.flowCatalogPath,
         specPDF: args.specPDF,
         gitSince: args.gitSince,
+        llmProvider: args.llmProvider,
         pipeline: (args.pipeline || forcePipelineFromApproval)
             ? {
                   enabled: true,

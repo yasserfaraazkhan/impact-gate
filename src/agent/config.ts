@@ -263,7 +263,7 @@ const DEFAULT_CONFIG: AgentConfig = {
         aiFlow: {
             enabled: false,
             strict: false,
-            provider: 'anthropic',
+            provider: 'auto',
             contextFiles: [
                 'CLAUDE.OPTIONAL.md',
                 '.claude/CLAUDE.OPTIONAL.md',
@@ -275,7 +275,7 @@ const DEFAULT_CONFIG: AgentConfig = {
         },
         aiMapping: {
             enabled: false,
-            provider: 'anthropic',
+            provider: 'auto',
             contextFiles: [
                 'CLAUDE.OPTIONAL.md',
                 '.claude/CLAUDE.OPTIONAL.md',
@@ -299,7 +299,7 @@ const DEFAULT_CONFIG: AgentConfig = {
         mcpRetries: 1,
     },
     llm: {
-        provider: 'anthropic',
+        provider: 'auto',
         fallback: 'ollama',
     },
     risk: {
@@ -364,6 +364,38 @@ const DEFAULT_CONFIG: AgentConfig = {
     },
 };
 
+function normalizeMattermostProvider(
+    rawProvider: unknown,
+    fallback: AIMappingProvider,
+    strict = false,
+): AIMappingProvider {
+    if (typeof rawProvider !== 'string') {
+        return fallback;
+    }
+    const normalized = rawProvider.trim().toLowerCase();
+    if (
+        normalized === 'anthropic'
+        || normalized === 'openai'
+        || normalized === 'ollama'
+        || normalized === 'auto'
+    ) {
+        return normalized;
+    }
+    if (strict) {
+        throw new Error(
+            `Invalid provider "${rawProvider}". Allowed values for Mattermost flows: ollama, anthropic, openai, auto.`,
+        );
+    }
+    return fallback;
+}
+
+function resolveMattermostProvider(config: AgentConfig): AIMappingProvider {
+    const envProvider = process.env.LLM_PROVIDER?.trim().toLowerCase();
+    const envResolved = envProvider ? normalizeMattermostProvider(envProvider, 'auto', true) : 'auto';
+    const llmProvider = normalizeMattermostProvider(config.llm.provider, 'auto', true);
+    return envResolved !== 'auto' ? envResolved : llmProvider;
+}
+
 export interface ConfigOverrides {
     path?: string;
     profile?: AnalysisProfile;
@@ -380,6 +412,8 @@ export interface ConfigOverrides {
     gitSince?: string;
     pipeline?: Partial<PipelineConfig>;
     policy?: Partial<PolicyConfig>;
+    llmProvider?: string;
+    llmFallback?: string;
 }
 
 function safeReadJson(path: string): Record<string, unknown> | undefined {
@@ -1040,6 +1074,16 @@ export function resolveConfig(cwd: string, configPath?: string, overrides?: Conf
     if (overrides?.flowCatalogPath) {
         config.flowCatalogPath = overrides.flowCatalogPath;
     }
+    if (overrides?.llmProvider !== undefined) {
+        config.llm.provider = normalizeMattermostProvider(
+            overrides.llmProvider,
+            normalizeMattermostProvider(config.llm.provider, 'auto'),
+            true,
+        );
+    }
+    if (overrides?.llmFallback !== undefined) {
+        config.llm.fallback = overrides.llmFallback;
+    }
 
     if (config.profile === 'mattermost') {
         config.impact.allowFallback = false;
@@ -1047,9 +1091,10 @@ export function resolveConfig(cwd: string, configPath?: string, overrides?: Conf
         config.impact.traceability.minSignalsPerTest = Math.max(2, config.impact.traceability.minSignalsPerTest);
         config.impact.aiFlow.enabled = true;
         config.impact.aiFlow.strict = true;
-        config.impact.aiFlow.provider = 'anthropic';
+        const provider = resolveMattermostProvider(config);
+        config.impact.aiFlow.provider = provider;
         config.impact.aiMapping.enabled = true;
-        config.impact.aiMapping.provider = 'anthropic';
+        config.impact.aiMapping.provider = provider;
         config.pipeline.mcp = true;
         config.pipeline.mcpOnly = true;
         config.pipeline.mcpAllowFallback = false;
