@@ -373,6 +373,7 @@ export async function mapAITestsToFlows(
         const response = await provider.generateText(prompt, {
             maxTokens: Math.max(500, config.maxTokens),
             temperature: Math.max(0, Math.min(1, config.temperature)),
+            timeout: 45_000,
             systemPrompt: 'Return only valid JSON. Do not include markdown fences unless necessary.',
         });
         parsed = extractJson(response.text);
