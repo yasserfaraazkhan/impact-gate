@@ -747,11 +747,20 @@ function summarizeCommandOutput(stdout: string, stderr: string): string {
 }
 
 function runCommand(command: string, args: string[], cwd: string, timeoutMs = 60 * 60 * 1000): CommandResult {
+    // When spawning `claude`, unset CLAUDECODE so nested invocations are allowed.
+    // Claude Code sets this variable to block nested sessions; child processes
+    // that spawn their own claude instance must run without it.
+    let env: NodeJS.ProcessEnv | undefined;
+    if (command === 'claude') {
+        const {CLAUDECODE: _, ...rest} = process.env;
+        env = rest;
+    }
     const result = spawnSync(command, args, {
         cwd,
         encoding: 'utf-8',
         timeout: timeoutMs,
         stdio: 'pipe',
+        ...(env ? {env} : {}),
     });
     return {
         status: result.status ?? 1,
