@@ -103,6 +103,8 @@ interface ParsedArgs {
     help: boolean;
     analyzeGenerate?: boolean;
     analyzeGenerateOutputDir?: string;
+    analyzeHeal?: boolean;
+    analyzeHealReport?: string;
 }
 
 const CONFIG_CANDIDATES = ['e2e-ai-agents.config.json', '.e2e-ai-agents.config.json'];
@@ -166,7 +168,7 @@ function printUsage(): void {
             '  e2e-ai-agents feedback --path <app-root> --feedback-input <json>',
             '  e2e-ai-agents traceability-capture --path <app-root> --traceability-report <json>',
             '  e2e-ai-agents traceability-ingest --path <app-root> --traceability-input <json>',
-            '  e2e-ai-agents analyze --path <app-root> [--tests-root <path>] [--since <ref>] [--generate] [--generate-output <dir>]',
+            '  e2e-ai-agents analyze --path <app-root> [--tests-root <path>] [--since <ref>] [--generate] [--generate-output <dir>] [--heal] [--heal-report <json>]',
             '  e2e-ai-agents llm-health',
             '',
             'Options:',
@@ -595,6 +597,15 @@ function parseArgs(argv: string[]): ParsedArgs {
             i += 1;
             continue;
         }
+        if (arg === '--heal') {
+            parsed.analyzeHeal = true;
+            continue;
+        }
+        if (arg === '--heal-report' && next) {
+            parsed.analyzeHealReport = next;
+            i += 1;
+            continue;
+        }
     }
 
     return parsed;
@@ -631,11 +642,14 @@ async function main(): Promise<void> {
         });
         const testsRoot = config.testsRoot || config.path;
 
-        const analyzeStages: Array<'preprocess' | 'impact' | 'coverage' | 'generation'> = [
+        const analyzeStages: Array<'preprocess' | 'impact' | 'coverage' | 'generation' | 'heal'> = [
             'preprocess', 'impact', 'coverage',
         ];
         if (args.analyzeGenerate) {
             analyzeStages.push('generation');
+        }
+        if (args.analyzeHeal || args.analyzeHealReport) {
+            analyzeStages.push('heal');
         }
 
         const result = await runPipeline({
@@ -651,6 +665,17 @@ async function main(): Promise<void> {
                       dryRun: args.dryRun,
                   }
                 : undefined,
+            heal: (args.analyzeHeal || args.analyzeHealReport)
+                ? {
+                      mcp: args.pipelineMcp ?? true,
+                      mcpAllowFallback: args.pipelineMcpAllowFallback ?? false,
+                      mcpOnly: args.pipelineMcpOnly ?? false,
+                      mcpCommandTimeoutMs: args.pipelineMcpTimeoutMs,
+                      mcpRetries: args.pipelineMcpRetries ?? 1,
+                      dryRun: args.dryRun,
+                  }
+                : undefined,
+            playwrightReportPath: args.analyzeHealReport,
         });
 
         // eslint-disable-next-line no-console
@@ -673,6 +698,12 @@ async function main(): Promise<void> {
                 // eslint-disable-next-line no-console
                 console.log(`  ${g.mode}: ${g.specPath}`);
             }
+        }
+        if (result.healResult) {
+            const healed = result.healResult.summary.results.filter((r) => r.healStatus === 'success').length;
+            const healFailed = result.healResult.summary.results.filter((r) => r.healStatus === 'failed').length;
+            // eslint-disable-next-line no-console
+            console.log(`Analyze heal targets: ${result.healResult.targets.length} (healed=${healed}, failed=${healFailed})`);
         }
         if (result.warnings.length > 0) {
             // eslint-disable-next-line no-console

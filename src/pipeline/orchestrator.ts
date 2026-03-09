@@ -8,6 +8,7 @@ import {preprocess, type PreprocessConfig} from './stage0_preprocess.js';
 import {runImpactStage, type ImpactConfig} from './stage1_impact.js';
 import {runCoverageStage, type CoverageConfig} from './stage2_coverage.js';
 import {runGenerationStage, type GenerationConfig, type GeneratedSpec} from './stage3_generation.js';
+import {runHealStage, resolveHealTargets, renderHealMarkdown, type HealConfig, type HealResult} from './stage4_heal.js';
 import {buildSummary, type FlowDecisionReport, type FlowDecision} from '../validation/output_schema.js';
 import {computeCannotDetermineRatio} from '../validation/guardrails.js';
 import type {RouteFamilyConfig} from '../knowledge/route_families.js';
@@ -23,7 +24,10 @@ export interface PipelineConfig {
     impact?: ImpactConfig;
     coverage?: CoverageConfig;
     generation?: GenerationConfig;
-    stages?: Array<'preprocess' | 'impact' | 'coverage' | 'generation'>;
+    heal?: HealConfig;
+    /** Path to a Playwright JSON report for heal-from-report mode */
+    playwrightReportPath?: string;
+    stages?: Array<'preprocess' | 'impact' | 'coverage' | 'generation' | 'heal'>;
 }
 
 export interface PipelineResult {
@@ -31,6 +35,7 @@ export interface PipelineResult {
     reportPath: string;
     warnings: string[];
     generated?: GeneratedSpec[];
+    healResult?: HealResult;
 }
 
 function createRunId(): string {
@@ -57,6 +62,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineResul
     const allWarnings: string[] = [];
     const stages = config.stages || ['preprocess', 'impact', 'coverage'];
     let generatedSpecs: GeneratedSpec[] | undefined;
+    let healResult: HealResult | undefined;
 
     // Step 1: Get changed files
     const gitResult = getChangedFiles(config.appPath, config.gitSince, {
@@ -142,6 +148,24 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineResul
         allWarnings.push(...generationResult.warnings);
     }
 
+    // Step 6: Heal stage — MCP-backed playwright-test-healer for failing/flaky specs
+    if (stages.includes('heal')) {
+        const healTargets = resolveHealTargets(
+            config.testsRoot,
+            {
+                playwrightReportPath: config.playwrightReportPath,
+                generatedSpecs,
+            },
+            decisions,
+        );
+        if (healTargets.length > 0) {
+            healResult = await runHealStage(config.testsRoot, healTargets, config.heal || {mcp: true});
+            allWarnings.push(...healResult.warnings);
+        } else {
+            allWarnings.push('Heal stage: no targets found (no failing specs in report, no generated specs).');
+        }
+    }
+
     // Build report
     const report: FlowDecisionReport = {
         runId,
@@ -157,12 +181,12 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineResul
         },
     };
 
-    const reportPath = writeReport(config.testsRoot, report);
+    const reportPath = writeReport(config.testsRoot, report, healResult);
 
-    return {report, reportPath, warnings: allWarnings, generated: generatedSpecs};
+    return {report, reportPath, warnings: allWarnings, generated: generatedSpecs, healResult};
 }
 
-function writeReport(testsRoot: string, report: FlowDecisionReport): string {
+function writeReport(testsRoot: string, report: FlowDecisionReport, healResult?: HealResult): string {
     const outputDir = join(testsRoot, '.e2e-ai-agents');
     if (!existsSync(outputDir)) {
         mkdirSync(outputDir, {recursive: true});
@@ -172,12 +196,12 @@ function writeReport(testsRoot: string, report: FlowDecisionReport): string {
     writeFileSync(jsonPath, JSON.stringify(report, null, 2), 'utf-8');
 
     const mdPath = join(outputDir, 'pipeline-report.md');
-    writeFileSync(mdPath, renderMarkdown(report), 'utf-8');
+    writeFileSync(mdPath, renderMarkdown(report, healResult), 'utf-8');
 
     return jsonPath;
 }
 
-function renderMarkdown(report: FlowDecisionReport): string {
+function renderMarkdown(report: FlowDecisionReport, healResult?: HealResult): string {
     const lines: string[] = [
         `# Impact Analysis Pipeline Report`,
         '',
@@ -250,6 +274,11 @@ function renderMarkdown(report: FlowDecisionReport): string {
             }
             lines.push('');
         }
+    }
+
+    if (healResult) {
+        lines.push('');
+        lines.push(renderHealMarkdown(healResult));
     }
 
     if (report.warnings.length > 0) {

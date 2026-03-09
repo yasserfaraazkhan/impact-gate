@@ -68,6 +68,10 @@ export {runGenerationStage} from './pipeline/stage3_generation.js';
 export type {GenerationConfig, GenerationResult, GeneratedSpec} from './pipeline/stage3_generation.js';
 export {buildGenerationPrompt, parseGenerationResponse, detectHallucinatedMethods} from './prompts/generation.js';
 export type {GenerationPromptContext, GenerationAgentResponse} from './prompts/generation.js';
+export {runHealStage, healFromReport, resolveHealTargets, renderHealMarkdown} from './pipeline/stage4_heal.js';
+export type {HealConfig, HealTarget, HealResult} from './pipeline/stage4_heal.js';
+export {buildHealPrompt, buildQualityFixPrompt} from './prompts/heal.js';
+export type {HealPromptContext} from './prompts/heal.js';
 
 // Knowledge modules
 export {loadRouteFamilyManifest, bindFilesToFamilies} from './knowledge/route_families.js';
