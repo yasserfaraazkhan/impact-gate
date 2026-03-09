@@ -25,6 +25,7 @@ import {ingestTraceabilityInput} from './agent/traceability_ingest.js';
 import {captureTraceabilityInput} from './agent/traceability_capture.js';
 import {runTargetedSpecHeal} from './agent/pipeline.js';
 import {extractPlaywrightUnstableSpecs} from './agent/playwright_report.js';
+import {runPipeline} from './pipeline/orchestrator.js';
 
 type Command =
     AnalysisMode
@@ -38,6 +39,7 @@ type Command =
     | 'feedback'
     | 'traceability-capture'
     | 'traceability-ingest'
+    | 'analyze'
     | 'llm-health';
 
 interface ParsedArgs {
@@ -99,6 +101,8 @@ interface ParsedArgs {
     dryRun?: boolean;
     apply: boolean;
     help: boolean;
+    analyzeGenerate?: boolean;
+    analyzeGenerateOutputDir?: string;
 }
 
 const CONFIG_CANDIDATES = ['e2e-ai-agents.config.json', '.e2e-ai-agents.config.json'];
@@ -162,6 +166,7 @@ function printUsage(): void {
             '  e2e-ai-agents feedback --path <app-root> --feedback-input <json>',
             '  e2e-ai-agents traceability-capture --path <app-root> --traceability-report <json>',
             '  e2e-ai-agents traceability-ingest --path <app-root> --traceability-input <json>',
+            '  e2e-ai-agents analyze --path <app-root> [--tests-root <path>] [--since <ref>] [--generate] [--generate-output <dir>]',
             '  e2e-ai-agents llm-health',
             '',
             'Options:',
@@ -250,6 +255,7 @@ function parseArgs(argv: string[]): ParsedArgs {
             || command === 'feedback'
             || command === 'traceability-capture'
             || command === 'traceability-ingest'
+            || command === 'analyze'
             || command === 'llm-health'
     ) {
         parsed.command = command;
@@ -580,6 +586,15 @@ function parseArgs(argv: string[]): ParsedArgs {
             parsed.dryRun = true;
             continue;
         }
+        if (arg === '--generate') {
+            parsed.analyzeGenerate = true;
+            continue;
+        }
+        if (arg === '--generate-output' && next) {
+            parsed.analyzeGenerateOutputDir = next;
+            i += 1;
+            continue;
+        }
     }
 
     return parsed;
@@ -596,6 +611,73 @@ async function main(): Promise<void> {
 
     if (args.command === 'llm-health') {
         await runLlmHealth();
+        return;
+    }
+
+    if (args.command === 'analyze') {
+        if (!args.path && !autoConfig) {
+            // eslint-disable-next-line no-console
+            console.error('Error: --path is required for analyze command');
+            process.exit(1);
+        }
+
+        const {config} = resolveConfig(process.cwd(), autoConfig, {
+            path: args.path,
+            profile: args.profile,
+            testsRoot: args.testsRoot,
+            mode: 'impact',
+            gitSince: args.gitSince,
+            llmProvider: args.llmProvider,
+        });
+        const testsRoot = config.testsRoot || config.path;
+
+        const analyzeStages: Array<'preprocess' | 'impact' | 'coverage' | 'generation'> = [
+            'preprocess', 'impact', 'coverage',
+        ];
+        if (args.analyzeGenerate) {
+            analyzeStages.push('generation');
+        }
+
+        const result = await runPipeline({
+            appPath: config.path,
+            testsRoot,
+            gitSince: args.gitSince || config.git.since,
+            routeFamilies: config.routeFamilies,
+            apiSurface: config.apiSurface,
+            stages: analyzeStages,
+            generation: args.analyzeGenerate
+                ? {
+                      defaultOutputDir: args.analyzeGenerateOutputDir || 'specs/functional/ai-assisted',
+                      dryRun: args.dryRun,
+                  }
+                : undefined,
+        });
+
+        // eslint-disable-next-line no-console
+        console.log(`Analyze report: ${result.reportPath}`);
+        // eslint-disable-next-line no-console
+        console.log(`Analyze flows identified: ${result.report.summary.flowsIdentified}`);
+        // eslint-disable-next-line no-console
+        console.log(`Analyze flows covered: ${result.report.summary.flowsCovered}`);
+        // eslint-disable-next-line no-console
+        console.log(`Analyze flows uncovered: ${result.report.summary.flowsUncovered}`);
+        // eslint-disable-next-line no-console
+        console.log(`Analyze overall confidence: ${result.report.summary.overallConfidence}`);
+        // eslint-disable-next-line no-console
+        console.log(`Analyze route families: ${result.report.summary.routeFamiliesImpacted.join(', ') || 'none'}`);
+        if (result.generated && result.generated.length > 0) {
+            const written = result.generated.filter((g) => g.written).length;
+            // eslint-disable-next-line no-console
+            console.log(`Analyze generated specs: ${result.generated.length} (written=${written})`);
+            for (const g of result.generated) {
+                // eslint-disable-next-line no-console
+                console.log(`  ${g.mode}: ${g.specPath}`);
+            }
+        }
+        if (result.warnings.length > 0) {
+            // eslint-disable-next-line no-console
+            console.log(`Analyze warnings: ${result.warnings.join(' | ')}`);
+        }
         return;
     }
 

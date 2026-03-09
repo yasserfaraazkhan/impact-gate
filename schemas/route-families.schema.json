@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Route Families Manifest",
+  "description": "Maps Mattermost route families to file patterns, page objects, components, and nested features.",
+  "type": "object",
+  "required": ["families"],
+  "properties": {
+    "families": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/RouteFamily"
+      },
+      "minItems": 1
+    }
+  },
+  "$defs": {
+    "RouteFamily": {
+      "type": "object",
+      "required": ["id", "routes"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "description": "Unique family identifier, e.g. 'channels', 'system_console'"
+        },
+        "routes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "URL patterns this family owns, e.g. '/{team}/channels/{channel}'"
+        },
+        "pageObjects": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Page object class names available for this family"
+        },
+        "components": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Component class names relevant to this family"
+        },
+        "webappPaths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Glob patterns matching webapp source files for this family"
+        },
+        "serverPaths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Glob patterns matching server source files for this family"
+        },
+        "specDirs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Directories containing E2E specs for this family"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Test tags associated with this family"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RouteFeature"
+          },
+          "description": "Nested features within this family for finer-grained binding"
+        }
+      }
+    },
+    "RouteFeature": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Feature identifier, e.g. 'system_console/permissions'"
+        },
+        "routes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Specific routes for this feature within the family"
+        },
+        "webappPaths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Glob patterns for webapp files specific to this feature"
+        },
+        "serverPaths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Glob patterns for server files specific to this feature"
+        },
+        "specDirs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Spec directories for this feature"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Test tags for this feature"
+        }
+      }
+    }
+  }
+}

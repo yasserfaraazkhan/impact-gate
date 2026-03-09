@@ -156,6 +156,18 @@ export interface GitConfig {
     includeUncommitted?: boolean;
 }
 
+export interface RouteFamiliesConfig {
+    manifestPath?: string;
+    strict?: boolean;
+}
+
+export interface ApiSurfaceConfig {
+    enabled: boolean;
+    pageObjectsDir?: string;
+    componentsDir?: string;
+    cachePath?: string;
+}
+
 export interface AgentConfig {
     path: string;
     profile: AnalysisProfile;
@@ -187,6 +199,8 @@ export interface AgentConfig {
     audience: AudienceConfig;
     blastRadius: BlastRadiusConfig;
     git: GitConfig;
+    routeFamilies: RouteFamiliesConfig;
+    apiSurface: ApiSurfaceConfig;
 }
 
 export interface ResolvedConfig {
@@ -362,6 +376,12 @@ const DEFAULT_CONFIG: AgentConfig = {
         since: 'HEAD~1',
         includeUncommitted: true,
     },
+    routeFamilies: {
+        strict: false,
+    },
+    apiSurface: {
+        enabled: false,
+    },
 };
 
 function normalizeMattermostProvider(
@@ -515,6 +535,14 @@ function mergeConfig(base: AgentConfig, patch: Partial<AgentConfig>): AgentConfi
         git: {
             ...base.git,
             ...(patch.git || {}),
+        },
+        routeFamilies: {
+            ...base.routeFamilies,
+            ...(patch.routeFamilies || {}),
+        },
+        apiSurface: {
+            ...base.apiSurface,
+            ...(patch.apiSurface || {}),
         },
     };
 }
@@ -936,6 +964,24 @@ function extractConfigPatch(raw: Record<string, unknown>): Partial<AgentConfig> 
         };
     }
 
+    if (raw.routeFamilies && typeof raw.routeFamilies === 'object') {
+        const rf = raw.routeFamilies as Record<string, unknown>;
+        patch.routeFamilies = {
+            manifestPath: typeof rf.manifestPath === 'string' ? rf.manifestPath : undefined,
+            strict: rf.strict !== undefined ? Boolean(rf.strict) : DEFAULT_CONFIG.routeFamilies.strict,
+        };
+    }
+
+    if (raw.apiSurface && typeof raw.apiSurface === 'object') {
+        const api = raw.apiSurface as Record<string, unknown>;
+        patch.apiSurface = {
+            enabled: api.enabled !== undefined ? Boolean(api.enabled) : DEFAULT_CONFIG.apiSurface.enabled,
+            pageObjectsDir: typeof api.pageObjectsDir === 'string' ? api.pageObjectsDir : undefined,
+            componentsDir: typeof api.componentsDir === 'string' ? api.componentsDir : undefined,
+            cachePath: typeof api.cachePath === 'string' ? api.cachePath : undefined,
+        };
+    }
+
     return patch;
 }
 
@@ -1105,6 +1151,8 @@ export function resolveConfig(cwd: string, configPath?: string, overrides?: Conf
         config.policy.forceFullOnWarningsAtOrAbove = 1;
         config.policy.forceFullOnP0WithGaps = true;
         config.policy.forceFullOnRiskyFiles = true;
+        config.routeFamilies.strict = true;
+        config.apiSurface.enabled = true;
     }
 
     const resolvedRoot = resolve(configDir, config.path);
