@@ -211,9 +211,9 @@ function applyMattermostEvidencePolicy(
         };
     }
 
-    if (state.testMappingSource !== 'catalog' && !state.traceabilityStats?.manifestFound) {
+    if (state.testMappingSource !== 'catalog' && state.testMappingSource !== 'ai' && !state.traceabilityStats?.manifestFound) {
         throw new Error(
-            'Mattermost profile requires traceability evidence. Generate or refresh traceability manifest before impact run.',
+            'Mattermost profile requires traceability evidence or AI mapping. Generate or refresh traceability manifest, or enable impact.aiMapping in config.',
         );
     }
 
