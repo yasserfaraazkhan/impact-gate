@@ -274,6 +274,13 @@ function buildDecision(
             summary: `Detected ${impact.gaps.length} uncovered P0/P1 flow(s). Add or update tests before merge.`,
         };
     }
+    if (impact.changedFiles.length === 0 && impact.flows.length === 0) {
+        return {
+            action: 'safe-to-merge',
+            title: 'Safe to merge',
+            summary: 'No app file changes detected — no E2E coverage required for this change set.',
+        };
+    }
     if (runSet === 'smoke' && confidence >= policy.safeMergeMinConfidence && impact.warnings.length === 0) {
         return {
             action: 'safe-to-merge',
