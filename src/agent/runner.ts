@@ -385,7 +385,13 @@ export async function runImpact(_config: AgentConfig, _options: RunOptions): Pro
         }
     } else {
         flows = analysis.flows;
-        if (_config.impact.aiFlow.enabled) {
+        if (changedAppFiles.length === 0) {
+            // No app files changed (e.g. only CI config or e2e files changed).
+            // Treat as zero app impact without calling AI — the gate should pass cleanly.
+            flows = [];
+            flowMappingSource = 'ai';
+            warnings.push('No app files changed; skipping AI flow analysis.');
+        } else if (_config.impact.aiFlow.enabled) {
             const aiFlow = await mapAIFlowsFromFiles(
                 _config.path,
                 testsRoot,
@@ -705,7 +711,13 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
         }
     } else {
         flows = analysis.flows;
-        if (_config.impact.aiFlow.enabled) {
+        if (changedAppFiles.length === 0) {
+            // No app files changed (e.g. only CI config or e2e files changed).
+            // Treat as zero app impact without calling AI — the gate should pass cleanly.
+            flows = [];
+            flowMappingSource = 'ai';
+            warnings.push('No app files changed; skipping AI flow analysis.');
+        } else if (_config.impact.aiFlow.enabled) {
             const aiFlow = await mapAIFlowsFromFiles(
                 _config.path,
                 testsRoot,
