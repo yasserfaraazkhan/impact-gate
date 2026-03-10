@@ -451,8 +451,7 @@ export async function mapAITestsToFlows(
         '- Treat single-keyword or broad subsystem overlap as insufficient evidence.',
         '- If the candidate path overlap is weak or ambiguous, return tests: [].',
         '- If unsure for a flow, return tests: [].',
-        '- For every flow you map to tests, read CANDIDATE_TEST_CONTENT and list up to 5 specific test scenarios NOT yet covered by those tests. Write each as a short imperative statement (e.g. "Search messages with date filter"). Only include missingScenarios you can clearly identify; return [] if unsure.',
-        '- If tests: [], set missingScenarios: [] as well — do not invent scenarios for unmapped flows.',
+        '- For EVERY flow (whether or not tests were found), return missingScenarios with 3-5 key user-facing test scenarios that must be covered. Write each as a short imperative statement starting with a verb (e.g. "Search for a message by keyword and verify results appear"). For mapped flows, focus on what the existing tests do NOT cover; for unmapped flows, describe the core scenarios a new test should include.',
         '',
         `FLOWS (${prioritizedFlows.length}):`,
         JSON.stringify(
@@ -526,6 +525,18 @@ export async function mapAITestsToFlows(
         if (!entry || !allowedFlowIds.has(entry.flowId) || !Array.isArray(entry.tests)) {
             continue;
         }
+
+        // Capture scenario suggestions for ALL flows up-front — before any early returns —
+        // so unmapped flows (tests: []) still get their suggested scenarios in the gap report.
+        if (Array.isArray(entry.missingScenarios) && entry.missingScenarios.length > 0) {
+            const scenarios = entry.missingScenarios
+                .filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+                .slice(0, 5);
+            if (scenarios.length > 0) {
+                scenarioGaps.set(entry.flowId, scenarios);
+            }
+        }
+
         const flow = prioritizedFlowsById.get(entry.flowId);
         const confidence = typeof entry.confidence === 'number' ? entry.confidence : undefined;
         const allowedTestsForFlow = candidateSelection.byFlow.get(entry.flowId);
@@ -547,15 +558,6 @@ export async function mapAITestsToFlows(
         mapped.set(entry.flowId, valid);
         for (const testPath of valid) {
             matchedTests.add(testPath);
-        }
-        // Store missing scenarios identified by the AI for this flow.
-        if (Array.isArray(entry.missingScenarios) && entry.missingScenarios.length > 0) {
-            const scenarios = entry.missingScenarios
-                .filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
-                .slice(0, 5);
-            if (scenarios.length > 0) {
-                scenarioGaps.set(entry.flowId, scenarios);
-            }
         }
     }
 
