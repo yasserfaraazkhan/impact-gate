@@ -1152,9 +1152,20 @@ async function main(): Promise<void> {
     }
 
     if (args.command === 'suggest' || args.command === 'plan') {
-        await runImpact(config, {apply: args.apply});
         const reportRoot = config.testsRoot || config.path;
         const impactPath = join(reportRoot, '.e2e-ai-agents', 'impact.json');
+        try {
+            await runImpact(config, {apply: args.apply});
+        } catch (err) {
+            // If impact analysis already ran (e.g. a prior CI step wrote impact.json),
+            // fall back to that data rather than failing the plan step.
+            if (existsSync(impactPath)) {
+                // eslint-disable-next-line no-console
+                console.warn(`Impact re-run failed (${err instanceof Error ? err.message : String(err)}); using existing impact.json.`);
+            } else {
+                throw err;
+            }
+        }
         if (!existsSync(impactPath)) {
             throw new Error(`Impact report not found at ${impactPath}`);
         }
