@@ -190,6 +190,23 @@ function isStrongCandidateMatch(flow: FlowImpact, matchedKeywords: string[]): bo
     return keywords.length === 1 && matchedKeywords[0].length >= MIN_SINGLE_KEYWORD_LENGTH;
 }
 
+// Stop-words excluded from content-fallback keyword matching.
+const CONTENT_FALLBACK_STOP_WORDS = new Set(['and', 'for', 'the', 'to', 'of', 'on', 'at', 'with', 'in', 'a', 'an']);
+
+// Returns raw (unfiltered) tokens for flows where flowKeywords() returns nothing.
+// Used exclusively for content-title matching when all standard keywords are low-signal.
+// Empty array is returned when the flow already has effective path keywords.
+function contentFallbackKeywords(flow: FlowImpact): string[] {
+    if (flowKeywords(flow).length > 0) {
+        return [];
+    }
+    return uniqueTokens([
+        ...tokenize(flow.id || ''),
+        ...tokenize(flow.name || ''),
+        ...(flow.keywords || []),
+    ]).filter((k) => k.length >= 3 && !CONTENT_FALLBACK_STOP_WORDS.has(k));
+}
+
 // Extract test/describe/it title strings from file content for semantic matching.
 function extractTestTitles(content: string): string {
     const titles: string[] = [];
@@ -270,7 +287,40 @@ function selectCandidateTests(flows: FlowImpact[], tests: TestFile[], maxCandida
             contentCandidates.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
         }
 
-        const allCandidates = [...strongCandidates, ...contentCandidates.slice(0, perFlowLimit)];
+        // Pass 2b: comprehensive fallback for all-low-signal flows.
+        // When flowKeywords() is empty (all tokens are low-signal), flowKeywords-based
+        // matching in both Pass 1 and Pass 2 yields nothing. As a last resort, search
+        // test titles using the raw unfiltered tokens from the flow ID/name, but require
+        // ALL tokens to match simultaneously — they are individually weak signals so the
+        // full conjunction is needed to establish behavioral coverage evidence.
+        const fallbackCandidates: CandidateTestSignal[] = [];
+        if (strongCandidates.length === 0 && contentCandidates.length === 0) {
+            const fallbackKws = contentFallbackKeywords(flow);
+            if (fallbackKws.length > 0) {
+                for (const testPath of normalizedTests) {
+                    const testFile = testByNormalizedPath.get(testPath);
+                    if (!testFile?.content) {
+                        continue;
+                    }
+                    const haystack = extractTestTitles(testFile.content).toLowerCase();
+                    if (!haystack) {
+                        continue;
+                    }
+                    const matched = fallbackKws.filter((k) => haystack.includes(k));
+                    if (matched.length < fallbackKws.length) {
+                        continue; // all tokens must appear in at least one test title
+                    }
+                    fallbackCandidates.push({path: testPath, score: matched.length, matchedKeywords: matched});
+                }
+                fallbackCandidates.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+            }
+        }
+
+        const allCandidates = [
+            ...strongCandidates,
+            ...contentCandidates.slice(0, perFlowLimit),
+            ...fallbackCandidates.slice(0, perFlowLimit),
+        ];
 
         if (allCandidates.length === 0) {
             // Exact-name fallback: if the flow ID has no effective keywords (all tokens are
@@ -446,7 +496,7 @@ export async function mapAITestsToFlows(
         'Rules:',
         '- Keep at most 5 tests per flow.',
         '- Use exact flowId values from FLOWS.',
-        '- Only map a test when its path clearly matches the flow scenario. Generic subsystem similarity is not enough.',
+        '- Map a test when you have clear evidence it covers the flow — from the file path OR from test titles in the content. Behavioral coverage via test titles is sufficient even when the filename does not exactly match the flow (e.g. search_user_post_spec.js covers search_messages if its titles assert searching for messages). Generic subsystem similarity without behavioral evidence is not enough.',
         '- A flow may only map to tests listed under FLOW_CANDIDATE_SIGNALS for that flow.',
         '- Treat single-keyword or broad subsystem overlap as insufficient evidence.',
         '- If the candidate path overlap is weak or ambiguous, return tests: [].',
