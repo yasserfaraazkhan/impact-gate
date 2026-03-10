@@ -412,98 +412,28 @@ export function writePlanReport(appRoot: string, plan: PlanReport): string {
 
 export function renderCiSummaryMarkdown(plan: PlanReport): string {
     const lines: string[] = [];
-    lines.push(`## E2E Agent Recommendation: ${plan.decision.title}`);
+    const {p0Flows, p1Flows, uncoveredP0P1Flows, changedFiles, impactedFlows} = plan.metrics;
+    const mustAddTests = plan.decision.action === 'must-add-tests';
+
+    const statusEmoji = mustAddTests ? '🔴' : plan.decision.action === 'safe-to-merge' ? '🟢' : '🟡';
+    lines.push(`## ${statusEmoji} E2E Coverage: ${plan.decision.title}`);
     lines.push('');
-    lines.push(`- Action: \`${plan.decision.action}\``);
-    lines.push(`- Run set: \`${plan.runSet}\``);
-    lines.push(`- Confidence: \`${plan.confidence}\``);
-    lines.push(`- Summary: ${plan.decision.summary}`);
-    lines.push(`- Enforcement: mode=\`${plan.enforcement.mode}\`, shouldFail=\`${plan.enforcement.shouldFail}\``);
-    lines.push(`- Enforcement detail: ${plan.enforcement.summary}`);
+    lines.push(`${plan.decision.summary}`);
+    lines.push('');
+    lines.push(
+        `**${changedFiles}** files changed → **${impactedFlows}** flows impacted` +
+        (p0Flows > 0 || p1Flows > 0 ? ` (P0: ${p0Flows}, P1: ${p1Flows})` : ''),
+    );
 
-    if (plan.policy.triggeredRules.length > 0) {
-        lines.push(`- Policy triggers: ${plan.policy.triggeredRules.join(', ')}`);
-    }
-    if (plan.policy.riskyFiles.length > 0) {
-        lines.push(`- Risky files: ${plan.policy.riskyFiles.join(', ')}`);
-    }
-
-    if (plan.recommendedTests.length > 0) {
+    if (mustAddTests && plan.requiredNewTests.length > 0) {
         lines.push('');
-        lines.push('### Recommended Tests to Run');
-        for (const test of plan.recommendedTests) {
-            lines.push(`- ${test}`);
-        }
-    }
-
-    if (plan.requiredNewTests.length > 0) {
+        lines.push('### ⚠️ Add E2E tests for these uncovered P0/P1 flows');
         lines.push('');
-        lines.push('### Required New Tests');
+        lines.push(`The following ${uncoveredP0P1Flows} flow(s) have no test coverage and must be covered before merge:`);
+        lines.push('');
         for (const gap of plan.requiredNewTests) {
             lines.push(`- ${gap}`);
         }
-    }
-
-    if (plan.nextActions) {
-        lines.push('');
-        lines.push('### PR Actions');
-        if (plan.nextActions.runRecommendedTests) {
-            lines.push(`- Run recommended tests: \`${plan.nextActions.runRecommendedTests}\``);
-        } else if (plan.nextActions.runSmokeSuite) {
-            lines.push(`- Run smoke fallback: \`${plan.nextActions.runSmokeSuite}\``);
-        }
-        if (plan.nextActions.approveAndGenerate || plan.nextActions.generateMissingTests) {
-            lines.push(`- Approve and generate missing tests: \`${plan.nextActions.approveAndGenerate || plan.nextActions.generateMissingTests}\``);
-        }
-        if (plan.nextActions.healGeneratedTests) {
-            lines.push(`- Heal generated tests: \`${plan.nextActions.healGeneratedTests}\``);
-        }
-        if (plan.nextActions.commitGeneratedTests) {
-            lines.push(`- Commit generated artifacts: \`${plan.nextActions.commitGeneratedTests}\``);
-        }
-        if (plan.nextActions.openPullRequest) {
-            lines.push(`- Open PR with generated updates: \`${plan.nextActions.openPullRequest}\``);
-        }
-    }
-
-    if (plan.insights?.qualityGates) {
-        if (plan.insights.qualityGates.failed.length > 0) {
-            lines.push('');
-            lines.push('### Quality Gates Failed');
-            for (const gate of plan.insights.qualityGates.failed) {
-                lines.push(`- ${gate.name}${gate.details ? `: ${gate.details}` : ''}`);
-            }
-        }
-        if (plan.insights.qualityGates.warnings.length > 0) {
-            lines.push('');
-            lines.push('### Quality Gate Warnings');
-            for (const gate of plan.insights.qualityGates.warnings) {
-                lines.push(`- ${gate.name}${gate.details ? `: ${gate.details}` : ''}`);
-            }
-        }
-    }
-
-    if (plan.insights?.flaky && plan.insights.flaky.highRiskRecommendedTests.length > 0) {
-        lines.push('');
-        lines.push('### Flaky Risk Alerts');
-        for (const item of plan.insights.flaky.highRiskRecommendedTests) {
-            const rate = item.flakeRate30d !== undefined ? item.flakeRate30d : item.flakeRate;
-            const trend = item.trend ? `, trend=${item.trend}` : '';
-            const subsystem = item.subsystem ? `, subsystem=${item.subsystem}` : '';
-            const qstate = item.quarantineState && item.quarantineState !== 'none' ? `, quarantine=${item.quarantineState}` : '';
-            lines.push(`- ${item.test} (flakeRate=${rate}${trend}${subsystem}${qstate})`);
-        }
-        if (plan.insights.flaky.ownerMentions && plan.insights.flaky.ownerMentions.length > 0) {
-            lines.push(`- Notify owners: ${plan.insights.flaky.ownerMentions.join(', ')}`);
-        }
-    }
-
-    if (plan.insights?.calibration) {
-        lines.push('');
-        lines.push('### Historical Calibration');
-        lines.push(
-            `- precision=${plan.insights.calibration.precision}, recall=${plan.insights.calibration.recall}, falseNegativeRate=${plan.insights.calibration.falseNegativeRate}`,
-        );
     }
 
     return lines.join('\n');
