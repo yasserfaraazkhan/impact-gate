@@ -215,7 +215,20 @@ function selectCandidateTests(flows: FlowImpact[], tests: TestFile[], maxCandida
             .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
             .slice(0, perFlowLimit);
         if (strongCandidates.length === 0) {
-            if (scored.length > 0) {
+            // Exact-name fallback: if the flow ID has no effective keywords (all tokens are
+            // low-signal, e.g. view_user_group_modal), look for a test whose path contains
+            // the exact flow ID as a directory name or filename without extension.
+            const exactMatchPath = normalizedTests.find((testPath) => {
+                const segments = testPath.split('/');
+                return segments.some(
+                    (seg) => seg === flow.id || seg.replace(/\.spec\.[tj]sx?$/, '') === flow.id,
+                );
+            });
+            if (exactMatchPath) {
+                byFlow.set(flow.id, new Set([exactMatchPath]));
+                evidence.push({flowId: flow.id, candidates: [{path: exactMatchPath, score: 999, matchedKeywords: [flow.id]}]});
+                selected.add(exactMatchPath);
+            } else if (scored.length > 0) {
                 warnings.push(`AI mapping withheld weak path-only candidates for ${flow.id}; traceability evidence is required to reuse existing tests.`);
             }
             continue;
@@ -434,6 +447,28 @@ export async function mapAITestsToFlows(
         mapped.set(entry.flowId, valid);
         for (const testPath of valid) {
             matchedTests.add(testPath);
+        }
+    }
+
+    // Post-AI exact-name fallback: for any flow still uncovered, if a candidate test
+    // was matched by exact name (score 999), map it directly regardless of AI confidence.
+    for (const flow of prioritizedFlows) {
+        if (mapped.has(flow.id)) {
+            continue;
+        }
+        const candidates = candidateSelection.byFlow.get(flow.id);
+        if (!candidates) {
+            continue;
+        }
+        const exactMatch = Array.from(candidates).find((testPath) => {
+            const segments = testPath.split('/');
+            return segments.some(
+                (seg) => seg === flow.id || seg.replace(/\.spec\.[tj]sx?$/, '') === flow.id,
+            );
+        });
+        if (exactMatch) {
+            mapped.set(flow.id, [exactMatch]);
+            matchedTests.add(exactMatch);
         }
     }
 
