@@ -22,6 +22,21 @@ export interface DecisionSummary {
     summary: string;
 }
 
+export interface GapDetail {
+    id: string;
+    name: string;
+    priority: string;
+    reasons: string[];
+    files: string[];
+}
+
+export interface CoveredFlowSummary {
+    id: string;
+    name: string;
+    priority: string;
+    coveredBy: string[];
+}
+
 export interface PlanReport {
     schemaVersion: '1.0.0';
     runId: string;
@@ -33,6 +48,8 @@ export interface PlanReport {
     reasons: string[];
     recommendedTests: string[];
     requiredNewTests: string[];
+    gapDetails: GapDetail[];
+    coveredFlows: CoveredFlowSummary[];
     policy: PolicyEvaluation;
     decision: DecisionSummary;
     enforcement: {
@@ -264,10 +281,14 @@ function buildDecision(
             summary: 'No critical coverage gaps were detected and policy confidence is high.',
         };
     }
+    const coveredCount = impact.coverage.filter((c) => c.coveredBy.length > 0).length;
+    const coverageSuffix = coveredCount > 0
+        ? ` All ${coveredCount} impacted flow(s) have test coverage.`
+        : '';
     return {
         action: 'run-now',
         title: 'Run now',
-        summary: `Execute the ${runSet} suite for this change set.`,
+        summary: `Impacted flows are covered by existing tests.${coverageSuffix} Verify with the E2E suite before merge.`,
     };
 }
 
@@ -341,6 +362,22 @@ export function buildPlanFromImpactReport(impact: ReportData, policyOverride?: P
     const enforcement = evaluateEnforcement(decision, policy);
 
     const requiredNewTests = impact.gaps.map((flow) => `${flow.id}: ${flow.name}`);
+    const gapDetails: GapDetail[] = impact.gaps.map((flow) => ({
+        id: flow.id,
+        name: flow.name,
+        priority: flow.priority,
+        reasons: (flow.reasons || []).slice(0, 5),
+        files: (flow.files || []).slice(0, 6),
+    }));
+    const coveredFlowIds = new Set(impact.gaps.map((g) => g.id));
+    const coveredFlows: CoveredFlowSummary[] = impact.coverage
+        .filter((c) => c.coveredBy.length > 0 && !coveredFlowIds.has(c.flowId))
+        .map((c) => ({
+            id: c.flowId,
+            name: c.flowName,
+            priority: c.priority,
+            coveredBy: c.coveredBy.slice(0, 3),
+        }));
     const sourceRunId = impact.runMetadata?.runId;
     const runId = `plan-${sourceRunId || Date.now().toString(36)}`;
 
@@ -355,6 +392,8 @@ export function buildPlanFromImpactReport(impact: ReportData, policyOverride?: P
         reasons: runSet.reasons,
         recommendedTests: impact.recommendedTests || [],
         requiredNewTests,
+        gapDetails,
+        coveredFlows,
         policy: {
             riskyFiles: runSet.riskyFiles,
             triggeredRules: runSet.triggeredRules,
