@@ -450,17 +450,16 @@ export async function mapAITestsToFlows(
         }
     }
 
-    // Post-AI exact-name fallback: for any flow still uncovered, if a candidate test
-    // was matched by exact name (score 999), map it directly regardless of AI confidence.
+    // Post-AI exact-name fallback: for any flow still uncovered, search all test paths
+    // for a file or directory whose name exactly matches the flow ID. This handles flows
+    // whose keywords are all low-signal (e.g. view_user_group_modal) but whose test file
+    // is named after the flow and is therefore unambiguous coverage evidence.
+    const allNormalizedTests = tests.map((t) => normalizePath(t.path)).filter(Boolean);
     for (const flow of prioritizedFlows) {
         if (mapped.has(flow.id)) {
             continue;
         }
-        const candidates = candidateSelection.byFlow.get(flow.id);
-        if (!candidates) {
-            continue;
-        }
-        const exactMatch = Array.from(candidates).find((testPath) => {
+        const exactMatch = allNormalizedTests.find((testPath) => {
             const segments = testPath.split('/');
             return segments.some(
                 (seg) => seg === flow.id || seg.replace(/\.spec\.[tj]sx?$/, '') === flow.id,
