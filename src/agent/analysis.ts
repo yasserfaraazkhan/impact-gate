@@ -59,6 +59,8 @@ export interface FlowImpact {
     priorityFloor?: FlowPriority;
     subsystemRiskBoost?: number;
     subsystemRiskRules?: string[];
+    existingTests?: string[];
+    missingScenarios?: string[];
 }
 
 export interface ImpactAnalysisResult {

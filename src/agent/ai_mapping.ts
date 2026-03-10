@@ -14,6 +14,7 @@ interface AIFlowMappingEntry {
     tests: string[];
     reason?: string;
     confidence?: number;
+    missingScenarios?: string[];
 }
 
 interface AIFlowMappingResponse {
@@ -49,7 +50,7 @@ const PRIORITY_RANK: Record<string, number> = {
     P2: 2,
 };
 
-const MIN_SINGLE_KEYWORD_LENGTH = 8;
+const MIN_SINGLE_KEYWORD_LENGTH = 6;
 
 const LOW_SIGNAL_FLOW_KEYWORDS = new Set([
     'app',
@@ -248,7 +249,35 @@ function selectCandidateTests(flows: FlowImpact[], tests: TestFile[], maxCandida
     };
 }
 
-function buildCoverage(flows: FlowImpact[], mapped: Map<string, string[]>): FlowCoverage[] {
+function readCandidateTestContents(testsRoot: string, testPaths: string[]): Array<{path: string; content: string}> {
+    const result: Array<{path: string; content: string}> = [];
+    const maxCharsPerFile = 6000;
+    const maxTotalChars = 24000;
+    let totalChars = 0;
+    for (const testPath of testPaths.slice(0, 6)) {
+        if (totalChars >= maxTotalChars) {
+            break;
+        }
+        const candidates = isAbsolute(testPath) ? [testPath] : [join(testsRoot, testPath)];
+        for (const fullPath of candidates) {
+            if (!existsSync(fullPath)) {
+                continue;
+            }
+            const content = readFileSync(fullPath, 'utf-8').trim();
+            if (!content) {
+                continue;
+            }
+            const remaining = Math.max(0, maxTotalChars - totalChars);
+            const clipped = content.slice(0, Math.min(maxCharsPerFile, remaining));
+            result.push({path: testPath, content: clipped});
+            totalChars += clipped.length;
+            break;
+        }
+    }
+    return result;
+}
+
+function buildCoverage(flows: FlowImpact[], mapped: Map<string, string[]>, scenarioGaps: Map<string, string[]>): FlowCoverage[] {
     return flows.map((flow) => ({
         flowId: flow.id,
         flowName: flow.name,
@@ -256,6 +285,7 @@ function buildCoverage(flows: FlowImpact[], mapped: Map<string, string[]>): Flow
         coveredBy: mapped.get(flow.id) || [],
         score: (mapped.get(flow.id) || []).length,
         source: 'ai',
+        missingScenarios: scenarioGaps.get(flow.id) || [],
     }));
 }
 
@@ -322,6 +352,13 @@ export async function mapAITestsToFlows(
         warnings.push('AI mapping context files were not found; continuing without optional markdown context.');
     }
 
+    // Read candidate test file contents so the AI can reason about what scenarios
+    // are already covered and which ones are still missing.
+    const candidateTestContents = readCandidateTestContents(testsRoot, candidateTests);
+    const testContentBlock = candidateTestContents.length > 0
+        ? candidateTestContents.map((entry) => `### Test: ${entry.path}\n\`\`\`typescript\n${entry.content}\n\`\`\``).join('\n\n')
+        : 'No candidate test file contents could be read.';
+
     let provider;
     try {
         provider = config.provider === 'auto'
@@ -347,7 +384,7 @@ export async function mapAITestsToFlows(
         'Only use tests from CANDIDATE_TESTS. Never invent paths.',
         'Prefer no mapping over a broad or generic mapping.',
         'Return strict JSON only with this shape:',
-        '{"mappings":[{"flowId":"<flow id>","tests":["specs/..."],"reason":"short reason","confidence":0.0}]}',
+        '{"mappings":[{"flowId":"<flow id>","tests":["specs/..."],"reason":"short reason","confidence":0.0,"missingScenarios":["scenario description"]}]}',
         '',
         'Rules:',
         '- Keep at most 5 tests per flow.',
@@ -357,6 +394,8 @@ export async function mapAITestsToFlows(
         '- Treat single-keyword or broad subsystem overlap as insufficient evidence.',
         '- If the candidate path overlap is weak or ambiguous, return tests: [].',
         '- If unsure for a flow, return tests: [].',
+        '- For every flow you map to tests, read CANDIDATE_TEST_CONTENT and list up to 5 specific test scenarios NOT yet covered by those tests. Write each as a short imperative statement (e.g. "Search messages with date filter"). Only include missingScenarios you can clearly identify; return [] if unsure.',
+        '- If tests: [], set missingScenarios: [] as well — do not invent scenarios for unmapped flows.',
         '',
         `FLOWS (${prioritizedFlows.length}):`,
         JSON.stringify(
@@ -377,6 +416,9 @@ export async function mapAITestsToFlows(
         '',
         `FLOW_CANDIDATE_SIGNALS (${candidateSelection.evidence.length}):`,
         JSON.stringify(candidateSelection.evidence, null, 2),
+        '',
+        `CANDIDATE_TEST_CONTENT (${candidateTestContents.length} file(s)):`,
+        testContentBlock,
         '',
         contextBlock,
     ].join('\n');
@@ -420,6 +462,7 @@ export async function mapAITestsToFlows(
     const allowedFlowIds = new Set(prioritizedFlows.map((flow) => flow.id));
     const prioritizedFlowsById = new Map(prioritizedFlows.map((flow) => [flow.id, flow]));
     const mapped = new Map<string, string[]>();
+    const scenarioGaps = new Map<string, string[]>();
     const matchedTests = new Set<string>();
 
     for (const entry of parsed.mappings) {
@@ -448,6 +491,15 @@ export async function mapAITestsToFlows(
         for (const testPath of valid) {
             matchedTests.add(testPath);
         }
+        // Store missing scenarios identified by the AI for this flow.
+        if (Array.isArray(entry.missingScenarios) && entry.missingScenarios.length > 0) {
+            const scenarios = entry.missingScenarios
+                .filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+                .slice(0, 5);
+            if (scenarios.length > 0) {
+                scenarioGaps.set(entry.flowId, scenarios);
+            }
+        }
     }
 
     // Post-AI exact-name fallback: for any flow still uncovered, search all test paths
@@ -471,7 +523,7 @@ export async function mapAITestsToFlows(
         }
     }
 
-    const coverage = buildCoverage(flows, mapped);
+    const coverage = buildCoverage(flows, mapped, scenarioGaps);
     if (mapped.size === 0) {
         warnings.push(`AI mapping returned no valid test mappings (${provider.name}).`);
     }

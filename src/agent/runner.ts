@@ -35,14 +35,30 @@ function ensureAppRoot(path: string): void {
     }
 }
 
-function computeGaps(flows: FlowImpact[], coverageMap: Map<string, string[]>): FlowImpact[] {
-    return flows.filter((flow) => {
-        if (flow.priority !== 'P0' && flow.priority !== 'P1') {
-            return false;
-        }
-        const coveredBy = coverageMap.get(flow.id) || [];
-        return coveredBy.length === 0;
-    });
+function computeGaps(flows: FlowImpact[], coverageMap: Map<string, string[]>, coverage?: FlowCoverage[]): FlowImpact[] {
+    const coverageByFlowId = new Map((coverage || []).map((c) => [c.flowId, c]));
+    return flows
+        .filter((flow) => {
+            if (flow.priority !== 'P0' && flow.priority !== 'P1') {
+                return false;
+            }
+            const coveredBy = coverageMap.get(flow.id) || [];
+            if (coveredBy.length === 0) {
+                return true; // no tests at all
+            }
+            // Also flag as a gap if tests exist but the AI identified missing scenarios.
+            const flowCoverage = coverageByFlowId.get(flow.id);
+            return (flowCoverage?.missingScenarios || []).length > 0;
+        })
+        .map((flow) => {
+            const coveredBy = coverageMap.get(flow.id) || [];
+            const flowCoverage = coverageByFlowId.get(flow.id);
+            return {
+                ...flow,
+                existingTests: coveredBy.length > 0 ? coveredBy : undefined,
+                missingScenarios: flowCoverage?.missingScenarios?.length ? flowCoverage.missingScenarios : undefined,
+            };
+        });
 }
 
 function normalizeChangedFiles(appRoot: string, files: string[]): string[] {
@@ -534,7 +550,8 @@ export async function runImpact(_config: AgentConfig, _options: RunOptions): Pro
         for (const entry of coverage) {
             coverageMap.set(entry.flowId, entry.coveredBy);
         }
-        gaps = computeGaps(flows, coverageMap);
+        // Pass the full coverage array so partial gaps (tests exist but missing scenarios) are included.
+        gaps = computeGaps(flows, coverageMap, coverage);
     }
 
     if (Date.now() <= deadline) {
@@ -860,7 +877,8 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
         for (const entry of coverage) {
             coverageMap.set(entry.flowId, entry.coveredBy);
         }
-        gaps = computeGaps(flows, coverageMap);
+        // Pass the full coverage array so partial gaps (tests exist but missing scenarios) are included.
+        gaps = computeGaps(flows, coverageMap, coverage);
     }
 
     if (Date.now() <= deadline) {

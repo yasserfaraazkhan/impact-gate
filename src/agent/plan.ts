@@ -28,6 +28,8 @@ export interface GapDetail {
     priority: string;
     reasons: string[];
     files: string[];
+    existingTests?: string[];
+    missingScenarios?: string[];
 }
 
 export interface CoveredFlowSummary {
@@ -375,6 +377,8 @@ export function buildPlanFromImpactReport(impact: ReportData, policyOverride?: P
         priority: flow.priority,
         reasons: (flow.reasons || []).slice(0, 5),
         files: (flow.files || []).slice(0, 6),
+        existingTests: flow.existingTests && flow.existingTests.length > 0 ? flow.existingTests.slice(0, 3) : undefined,
+        missingScenarios: flow.missingScenarios && flow.missingScenarios.length > 0 ? flow.missingScenarios.slice(0, 5) : undefined,
     }));
     const coveredFlowIds = new Set(impact.gaps.map((g) => g.id));
     const coveredFlows: CoveredFlowSummary[] = impact.coverage
