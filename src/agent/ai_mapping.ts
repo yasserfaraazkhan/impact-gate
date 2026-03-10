@@ -307,8 +307,11 @@ function selectCandidateTests(flows: FlowImpact[], tests: TestFile[], maxCandida
                         continue;
                     }
                     const matched = fallbackKws.filter((k) => haystack.includes(k));
-                    if (matched.length < fallbackKws.length) {
-                        continue; // all tokens must appear in at least one test title
+                    // For 3+ tokens, n-1 must match (allows one absent word like "view");
+                    // for 1-2 tokens all must match.
+                    const required = fallbackKws.length >= 3 ? fallbackKws.length - 1 : fallbackKws.length;
+                    if (matched.length < required) {
+                        continue;
                     }
                     fallbackCandidates.push({path: testPath, score: matched.length, matchedKeywords: matched});
                 }
@@ -496,12 +499,11 @@ export async function mapAITestsToFlows(
         'Rules:',
         '- Keep at most 5 tests per flow.',
         '- Use exact flowId values from FLOWS.',
-        '- Map a test when you have clear evidence it covers the flow — from the file path OR from test titles in the content. Behavioral coverage via test titles is sufficient even when the filename does not exactly match the flow (e.g. search_user_post_spec.js covers search_messages if its titles assert searching for messages). Generic subsystem similarity without behavioral evidence is not enough.',
+        '- Map a test when you have behavioral evidence it covers the flow scenario, from the file path OR from test titles in the content. A file named search_user_post_spec.js with titles like "search for message by keyword" covers search_messages. Generic subsystem similarity without behavioral evidence is not enough.',
         '- A flow may only map to tests listed under FLOW_CANDIDATE_SIGNALS for that flow.',
-        '- Treat single-keyword or broad subsystem overlap as insufficient evidence.',
-        '- If the candidate path overlap is weak or ambiguous, return tests: [].',
-        '- If unsure for a flow, return tests: [].',
-        '- For EVERY flow (whether or not tests were found), return missingScenarios with 3-5 key user-facing test scenarios that must be covered. Write each as a short imperative statement starting with a verb (e.g. "Search for a message by keyword and verify results appear"). For mapped flows, focus on what the existing tests do NOT cover; for unmapped flows, describe the core scenarios a new test should include.',
+        '- When a flow has 3 or more candidate tests that collectively cover its behavioral domain (e.g. multiple search specs for search_messages, multiple messaging specs for view_post_in_channel), map all of them. Collective coverage across multiple files counts as full coverage.',
+        '- Only return tests: [] when NO candidate file has clear behavioral overlap to the flow.',
+        '- missingScenarios: for flows with no test mappings (tests: []), list 3-5 core scenarios that a new test must cover. For flows WITH test mappings, ONLY list scenarios that are genuinely absent from ALL mapped tests combined — if the mapped tests collectively cover the core user-facing scenarios well, return missingScenarios: []. Do not invent edge-case gaps for well-covered flows.',
         '',
         `FLOWS (${prioritizedFlows.length}):`,
         JSON.stringify(
