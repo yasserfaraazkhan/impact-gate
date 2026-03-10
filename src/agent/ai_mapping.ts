@@ -190,15 +190,39 @@ function isStrongCandidateMatch(flow: FlowImpact, matchedKeywords: string[]): bo
     return keywords.length === 1 && matchedKeywords[0].length >= MIN_SINGLE_KEYWORD_LENGTH;
 }
 
+// Extract test/describe/it title strings from file content for semantic matching.
+function extractTestTitles(content: string): string {
+    const titles: string[] = [];
+    const pattern = /(?:^|\s)(?:test|it|describe)\s*\(\s*(?:'([^']*)'|"([^"]*)"|`([^`]*)`)/gm;
+    let match;
+    while ((match = pattern.exec(content)) !== null) {
+        const title = match[1] ?? match[2] ?? match[3];
+        if (title) {
+            titles.push(title);
+        }
+    }
+    return titles.join(' ');
+}
+
+function matchedFlowKeywordsInTitles(flow: FlowImpact, testContent: string): string[] {
+    const haystack = extractTestTitles(testContent).toLowerCase();
+    if (!haystack) {
+        return [];
+    }
+    return flowKeywords(flow).filter((keyword) => keyword && haystack.includes(keyword.toLowerCase()));
+}
+
 function selectCandidateTests(flows: FlowImpact[], tests: TestFile[], maxCandidateTests: number): CandidateSelectionResult {
     const selected = new Set<string>();
     const byFlow = new Map<string, Set<string>>();
     const evidence: Array<{flowId: string; candidates: CandidateTestSignal[]}> = [];
     const warnings: string[] = [];
     const normalizedTests = tests.map((test) => normalizePath(test.path)).filter(Boolean);
+    const testByNormalizedPath = new Map(tests.map((t) => [normalizePath(t.path), t]));
     const perFlowLimit = Math.max(2, Math.min(6, Math.floor(maxCandidateTests / Math.max(1, flows.length))));
 
     for (const flow of flows) {
+        // Pass 1: path-keyword matching
         const scored: CandidateTestSignal[] = [];
         for (const testPath of normalizedTests) {
             const matchedKeywords = matchedFlowKeywords(flow, testPath);
@@ -215,7 +239,40 @@ function selectCandidateTests(flows: FlowImpact[], tests: TestFile[], maxCandida
             .filter((candidate) => isStrongCandidateMatch(flow, candidate.matchedKeywords))
             .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
             .slice(0, perFlowLimit);
-        if (strongCandidates.length === 0) {
+
+        // Pass 2: content-title matching
+        // For flows without enough path-matched candidates, also search test/describe/it
+        // title strings for flow keywords. This surfaces semantically related tests even
+        // when the file name does not match the flow (e.g. a search.spec.ts with a test
+        // titled "search for message in channel" covers search_messages).
+        const contentCandidates: CandidateTestSignal[] = [];
+        if (strongCandidates.length < perFlowLimit) {
+            const alreadyByPath = new Set(strongCandidates.map((c) => c.path));
+            for (const testPath of normalizedTests) {
+                if (alreadyByPath.has(testPath)) {
+                    continue;
+                }
+                const testFile = testByNormalizedPath.get(testPath);
+                if (!testFile?.content) {
+                    continue;
+                }
+                const titleKeywords = matchedFlowKeywordsInTitles(flow, testFile.content);
+                if (!isStrongCandidateMatch(flow, titleKeywords)) {
+                    continue;
+                }
+                // Score content matches lower than path matches so path candidates rank higher.
+                contentCandidates.push({
+                    path: testPath,
+                    score: titleKeywords.length,
+                    matchedKeywords: titleKeywords,
+                });
+            }
+            contentCandidates.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+        }
+
+        const allCandidates = [...strongCandidates, ...contentCandidates.slice(0, perFlowLimit)];
+
+        if (allCandidates.length === 0) {
             // Exact-name fallback: if the flow ID has no effective keywords (all tokens are
             // low-signal, e.g. view_user_group_modal), look for a test whose path contains
             // the exact flow ID as a directory name or filename without extension.
@@ -234,9 +291,9 @@ function selectCandidateTests(flows: FlowImpact[], tests: TestFile[], maxCandida
             }
             continue;
         }
-        byFlow.set(flow.id, new Set(strongCandidates.map((candidate) => candidate.path)));
-        evidence.push({flowId: flow.id, candidates: strongCandidates});
-        for (const candidate of strongCandidates) {
+        byFlow.set(flow.id, new Set(allCandidates.map((candidate) => candidate.path)));
+        evidence.push({flowId: flow.id, candidates: allCandidates});
+        for (const candidate of allCandidates) {
             selected.add(candidate.path);
         }
     }
