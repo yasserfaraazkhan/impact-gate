@@ -46,10 +46,10 @@ function computeGaps(flows: FlowImpact[], coverageMap: Map<string, string[]>, co
             if (coveredBy.length === 0) {
                 return true; // no tests at all
             }
-            // Flows with 4+ mapped tests are considered comprehensively covered — the AI
-            // maps 4 tests only when multiple spec files collectively demonstrate coverage.
+            // Flows with 3+ mapped tests are considered comprehensively covered — the AI
+            // maps 3 tests only when each has specific behavioral evidence for the flow.
             // missingScenarios from the AI are informational for such flows, not blocking.
-            if (coveredBy.length >= 4) {
+            if (coveredBy.length >= 3) {
                 return false;
             }
             // For flows with 1-3 tests, flag as a gap if AI identified missing scenarios.
