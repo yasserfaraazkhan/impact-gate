@@ -26,6 +26,7 @@ interface AIFlowResponse {
 export interface AIFlowAnalysisResult {
     enabled: boolean;
     used: boolean;
+    ran: boolean; // true = AI was called and responded; false = AI was unreachable or skipped before the call
     provider: string;
     flowCount: number;
     warnings: string[];
@@ -198,6 +199,7 @@ export async function mapAIFlowsFromFiles(
         return {
             enabled: false,
             used: false,
+            ran: false,
             provider: providerName,
             flowCount: 0,
             warnings,
@@ -210,6 +212,7 @@ export async function mapAIFlowsFromFiles(
         return {
             enabled: true,
             used: false,
+            ran: false,
             provider: providerName,
             flowCount: 0,
             warnings,
@@ -241,6 +244,7 @@ export async function mapAIFlowsFromFiles(
         return {
             enabled: true,
             used: false,
+            ran: false,
             provider: providerName,
             flowCount: 0,
             warnings,
@@ -288,6 +292,7 @@ export async function mapAIFlowsFromFiles(
         return {
             enabled: true,
             used: false,
+            ran: false,
             provider: provider.name,
             flowCount: 0,
             warnings,
@@ -300,6 +305,7 @@ export async function mapAIFlowsFromFiles(
         return {
             enabled: true,
             used: false,
+            ran: false,
             provider: provider.name,
             flowCount: 0,
             warnings,
@@ -368,6 +374,7 @@ export async function mapAIFlowsFromFiles(
         return {
             enabled: true,
             used: false,
+            ran: true, // AI was called and responded — no user-facing flows impacted
             provider: provider.name,
             flowCount: 0,
             warnings,
@@ -378,6 +385,7 @@ export async function mapAIFlowsFromFiles(
     return {
         enabled: true,
         used: true,
+        ran: true,
         provider: provider.name,
         flowCount: flows.length,
         warnings,

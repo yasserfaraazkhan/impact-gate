@@ -397,6 +397,10 @@ export async function runImpact(_config: AgentConfig, _options: RunOptions): Pro
             if (aiFlow.used) {
                 flows = aiFlow.flows;
                 flowMappingSource = 'ai';
+            } else if (aiFlow.ran) {
+                // AI ran successfully but found no user-facing flows — treat as zero impact.
+                flows = [];
+                flowMappingSource = 'ai';
             } else if (_config.impact.aiFlow.strict || _config.profile === 'mattermost') {
                 throw new Error('AI flow analysis is required but unavailable. Check Anthropic/LLM provider configuration.');
             }
@@ -712,6 +716,10 @@ export async function runGap(_config: AgentConfig, _options: RunOptions): Promis
             warnings.push(...aiFlow.warnings);
             if (aiFlow.used) {
                 flows = aiFlow.flows;
+                flowMappingSource = 'ai';
+            } else if (aiFlow.ran) {
+                // AI ran successfully but found no user-facing flows — treat as zero impact.
+                flows = [];
                 flowMappingSource = 'ai';
             } else if (_config.impact.aiFlow.strict || _config.profile === 'mattermost') {
                 throw new Error('AI flow analysis is required but unavailable. Check Anthropic/LLM provider configuration.');
