@@ -198,7 +198,7 @@ describe('renderCiSummaryMarkdown', () => {
         const impact = makeImpactResult();
         const plan = buildPlanFromImpact(impact);
         const md = renderCiSummaryMarkdown(plan);
-        assert.ok(md.includes('Covered features'));
+        assert.ok(md.includes('Covered flows'));
         assert.ok(md.includes('channels/search'));
     });
 });

@@ -251,14 +251,15 @@ describe('buildPlanFromImpact with AI enrichment', () => {
 });
 
 describe('renderCiSummaryMarkdown with AI enrichment', () => {
-    it('includes AI-enriched label in markdown when gap has ai+deterministic source', () => {
+    it('includes AI-enriched label and AI reasons in markdown when gap has ai+deterministic source', () => {
         const impact = makeImpactResult();
         const ai = makeAIEnrichment();
         const plan = buildPlanFromImpact(impact, undefined, ai);
         const md = renderCiSummaryMarkdown(plan);
 
         assert.ok(md.includes('AI-enriched'));
-        assert.ok(md.includes('AI insight'));
+        // AI reasons are rendered inline (no "AI insight" label — they appear directly)
+        assert.ok(md.includes('Login component refactored'));
         assert.ok(md.includes('Test SSO login flow'));
     });
 

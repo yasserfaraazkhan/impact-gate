@@ -406,16 +406,22 @@ export function renderCiSummaryMarkdown(plan: PlanReport): string {
     const {uncoveredP0P1Flows, changedFiles, impactedFlows, coveredFlows: coveredCount, partialFlows: partialCount} = plan.metrics;
     const mustAddTests = plan.decision.action === 'must-add-tests';
 
+    const flowsWithAdvisory = plan.coveredFlows.filter((f) => f.advisoryScenarios && f.advisoryScenarios.length > 0);
+    const cleanFlows = plan.coveredFlows.filter((f) => !f.advisoryScenarios || f.advisoryScenarios.length === 0);
+
     const statusEmoji = mustAddTests ? '🔴' : plan.decision.action === 'safe-to-merge' ? '🟢' : '🟡';
     lines.push(`## ${statusEmoji} E2E Coverage: ${plan.decision.title}`);
     lines.push('');
     lines.push(`${plan.decision.summary}`);
     lines.push('');
 
-    // Build a readable coverage breakdown instead of raw P0/P1 counts
+    // Coverage breakdown: "3 covered · 2 new · 1 gap · 1 partial"
     const parts: string[] = [];
     if ((coveredCount ?? 0) > 0) {
         parts.push(`${coveredCount} covered`);
+    }
+    if (flowsWithAdvisory.length > 0) {
+        parts.push(`${flowsWithAdvisory.length} new behavior`);
     }
     if (uncoveredP0P1Flows > 0) {
         parts.push(`${uncoveredP0P1Flows} gap${uncoveredP0P1Flows !== 1 ? 's' : ''}`);
@@ -428,6 +434,7 @@ export function renderCiSummaryMarkdown(plan: PlanReport): string {
         `**${changedFiles}** files changed → **${impactedFlows}** features impacted${breakdown}`,
     );
 
+    // ── Blocking gaps ──────────────────────────────────────────────────────────
     if (mustAddTests && plan.requiredNewTests.length > 0) {
         lines.push('');
         lines.push('### ⚠️ Add E2E tests for these uncovered P0/P1 features');
@@ -436,33 +443,59 @@ export function renderCiSummaryMarkdown(plan: PlanReport): string {
         lines.push('');
         for (const gap of plan.gapDetails.filter((g) => !g.name.includes('(partial)'))) {
             const aiLabel = gap.source === 'ai+deterministic' ? ' ✦ AI-enriched' : '';
-            lines.push(`- **${gap.name}** [${gap.priority}]${aiLabel}`);
-            if (gap.missingScenarios && gap.missingScenarios.length > 0) {
-                for (const scenario of gap.missingScenarios) {
-                    lines.push(`  - ${scenario}`);
-                }
-            }
-            // Show AI-provided reasons (skip the first deterministic reason which is always included)
+            lines.push(`> [!WARNING]`);
+            lines.push(`> **${gap.name}** · ${gap.priority}${aiLabel}`);
+            // AI-provided reasons (skip the first generic deterministic reason)
             const aiReasons = gap.reasons.slice(1);
             if (aiReasons.length > 0) {
-                lines.push(`  - *AI insight*: ${aiReasons.join('; ')}`);
+                lines.push(`> ${aiReasons.join(' ')}`);
             }
+            if (gap.missingScenarios && gap.missingScenarios.length > 0) {
+                lines.push(`>`);
+                lines.push(`> **Suggested test scenarios:**`);
+                for (const scenario of gap.missingScenarios) {
+                    lines.push(`> - [ ] ${scenario}`);
+                }
+            }
+            lines.push('');
         }
     }
 
-    if (plan.coveredFlows.length > 0) {
+    // ── Advisory: covered flows with new behavior detected ────────────────────
+    if (flowsWithAdvisory.length > 0) {
         lines.push('');
-        lines.push('### ✅ Covered features');
+        lines.push(`### 💡 New behavior detected in ${flowsWithAdvisory.length} covered feature${flowsWithAdvisory.length !== 1 ? 's' : ''}`);
         lines.push('');
-        for (const flow of plan.coveredFlows) {
-            lines.push(`- **${flow.name}** [${flow.priority}] — ${flow.coveredBy.join(', ')}`);
-            if (flow.advisoryScenarios && flow.advisoryScenarios.length > 0) {
-                lines.push(`  💡 New behavior in this PR — consider adding:`);
-                for (const s of flow.advisoryScenarios) {
-                    lines.push(`  - [ ] ${s}`);
-                }
+        lines.push('These features already have E2E tests, but this PR introduces new behavior worth covering:');
+        lines.push('');
+        for (const flow of flowsWithAdvisory) {
+            lines.push(`> [!TIP]`);
+            lines.push(`> **${flow.name}** · ${flow.priority} — ${flow.coveredBy.join(', ')}`);
+            lines.push(`>`);
+            lines.push(`> Consider adding tests for:`);
+            for (const s of flow.advisoryScenarios!) {
+                lines.push(`> - [ ] ${s}`);
             }
+            lines.push('');
         }
+    }
+
+    // ── Clean covered flows (collapsed) ───────────────────────────────────────
+    if (cleanFlows.length > 0 || flowsWithAdvisory.length > 0) {
+        lines.push('');
+        const label = cleanFlows.length > 0
+            ? `✅ Covered flows (${cleanFlows.length})`
+            : `✅ All covered flows have advisory notes above`;
+        lines.push(`<details><summary>${label}</summary>`);
+        lines.push('');
+        for (const flow of cleanFlows) {
+            lines.push(`- **${flow.name}** [${flow.priority}] — ${flow.coveredBy.join(', ')}`);
+        }
+        for (const flow of flowsWithAdvisory) {
+            lines.push(`- **${flow.name}** [${flow.priority}] — ${flow.coveredBy.join(', ')} 💡`);
+        }
+        lines.push('');
+        lines.push('</details>');
     }
 
     if (plan.confidence < 100) {
