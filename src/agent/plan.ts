@@ -28,6 +28,7 @@ export interface GapDetail {
     files: string[];
     existingTests?: string[];
     missingScenarios?: string[];
+    source?: 'deterministic' | 'ai+deterministic';
 }
 
 export interface CoveredFlowSummary {
@@ -42,7 +43,7 @@ export interface PlanReport {
     runId: string;
     sourceRunId?: string;
     generatedAt: string;
-    source: 'impact';
+    source: 'impact' | 'ai+deterministic';
     runSet: RecommendedRunSet;
     confidence: number;
     reasons: string[];

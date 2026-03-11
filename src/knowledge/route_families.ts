@@ -211,7 +211,8 @@ export function loadRouteFamilyManifest(testsRoot: string, config?: RouteFamilyC
     }
 
     if (config?.strict) {
-        throw new Error('Route family manifest is required but not found. Create .e2e-ai-agents/route-families.json');
+        // eslint-disable-next-line no-console
+        console.warn('[e2e-agents] Route family manifest not found. The manifest is optional context for AI enrichment — create .e2e-ai-agents/route-families.json to enable family-level routing hints.');
     }
     return null;
 }

@@ -8,6 +8,7 @@ import {minimatch} from 'minimatch';
 import type {PolicyConfig} from '../agent/config.js';
 import type {ImpactResult, ImpactedFeature} from './impact_engine.js';
 import {getGaps, getPartialGaps} from './impact_engine.js';
+import type {AIEnrichmentResult} from './ai_enrichment.js';
 
 // Re-use existing plan types for backward compatibility
 import type {
@@ -251,6 +252,7 @@ function buildRecommendedTests(impact: ImpactResult): string[] {
 export function buildPlanFromImpact(
     impact: ImpactResult,
     policyOverride?: Partial<PolicyConfig>,
+    aiEnrichment?: AIEnrichmentResult,
 ): PlanReport {
     const policy: PolicyConfig = {...DEFAULT_POLICY, ...(policyOverride || {})};
     const confidence = computeConfidence(impact);
@@ -261,24 +263,66 @@ export function buildPlanFromImpact(
     const gaps = getGaps(impact);
     const partialGaps = getPartialGaps(impact);
 
-    const gapDetails: GapDetail[] = gaps.map((f) => ({
-        id: featureLabel(f),
-        name: featureLabel(f),
-        priority: f.priority,
-        reasons: [`No Playwright or Cypress tests found for ${featureLabel(f)}`],
-        files: f.changedFiles.slice(0, 6),
-        missingScenarios: f.userFlows.length > 0 ? f.userFlows.slice(0, 5) : undefined,
-    }));
+    // Build a lookup map from aiEnrichment by featureId or familyId
+    const aiFeatureMap = new Map<string, AIEnrichmentResult['enrichedFeatures'][number]>();
+    if (aiEnrichment) {
+        for (const ef of aiEnrichment.enrichedFeatures) {
+            if (ef.featureId) {
+                aiFeatureMap.set(ef.featureId, ef);
+            }
+            if (ef.familyId) {
+                aiFeatureMap.set(ef.familyId, ef);
+            }
+        }
+    }
+
+    const gapDetails: GapDetail[] = gaps.map((f) => {
+        const label = featureLabel(f);
+        const aiFeature = f.featureId
+            ? (aiFeatureMap.get(f.featureId) ?? aiFeatureMap.get(f.familyId))
+            : aiFeatureMap.get(f.familyId);
+
+        const baseReasons = [`No Playwright or Cypress tests found for ${label}`];
+        const reasons = aiFeature && aiFeature.aiReasons.length > 0
+            ? [...baseReasons, ...aiFeature.aiReasons]
+            : baseReasons;
+
+        const missingScenarios = aiFeature && aiFeature.aiMissingScenarios.length > 0
+            ? aiFeature.aiMissingScenarios
+            : (f.userFlows.length > 0 ? f.userFlows.slice(0, 5) : undefined);
+
+        return {
+            id: label,
+            name: label,
+            priority: f.priority,
+            reasons,
+            files: f.changedFiles.slice(0, 6),
+            missingScenarios,
+            source: aiFeature ? 'ai+deterministic' : 'deterministic',
+        };
+    });
 
     // Add partial gaps as advisory info
     for (const f of partialGaps) {
-        const source = f.playwrightSpecs.length > 0 ? 'Cypress' : 'Playwright';
+        const coverageType = f.playwrightSpecs.length > 0 ? 'Cypress' : 'Playwright';
+        const hasOpposite = f.playwrightSpecs.length > 0 ? 'Playwright' : 'Cypress';
+        const label = featureLabel(f);
+        const aiFeature = f.featureId
+            ? (aiFeatureMap.get(f.featureId) ?? aiFeatureMap.get(f.familyId))
+            : aiFeatureMap.get(f.familyId);
+
+        const baseReasons = [`Missing ${coverageType} tests for ${label} (has ${hasOpposite} only)`];
+        const reasons = aiFeature && aiFeature.aiReasons.length > 0
+            ? [...baseReasons, ...aiFeature.aiReasons]
+            : baseReasons;
+
         gapDetails.push({
-            id: featureLabel(f),
-            name: `${featureLabel(f)} (partial)`,
+            id: label,
+            name: `${label} (partial)`,
             priority: f.priority,
-            reasons: [`Missing ${source} tests for ${featureLabel(f)} (has ${f.playwrightSpecs.length > 0 ? 'Playwright' : 'Cypress'} only)`],
+            reasons,
             files: f.changedFiles.slice(0, 6),
+            source: aiFeature ? 'ai+deterministic' : 'deterministic',
         });
     }
 
@@ -302,12 +346,13 @@ export function buildPlanFromImpact(
     const p2 = impact.impactedFeatures.filter((f) => f.priority === 'P2').length;
 
     const runId = `plan-${Date.now().toString(36)}`;
+    const planSource = aiEnrichment ? 'ai+deterministic' : 'impact';
 
     return {
         schemaVersion: '1.0.0',
         runId,
         generatedAt: new Date().toISOString(),
-        source: 'impact',
+        source: planSource,
         runSet: runSetResult.runSet,
         confidence,
         reasons: runSetResult.reasons,
@@ -364,11 +409,17 @@ export function renderCiSummaryMarkdown(plan: PlanReport): string {
         lines.push(`The following ${uncoveredP0P1Flows} feature(s) have no test coverage and must be covered before merge:`);
         lines.push('');
         for (const gap of plan.gapDetails.filter((g) => !g.name.includes('(partial)'))) {
-            lines.push(`- **${gap.name}** [${gap.priority}]`);
+            const aiLabel = gap.source === 'ai+deterministic' ? ' ✦ AI-enriched' : '';
+            lines.push(`- **${gap.name}** [${gap.priority}]${aiLabel}`);
             if (gap.missingScenarios && gap.missingScenarios.length > 0) {
                 for (const scenario of gap.missingScenarios) {
                     lines.push(`  - ${scenario}`);
                 }
+            }
+            // Show AI-provided reasons (skip the first deterministic reason which is always included)
+            const aiReasons = gap.reasons.slice(1);
+            if (aiReasons.length > 0) {
+                lines.push(`  - *AI insight*: ${aiReasons.join('; ')}`);
             }
         }
     }

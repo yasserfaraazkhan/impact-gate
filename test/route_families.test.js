@@ -57,11 +57,19 @@ describe('route_families', () => {
             assert.equal(manifest, null);
         });
 
-        it('should throw in strict mode when manifest is missing', () => {
-            assert.throws(
-                () => loadRouteFamilyManifest(tmpDir, {strict: true}),
-                /Route family manifest is required/,
-            );
+        it('should warn (not throw) in strict mode when manifest is missing', () => {
+            // strict mode now warns instead of throwing — manifest is optional AI context
+            const warnMessages = [];
+            const origWarn = console.warn;
+            console.warn = (...args) => { warnMessages.push(args.join(' ')); };
+            let result;
+            try {
+                result = loadRouteFamilyManifest(tmpDir, {strict: true});
+            } finally {
+                console.warn = origWarn;
+            }
+            assert.equal(result, null);
+            assert.ok(warnMessages.some((m) => m.includes('Route family manifest not found')));
         });
 
         it('should skip invalid families', () => {
