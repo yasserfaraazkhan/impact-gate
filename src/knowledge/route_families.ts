@@ -275,7 +275,8 @@ export function getSpecDirsForBinding(
     }
     if (binding.feature) {
         const feature = getFeatureById(family, binding.feature);
-        if (feature?.specDirs && feature.specDirs.length > 0) {
+        // An explicitly declared specDirs (even []) is intentional — don't fall back to family.
+        if (feature && feature.specDirs !== undefined) {
             return feature.specDirs;
         }
     }
@@ -292,7 +293,8 @@ export function getCypressSpecDirsForBinding(
     }
     if (binding.feature) {
         const feature = getFeatureById(family, binding.feature);
-        if (feature?.cypressSpecDirs && feature.cypressSpecDirs.length > 0) {
+        // An explicitly declared cypressSpecDirs (even []) is intentional — don't fall back to family.
+        if (feature && feature.cypressSpecDirs !== undefined) {
             return feature.cypressSpecDirs;
         }
     }
