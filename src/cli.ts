@@ -2,7 +2,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {appendFileSync, existsSync, readFileSync} from 'fs';
+import {appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync} from 'fs';
 import {dirname, join, resolve} from 'path';
 
 import {resolveConfig, type AnalysisMode, type AnalysisProfile, type FrameworkType} from './agent/config.js';
@@ -19,12 +19,16 @@ import {captureTraceabilityInput} from './agent/traceability_capture.js';
 import {runTargetedSpecHeal} from './agent/pipeline.js';
 import {extractPlaywrightUnstableSpecs} from './agent/playwright_report.js';
 import {runPipeline} from './pipeline/orchestrator.js';
+import {LLMProviderFactory} from './provider_factory.js';
+import {runAgenticGeneration, type ScenarioInput} from './agentic/runner.js';
+import {loadOrBuildApiSurface} from './knowledge/api_surface.js';
 
 type Command =
     'impact'
     | 'plan'
     | 'heal'
     | 'suggest'
+    | 'generate'
     | 'finalize-generated-tests'
     | 'feedback'
     | 'traceability-capture'
@@ -96,6 +100,8 @@ interface ParsedArgs {
     analyzeHeal?: boolean;
     analyzeHealReport?: string;
     noAi?: boolean;
+    maxAttempts?: number;
+    generateScenarios?: string;
 }
 
 const CONFIG_CANDIDATES = ['e2e-ai-agents.config.json', '.e2e-ai-agents.config.json'];
@@ -155,6 +161,7 @@ function printUsage(): void {
             '  e2e-ai-agents feedback --path <app-root> --feedback-input <json>',
             '  e2e-ai-agents traceability-capture --path <app-root> --traceability-report <json>',
             '  e2e-ai-agents traceability-ingest --path <app-root> --traceability-input <json>',
+            '  e2e-ai-agents generate [--scenarios <path|json>] [--max-attempts <n>] [--dry-run]',
             '  e2e-ai-agents analyze --path <app-root> [--tests-root <path>] [--since <ref>] [--generate] [--generate-output <dir>] [--heal] [--heal-report <json>]',
             '  e2e-ai-agents llm-health',
             '',
@@ -217,6 +224,8 @@ function printUsage(): void {
             '  --pr-base <branch>   PR base branch for finalize-generated-tests',
             '                      (auto-heal-pr defaults to base=master)',
             '  --dry-run            Preview actions without mutating git state',
+            '  --max-attempts <n>    Max fix attempts per scenario (default: 3)',
+            '  --scenarios <path|json>  Scenarios file/JSON for generate command',
             '  --apply               Apply data-testid patches and generate tests',
             '                        (legacy shortcut; prefer approve-and-generate)',
             '  --help                Show help',
@@ -236,6 +245,7 @@ function parseArgs(argv: string[]): ParsedArgs {
         || command === 'plan'
         || command === 'heal'
         || command === 'suggest'
+        || command === 'generate'
             || command === 'finalize-generated-tests'
             || command === 'feedback'
             || command === 'traceability-capture'
@@ -251,6 +261,16 @@ function parseArgs(argv: string[]): ParsedArgs {
         const next = argv[i + 1];
         if (arg === '--help' || arg === '-h') {
             parsed.help = true;
+            continue;
+        }
+        if (arg === '--max-attempts' && next) {
+            parsed.maxAttempts = parseInt(next, 10);
+            i += 1;
+            continue;
+        }
+        if (arg === '--scenarios' && next) {
+            parsed.generateScenarios = next;
+            i += 1;
             continue;
         }
         if (arg === '--apply') {
@@ -1111,6 +1131,129 @@ async function main(): Promise<void> {
         const failOnLegacyFlag = args.failOnMustAddTests && plan.decision.action === 'must-add-tests';
         if (failOnLegacyFlag || plan.enforcement.shouldFail) {
             process.exit(2);
+        }
+        return;
+    }
+
+    if (args.command === 'generate') {
+        const reportRoot = config.testsRoot || config.path;
+
+        // Load scenarios from --scenarios flag or plan-report.json
+        let scenarios: ScenarioInput[] = [];
+
+        if (args.generateScenarios) {
+            let raw: unknown;
+            if (existsSync(args.generateScenarios)) {
+                raw = JSON.parse(readFileSync(args.generateScenarios, 'utf-8'));
+            } else {
+                raw = JSON.parse(args.generateScenarios);
+            }
+            if (!Array.isArray(raw)) {
+                // eslint-disable-next-line no-console
+                console.error('--scenarios must be a JSON array of ScenarioInput objects.');
+                process.exit(1);
+            }
+            for (const item of raw as Record<string, unknown>[]) {
+                if (!item.id || !item.name || !Array.isArray(item.scenarios) || !item.routeFamily || !item.priority) {
+                    // eslint-disable-next-line no-console
+                    console.error(`Invalid scenario: each must have id, name, scenarios[], routeFamily, priority.`);
+                    process.exit(1);
+                }
+            }
+            scenarios = raw as ScenarioInput[];
+        } else {
+            const planReportPath = join(reportRoot, '.e2e-ai-agents', 'plan-report.json');
+            if (!existsSync(planReportPath)) {
+                // eslint-disable-next-line no-console
+                console.error('No plan report found. Run `plan` first or pass --scenarios.');
+                process.exit(1);
+            }
+            const planReport = JSON.parse(readFileSync(planReportPath, 'utf-8'));
+            scenarios = (planReport.gapDetails || []).map((gap: {id: string; reasons: string[]; missingScenarios: string[]}) => ({
+                id: gap.id,
+                name: gap.id,
+                scenarios: gap.missingScenarios || gap.reasons || ['Verify core user flow'],
+                routeFamily: gap.id.split('.')[0] || gap.id,
+                priority: 'P1',
+            }));
+        }
+
+        if (scenarios.length === 0) {
+            // eslint-disable-next-line no-console
+            console.log('No scenarios to generate tests for.');
+            return;
+        }
+
+        let apiSurface;
+        try {
+            apiSurface = loadOrBuildApiSurface(reportRoot, config.apiSurface);
+        } catch {
+            // eslint-disable-next-line no-console
+            console.warn('Could not load API surface catalog. Generation will use generic selectors.');
+        }
+
+        const provider = await LLMProviderFactory.createFromEnv();
+
+        // eslint-disable-next-line no-console
+        console.log(`Generating tests for ${scenarios.length} scenario(s)...`);
+
+        const summary = await runAgenticGeneration({
+            scenarios,
+            config: {
+                maxAttempts: args.maxAttempts || 3,
+                project: args.pipelineProject || 'chrome',
+                baseUrl: args.pipelineBaseUrl,
+                testTimeoutMs: 120000,
+                testsRoot: reportRoot,
+                dryRun: args.dryRun,
+            },
+            provider,
+            apiSurface,
+        });
+
+        // eslint-disable-next-line no-console
+        console.log(`\nAgentic Generation Summary:`);
+        // eslint-disable-next-line no-console
+        console.log(`  Generated: ${summary.totalGenerated}`);
+        // eslint-disable-next-line no-console
+        console.log(`  Passed:    ${summary.totalPassed}`);
+        // eslint-disable-next-line no-console
+        console.log(`  Failed:    ${summary.totalFailed}`);
+        // eslint-disable-next-line no-console
+        console.log(`  Attempts:  ${summary.totalAttempts}`);
+        // eslint-disable-next-line no-console
+        console.log(`  Duration:  ${(summary.durationMs / 1000).toFixed(1)}s`);
+
+        for (const result of summary.results) {
+            const icon = result.status === 'passed' ? 'PASS' : result.status === 'skipped' ? 'SKIP' : 'FAIL';
+            // eslint-disable-next-line no-console
+            console.log(`  [${icon}] ${result.scenarioSource} (${result.attempts} attempts)`);
+            if (result.status === 'passed' || result.status === 'skipped') {
+                // eslint-disable-next-line no-console
+                console.log(`     ${result.specPath}`);
+            }
+        }
+
+        if (summary.warnings.length > 0) {
+            // eslint-disable-next-line no-console
+            console.log(`\nWarnings:`);
+            for (const w of summary.warnings) {
+                // eslint-disable-next-line no-console
+                console.warn(`  - ${w}`);
+            }
+        }
+
+        const summaryDir = join(reportRoot, '.e2e-ai-agents');
+        if (!existsSync(summaryDir)) {
+            mkdirSync(summaryDir, {recursive: true});
+        }
+        const summaryPath = join(summaryDir, 'agentic-summary.json');
+        writeFileSync(summaryPath, JSON.stringify(summary, null, 2), 'utf-8');
+        // eslint-disable-next-line no-console
+        console.log(`\nReport: ${summaryPath}`);
+
+        if (summary.totalFailed > 0) {
+            process.exit(1);
         }
         return;
     }

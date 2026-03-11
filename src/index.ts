@@ -89,3 +89,8 @@ export type {SpecIndex, SpecEntry} from './knowledge/spec_index.js';
 // Shared types
 export type {FlowImpact, FlowPriority, FlowCoverage, FlagHit, BlastRadius} from './agent/types.js';
 export type {PlanReport} from './agent/plan.js';
+
+// Agentic generation
+export {runAgenticGeneration} from './agentic/runner.js';
+export type {ScenarioInput, AgenticRunOptions} from './agentic/runner.js';
+export type {AgenticConfig, AgenticResult, AgenticSummary, PlaywrightRunResult, TestFailure} from './agentic/types.js';
