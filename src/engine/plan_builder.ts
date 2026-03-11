@@ -437,48 +437,53 @@ export function renderCiSummaryMarkdown(plan: PlanReport): string {
     // ── Blocking gaps ──────────────────────────────────────────────────────────
     if (mustAddTests && plan.requiredNewTests.length > 0) {
         lines.push('');
-        lines.push('### ⚠️ Add E2E tests for these uncovered P0/P1 features');
-        lines.push('');
-        lines.push(`The following ${uncoveredP0P1Flows} feature(s) have no test coverage and must be covered before merge:`);
+        lines.push(`### ⚠️ Missing coverage for ${uncoveredP0P1Flows} P0/P1 flow(s)`);
         lines.push('');
         for (const gap of plan.gapDetails.filter((g) => !g.name.includes('(partial)'))) {
             const aiLabel = gap.source === 'ai+deterministic' ? ' ✦ AI-enriched' : '';
+            // Warning box: name + priority + AI reason (always visible)
             lines.push(`> [!WARNING]`);
             lines.push(`> **${gap.name}** · ${gap.priority}${aiLabel}`);
-            // AI-provided reasons (skip the first generic deterministic reason)
             const aiReasons = gap.reasons.slice(1);
             if (aiReasons.length > 0) {
                 lines.push(`> ${aiReasons.join(' ')}`);
             }
-            if (gap.missingScenarios && gap.missingScenarios.length > 0) {
-                lines.push(`>`);
-                lines.push(`> **Suggested test scenarios:**`);
-                for (const scenario of gap.missingScenarios) {
-                    lines.push(`> - [ ] ${scenario}`);
-                }
-            }
             lines.push('');
+            // Scenarios: collapsible below the warning box
+            if (gap.missingScenarios && gap.missingScenarios.length > 0) {
+                lines.push(`<details><summary>📋 Suggested test scenarios (${gap.missingScenarios.length})</summary>`);
+                lines.push('');
+                for (const scenario of gap.missingScenarios) {
+                    lines.push(`- [ ] ${scenario}`);
+                }
+                lines.push('');
+                lines.push('</details>');
+                lines.push('');
+            }
         }
     }
 
-    // ── Advisory: covered flows with new behavior (collapsible) ─────────────
+    // ── Advisory: covered flows with new behavior ─────────────────────────────
     if (flowsWithAdvisory.length > 0) {
         lines.push('');
-        lines.push(`<details>`);
-        lines.push(`<summary>💡 New behavior detected in ${flowsWithAdvisory.length} covered feature${flowsWithAdvisory.length !== 1 ? 's' : ''} — consider adding tests</summary>`);
-        lines.push('');
-        lines.push('These features already have E2E tests, but this PR introduces new behavior worth covering:');
+        lines.push(`### 💡 New behavior detected in ${flowsWithAdvisory.length} covered feature${flowsWithAdvisory.length !== 1 ? 's' : ''} — consider adding tests`);
         lines.push('');
         for (const flow of flowsWithAdvisory) {
-            lines.push(`#### ${flow.name} · ${flow.priority}`);
-            lines.push(`*${flow.coveredBy.join(', ')}*`);
+            // Green [!TIP] box: just the name (always visible, compact)
+            lines.push(`> [!TIP]`);
+            lines.push(`> **${flow.name}** · ${flow.priority}`);
+            lines.push('');
+            // Specs + scenarios: collapsible below
+            const coverageSummary = flow.coveredBy.join(', ');
+            lines.push(`<details><summary>${coverageSummary} — click to see suggested scenarios</summary>`);
             lines.push('');
             for (const s of flow.advisoryScenarios!) {
                 lines.push(`- [ ] ${s}`);
             }
             lines.push('');
+            lines.push('</details>');
+            lines.push('');
         }
-        lines.push('</details>');
     }
 
     // ── Clean covered flows (collapsed) ───────────────────────────────────────
