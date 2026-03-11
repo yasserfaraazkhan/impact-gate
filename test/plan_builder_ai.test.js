@@ -63,7 +63,7 @@ describe('buildPlanFromImpact with AI enrichment', () => {
         assert.equal(plan.gapDetails[0].source, 'deterministic');
         // reasons should only contain the base deterministic reason
         assert.equal(plan.gapDetails[0].reasons.length, 1);
-        assert.ok(plan.gapDetails[0].reasons[0].includes('No Playwright or Cypress tests found'));
+        assert.ok(plan.gapDetails[0].reasons[0].includes('No E2E tests found'));
         // missingScenarios fall back to userFlows
         assert.ok(plan.gapDetails[0].missingScenarios);
         assert.ok(plan.gapDetails[0].missingScenarios.includes('Log in with email'));
@@ -86,7 +86,7 @@ describe('buildPlanFromImpact with AI enrichment', () => {
         const gap = plan.gapDetails[0];
         // Should have base reason + AI reasons
         assert.ok(gap.reasons.length > 1);
-        assert.ok(gap.reasons[0].includes('No Playwright or Cypress tests found'));
+        assert.ok(gap.reasons[0].includes('No E2E tests found'));
         assert.ok(gap.reasons.includes('Login component refactored — authentication flow may break'));
         assert.ok(gap.reasons.includes('SSO path changed'));
     });
@@ -219,7 +219,7 @@ describe('buildPlanFromImpact with AI enrichment', () => {
         assert.ok(partialGap.reasons.includes('Post component changed — Cypress coverage missing'));
         assert.ok(partialGap.reasons.includes('Thread reply path affected'));
         // Base partial reason should still be present
-        assert.ok(partialGap.reasons[0].includes('Missing'));
+        assert.ok(partialGap.reasons[0].includes('Cypress only'));
     });
 
     it('matches enriched feature by featureId when available', () => {

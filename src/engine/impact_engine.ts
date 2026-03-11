@@ -112,12 +112,13 @@ function resolveCypressSpecs(cypressRoot: string, specDirs: string[]): string[] 
 }
 
 function computeCoverageStatus(pwSpecs: string[], cySpecs: string[]): CoverageStatus {
-    const hasPw = pwSpecs.length > 0;
-    const hasCy = cySpecs.length > 0;
-    if (hasPw && hasCy) {
+    // Playwright is the primary framework — having Playwright specs is sufficient for "covered".
+    // Cypress-only = partial (advisory: legacy coverage, migrate when possible).
+    // Neither = uncovered (must add tests).
+    if (pwSpecs.length > 0) {
         return 'covered';
     }
-    if (hasPw || hasCy) {
+    if (cySpecs.length > 0) {
         return 'partial';
     }
     return 'uncovered';

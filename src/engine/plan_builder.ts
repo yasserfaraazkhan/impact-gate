@@ -284,7 +284,7 @@ export function buildPlanFromImpact(
             ? (aiFeatureByFeatureId.get(f.featureId) ?? aiFeatureByFamilyId.get(f.familyId))
             : aiFeatureByFamilyId.get(f.familyId);
 
-        const baseReasons = [`No Playwright or Cypress tests found for ${label}`];
+        const baseReasons = [`No E2E tests found for ${label}`];
         const reasons = aiFeature && aiFeature.aiReasons.length > 0
             ? [...baseReasons, ...aiFeature.aiReasons.slice(0, 2)]
             : baseReasons;
@@ -304,16 +304,14 @@ export function buildPlanFromImpact(
         };
     });
 
-    // Add partial gaps as advisory info
+    // Add partial gaps as advisory info (Cypress-only coverage — Playwright migration recommended)
     for (const f of partialGaps) {
-        const coverageType = f.playwrightSpecs.length > 0 ? 'Cypress' : 'Playwright';
-        const hasOpposite = f.playwrightSpecs.length > 0 ? 'Playwright' : 'Cypress';
         const label = featureLabel(f);
         const aiFeature = f.featureId
             ? (aiFeatureByFeatureId.get(f.featureId) ?? aiFeatureByFamilyId.get(f.familyId))
             : aiFeatureByFamilyId.get(f.familyId);
 
-        const baseReasons = [`Missing ${coverageType} tests for ${label} (has ${hasOpposite} only)`];
+        const baseReasons = [`${label} is covered by Cypress only — consider adding Playwright tests`];
         const reasons = aiFeature && aiFeature.aiReasons.length > 0
             ? [...baseReasons, ...aiFeature.aiReasons.slice(0, 2)]
             : baseReasons;
