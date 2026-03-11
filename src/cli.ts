@@ -2,23 +2,16 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {appendFileSync, existsSync, readFileSync, writeFileSync} from 'fs';
+import {appendFileSync, existsSync, readFileSync} from 'fs';
 import {dirname, join, resolve} from 'path';
 
 import {resolveConfig, type AnalysisMode, type AnalysisProfile, type FrameworkType} from './agent/config.js';
 import {AnthropicProvider} from './anthropic_provider.js';
 import {LLMProviderError} from './provider_interface.js';
-import {appendPlanMetrics} from './agent/plan.js';
 import {analyzeImpact as analyzeImpactV2} from './engine/impact_engine.js';
-import {
-    buildPlanFromImpact,
-    renderCiSummaryMarkdown,
-    writeCiSummary,
-    writePlanReport,
-} from './engine/plan_builder.js';
+import {writeCiSummary} from './engine/plan_builder.js';
 import {getChangedFiles} from './agent/git.js';
-import {loadDiffs} from './engine/diff_loader.js';
-import {enrichImpactWithAI} from './engine/ai_enrichment.js';
+import {recommendTestsAI, recommendTestsDeterministic} from './api.js';
 import {appendFeedbackAndRecompute, type RecommendationFeedbackEntry} from './agent/feedback.js';
 import {finalizeGeneratedTests} from './agent/handoff.js';
 import {ingestTraceabilityInput} from './agent/traceability_ingest.js';
@@ -1037,41 +1030,58 @@ async function main(): Promise<void> {
 
     if (args.command === 'suggest' || args.command === 'plan') {
         const reportRoot = config.testsRoot || config.path;
-        const gitResult = getChangedFiles(config.path, config.git.since, {includeUncommitted: config.git.includeUncommitted});
-        const impactResult = analyzeImpactV2(gitResult.files, {
-            testsRoot: reportRoot,
-            routeFamilies: config.routeFamilies,
-        });
+        const apiOptions = {
+            cwd: process.cwd(),
+            configPath: autoConfig,
+            path: args.path,
+            profile: args.profile,
+            testsRoot: args.testsRoot,
+            gitSince: args.gitSince,
+            llmProvider: args.llmProvider,
+            policy:
+                args.policyMinConfidence !== undefined ||
+                args.policySafeMergeConfidence !== undefined ||
+                args.policyWarningsThreshold !== undefined ||
+                (args.policyRiskyPatterns && args.policyRiskyPatterns.length > 0) ||
+                args.policyEnforcementMode !== undefined ||
+                (args.policyBlockActions && args.policyBlockActions.length > 0)
+                    ? {
+                          minConfidenceForTargeted: args.policyMinConfidence,
+                          safeMergeMinConfidence: args.policySafeMergeConfidence,
+                          forceFullOnWarningsAtOrAbove: args.policyWarningsThreshold,
+                          riskyFilePatterns: args.policyRiskyPatterns,
+                          enforcementMode: args.policyEnforcementMode,
+                          blockOnActions: args.policyBlockActions,
+                      }
+                    : undefined,
+        };
 
-        let aiEnrichment: import('./engine/ai_enrichment.js').AIEnrichmentResult | undefined;
-        const apiKey = process.env.ANTHROPIC_API_KEY;
-        if (!args.noAi && apiKey) {
-            const diffs = loadDiffs(config.path, config.git.since, gitResult.files);
-            const provider = new AnthropicProvider({apiKey});
-            const specSet = new Set<string>();
-            for (const feature of impactResult.impactedFeatures) {
-                for (const s of feature.playwrightSpecs) {
-                    specSet.add(s);
-                }
+        let result: Awaited<ReturnType<typeof recommendTestsAI>>;
+        if (args.noAi) {
+            result = recommendTestsDeterministic(apiOptions);
+        } else {
+            result = await recommendTestsAI(apiOptions);
+            if (result.aiEnrichment) {
+                const {aiEnrichment} = result;
+                // eslint-disable-next-line no-console
+                console.log(`AI enrichment: ${aiEnrichment.enrichedFeatures.length} features enriched (${aiEnrichment.tokenUsage.input + aiEnrichment.tokenUsage.output} tokens)`);
+            } else if (!process.env.ANTHROPIC_API_KEY) {
+                // eslint-disable-next-line no-console
+                console.log('Tip: set ANTHROPIC_API_KEY to enable AI-powered enrichment');
             }
-            aiEnrichment = await enrichImpactWithAI({
-                deterministicImpact: impactResult,
-                diffs,
-                provider,
-                specList: [...specSet],
-            });
-            // eslint-disable-next-line no-console
-            console.log(`AI enrichment: ${aiEnrichment.enrichedFeatures.length} features enriched (${aiEnrichment.tokenUsage.input + aiEnrichment.tokenUsage.output} tokens)`);
-        } else if (!args.noAi && !apiKey) {
-            // eslint-disable-next-line no-console
-            console.log('Tip: set ANTHROPIC_API_KEY to enable AI-powered enrichment');
         }
 
-        const plan = buildPlanFromImpact(impactResult, config.policy, aiEnrichment);
-        const planPath = writePlanReport(reportRoot, plan);
-        const summaryMarkdown = renderCiSummaryMarkdown(plan);
-        const summaryPath = writeCiSummary(reportRoot, summaryMarkdown, args.ciCommentPath);
-        const metrics = appendPlanMetrics(reportRoot, plan);
+        const {plan, planPath, ciSummaryMarkdown, ciSummaryPath} = result;
+
+        // Write CI summary to an additional path if --ci-comment-path was specified
+        if (args.ciCommentPath) {
+            writeCiSummary(reportRoot, ciSummaryMarkdown, args.ciCommentPath);
+        }
+
+        const summaryPath = ciSummaryPath;
+        // Compute metrics paths (api already wrote metrics; derive paths for GHA output)
+        const metricsEventsPath = join(reportRoot, '.e2e-ai-agents/metrics.jsonl');
+        const metricsSummaryPath = join(reportRoot, '.e2e-ai-agents/metrics-summary.json');
         const ghaOutput = args.githubOutputPath || process.env.GITHUB_OUTPUT;
         if (ghaOutput) {
             appendFileSync(ghaOutput, `run_set=${plan.runSet}\n`);
@@ -1083,8 +1093,8 @@ async function main(): Promise<void> {
             appendFileSync(ghaOutput, `required_new_tests_count=${plan.requiredNewTests.length}\n`);
             appendFileSync(ghaOutput, `plan_path=${planPath}\n`);
             appendFileSync(ghaOutput, `summary_path=${summaryPath}\n`);
-            appendFileSync(ghaOutput, `metrics_events_path=${metrics.eventsPath}\n`);
-            appendFileSync(ghaOutput, `metrics_summary_path=${metrics.summaryPath}\n`);
+            appendFileSync(ghaOutput, `metrics_events_path=${metricsEventsPath}\n`);
+            appendFileSync(ghaOutput, `metrics_summary_path=${metricsSummaryPath}\n`);
         }
         // eslint-disable-next-line no-console
         console.log(`Suggested run set: ${plan.runSet} (confidence ${plan.confidence})`);
@@ -1097,7 +1107,7 @@ async function main(): Promise<void> {
         // eslint-disable-next-line no-console
         console.log(`CI summary: ${summaryPath}`);
         // eslint-disable-next-line no-console
-        console.log(`Plan metrics: ${metrics.summaryPath}`);
+        console.log(`Plan metrics: ${metricsSummaryPath}`);
         const failOnLegacyFlag = args.failOnMustAddTests && plan.decision.action === 'must-add-tests';
         if (failOnLegacyFlag || plan.enforcement.shouldFail) {
             process.exit(2);

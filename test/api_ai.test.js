@@ -107,3 +107,33 @@ describe('recommendTestsAI result shape', () => {
             'aiEnrichment key may or may not be present');
     });
 });
+
+describe('recommendTestsAI with API key set', () => {
+    it('exercises AI enrichment path and returns result without crashing when given a fake key', async () => {
+        // Set a fake key (valid format: sk-ant-* + 20 chars) to trigger the AI enrichment path
+        // The provider will attempt the API call and fail gracefully, returning a result with warnings
+        process.env.ANTHROPIC_API_KEY = 'sk-ant-api03-fakekeyfortest1234567890abcdefgh';
+
+        let result;
+        try {
+            result = await recommendTestsAI({
+                cwd: tmpDir,
+                path: tmpDir,
+            });
+        } finally {
+            delete process.env.ANTHROPIC_API_KEY;
+        }
+
+        // Should return without crashing (AI enrichment catches provider errors gracefully)
+        assert.ok(result, 'Should return a result');
+        assert.ok(result.impact, 'Should have an impact field');
+        assert.ok(result.plan, 'Should have a plan field');
+        assert.ok(typeof result.planPath === 'string', 'planPath should be a string');
+        assert.ok(typeof result.ciSummaryMarkdown === 'string', 'ciSummaryMarkdown should be a string');
+        assert.ok(typeof result.ciSummaryPath === 'string', 'ciSummaryPath should be a string');
+
+        // aiEnrichment property must exist on the result object (may be undefined if 0 features impacted,
+        // or an AIEnrichmentResult with warnings if the provider call failed gracefully)
+        assert.ok('aiEnrichment' in result, 'Result must have aiEnrichment property when API key is set');
+    });
+});
