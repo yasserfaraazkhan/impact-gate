@@ -271,3 +271,130 @@ describe('renderCiSummaryMarkdown with AI enrichment', () => {
         assert.ok(!md.includes('AI insight'));
     });
 });
+
+describe('advisory scenarios for covered features', () => {
+    function makeCoveredImpact() {
+        return {
+            changedFiles: ['webapp/channels/src/components/search_results.tsx'],
+            expandedFiles: [],
+            impactedFeatures: [
+                {
+                    familyId: 'channels',
+                    featureId: 'channels/search',
+                    priority: 'P0',
+                    changedFiles: ['webapp/channels/src/components/search_results.tsx'],
+                    playwrightSpecs: ['specs/functional/channels/search/search_results.spec.ts'],
+                    cypressSpecs: [],
+                    userFlows: ['Search for messages'],
+                    coverageStatus: 'covered',
+                },
+            ],
+            unboundFiles: [],
+            warnings: [],
+        };
+    }
+
+    function makeCoveredEnrichment(missingScenarios = ['Search result highlighting on match']) {
+        return {
+            enrichedFeatures: [
+                {
+                    familyId: 'channels',
+                    featureId: 'channels/search',
+                    priority: 'P0',
+                    changedFiles: ['webapp/channels/src/components/search_results.tsx'],
+                    coverageStatus: 'covered',
+                    playwrightSpecs: ['specs/functional/channels/search/search_results.spec.ts'],
+                    cypressSpecs: [],
+                    userFlows: ['Search for messages'],
+                    aiReasons: ['Search results component updated — highlighting behavior changed'],
+                    aiMissingScenarios: missingScenarios,
+                    aiCoveredBy: ['specs/functional/channels/search/search_results.spec.ts'],
+                },
+            ],
+            unboundFileInsights: [],
+            warnings: [],
+            providerName: 'test-provider',
+            tokenUsage: {input: 100, output: 50},
+        };
+    }
+
+    it('attaches advisoryScenarios to covered flow when AI returns new scenarios', () => {
+        const impact = makeCoveredImpact();
+        const ai = makeCoveredEnrichment();
+        const plan = buildPlanFromImpact(impact, undefined, ai);
+
+        assert.equal(plan.coveredFlows.length, 1);
+        const flow = plan.coveredFlows[0];
+        assert.ok(flow.advisoryScenarios);
+        assert.ok(flow.advisoryScenarios.includes('Search result highlighting on match'));
+    });
+
+    it('does not attach advisoryScenarios when AI returns empty missingScenarios for covered flow', () => {
+        const impact = makeCoveredImpact();
+        const ai = makeCoveredEnrichment([]);
+        const plan = buildPlanFromImpact(impact, undefined, ai);
+
+        assert.equal(plan.coveredFlows.length, 1);
+        const flow = plan.coveredFlows[0];
+        assert.equal(flow.advisoryScenarios, undefined);
+    });
+
+    it('does not attach advisoryScenarios when no AI enrichment is provided', () => {
+        const impact = makeCoveredImpact();
+        const plan = buildPlanFromImpact(impact);
+
+        assert.equal(plan.coveredFlows.length, 1);
+        const flow = plan.coveredFlows[0];
+        assert.equal(flow.advisoryScenarios, undefined);
+    });
+
+    it('renders advisory scenarios as 💡 hint in markdown under covered flow', () => {
+        const impact = makeCoveredImpact();
+        const ai = makeCoveredEnrichment(['Search result highlighting on match', 'Empty state shown when no results']);
+        const plan = buildPlanFromImpact(impact, undefined, ai);
+        const md = renderCiSummaryMarkdown(plan);
+
+        assert.ok(md.includes('💡'));
+        assert.ok(md.includes('Search result highlighting on match'));
+        assert.ok(md.includes('Empty state shown when no results'));
+    });
+
+    it('does not render 💡 hints when covered flow has no advisory scenarios', () => {
+        const impact = makeCoveredImpact();
+        const ai = makeCoveredEnrichment([]);
+        const plan = buildPlanFromImpact(impact, undefined, ai);
+        const md = renderCiSummaryMarkdown(plan);
+
+        assert.ok(!md.includes('💡'));
+    });
+
+    it('matches covered flow enrichment by featureId first', () => {
+        const impact = makeCoveredImpact();
+        const ai = {
+            enrichedFeatures: [
+                {
+                    familyId: 'other-family', // different familyId
+                    featureId: 'channels/search', // but correct featureId
+                    priority: 'P0',
+                    changedFiles: [],
+                    coverageStatus: 'covered',
+                    playwrightSpecs: [],
+                    cypressSpecs: [],
+                    userFlows: [],
+                    aiReasons: ['Matched by featureId'],
+                    aiMissingScenarios: ['Advisory via featureId match'],
+                    aiCoveredBy: [],
+                },
+            ],
+            unboundFileInsights: [],
+            warnings: [],
+            providerName: 'test-provider',
+            tokenUsage: {input: 0, output: 0},
+        };
+        const plan = buildPlanFromImpact(impact, undefined, ai);
+
+        const flow = plan.coveredFlows[0];
+        assert.ok(flow.advisoryScenarios);
+        assert.ok(flow.advisoryScenarios.includes('Advisory via featureId match'));
+    });
+});

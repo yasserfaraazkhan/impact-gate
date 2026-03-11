@@ -126,6 +126,10 @@ function buildPrompt(options: AIEnrichmentOptions): string {
     lines.push('## Instructions');
     lines.push('Return ONLY valid JSON (no markdown fences, no explanation) in this exact shape:');
     lines.push('');
+    lines.push('Rules for missingScenarios:');
+    lines.push('- For coverage=uncovered: list all scenarios the feature needs.');
+    lines.push('- For coverage=covered or coverage=partial: ONLY list scenarios introduced by THIS diff that are likely not covered by existing tests. If the diff adds no new user-visible behavior, return []. Do not pad with generic scenarios.');
+    lines.push('');
     lines.push(JSON.stringify({
         impactedFlows: [
             {
@@ -133,10 +137,10 @@ function buildPrompt(options: AIEnrichmentOptions): string {
                 name: '<human-readable flow name>',
                 priority: 'P0|P1|P2',
                 reasons: [
-                    '<EXACTLY 1-2 sentences describing user-visible behavioral impact. Focus on what a user would observe or do differently — NOT file names, NOT implementation details. Example: "Users can now open search results in a detached browser window that persists independently.">',
+                    '<EXACTLY 1-2 sentences describing user-visible behavioral impact. Focus on what a user would observe or do differently — NOT file names, NOT implementation details.>',
                 ],
                 coveredBy: ['<spec file paths that cover this flow>'],
-                missingScenarios: ['<concrete user action to test, phrased as a scenario title. E.g. "Thread popout opens and displays replies correctly">'],
+                missingScenarios: ['<concrete scenario title for a new or changed behavior introduced by THIS diff. E.g. "Thread popout preserves scroll position on reload">'],
             },
         ],
         unboundFileAnalysis: [

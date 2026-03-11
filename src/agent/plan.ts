@@ -36,6 +36,7 @@ export interface CoveredFlowSummary {
     name: string;
     priority: string;
     coveredBy: string[];
+    advisoryScenarios?: string[]; // AI-detected new behavior in this PR that may not be covered
 }
 
 export interface PlanReport {

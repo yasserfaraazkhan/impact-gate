@@ -328,15 +328,25 @@ export function buildPlanFromImpact(
 
     const coveredFlows: CoveredFlowSummary[] = impact.impactedFeatures
         .filter((f) => f.coverageStatus === 'covered')
-        .map((f) => ({
-            id: featureLabel(f),
-            name: featureLabel(f),
-            priority: f.priority,
-            coveredBy: [
-                ...(f.playwrightSpecs.length > 0 ? [`${f.playwrightSpecs.length} Playwright spec(s)`] : []),
-                ...(f.cypressSpecs.length > 0 ? [`${f.cypressSpecs.length} Cypress spec(s)`] : []),
-            ].slice(0, 3),
-        }));
+        .map((f) => {
+            const aiFeature = f.featureId
+                ? (aiFeatureByFeatureId.get(f.featureId) ?? aiFeatureByFamilyId.get(f.familyId))
+                : aiFeatureByFamilyId.get(f.familyId);
+            // Only surface advisory scenarios when AI found new behavior in this diff
+            const advisoryScenarios = aiFeature?.aiMissingScenarios?.length
+                ? aiFeature.aiMissingScenarios
+                : undefined;
+            return {
+                id: featureLabel(f),
+                name: featureLabel(f),
+                priority: f.priority,
+                coveredBy: [
+                    ...(f.playwrightSpecs.length > 0 ? [`${f.playwrightSpecs.length} Playwright spec(s)`] : []),
+                    ...(f.cypressSpecs.length > 0 ? [`${f.cypressSpecs.length} Cypress spec(s)`] : []),
+                ].slice(0, 3),
+                advisoryScenarios,
+            };
+        });
 
     const recommendedTests = buildRecommendedTests(impact);
     const requiredNewTests = gaps.map((f) => `${featureLabel(f)}: Add E2E tests`);
@@ -446,6 +456,12 @@ export function renderCiSummaryMarkdown(plan: PlanReport): string {
         lines.push('');
         for (const flow of plan.coveredFlows) {
             lines.push(`- **${flow.name}** [${flow.priority}] — ${flow.coveredBy.join(', ')}`);
+            if (flow.advisoryScenarios && flow.advisoryScenarios.length > 0) {
+                lines.push(`  💡 New behavior in this PR — consider adding:`);
+                for (const s of flow.advisoryScenarios) {
+                    lines.push(`  - [ ] ${s}`);
+                }
+            }
         }
     }
 
