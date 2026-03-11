@@ -469,13 +469,14 @@ export function renderCiSummaryMarkdown(plan: PlanReport): string {
         lines.push(`### 💡 New behavior detected in ${flowsWithAdvisory.length} covered feature${flowsWithAdvisory.length !== 1 ? 's' : ''} — consider adding tests`);
         lines.push('');
         for (const flow of flowsWithAdvisory) {
-            // Green [!TIP] box: just the name (always visible, compact)
-            lines.push(`> [!TIP]`);
-            lines.push(`> **${flow.name}** · ${flow.priority}`);
-            lines.push('');
-            // Specs + scenarios: collapsible below
-            const coverageSummary = flow.coveredBy.join(', ');
-            lines.push(`<details><summary>${coverageSummary} — click to see suggested scenarios</summary>`);
+            const specParts: string[] = [];
+            for (const s of flow.coveredBy) {
+                // Strip "N Playwright spec(s)" → "N PW" and "N Cypress spec(s)" → "N Cy"
+                specParts.push(s.replace(/ Playwright spec\(s\)/, ' PW').replace(/ Cypress spec\(s\)/, ' Cy'));
+            }
+            const specSummary = specParts.length > 0 ? ` — ${specParts.join(' · ')}` : '';
+            const scenarioCount = flow.advisoryScenarios!.length;
+            lines.push(`<details><summary>💡 <strong>${flow.name}</strong> · ${flow.priority}${specSummary} · ${scenarioCount} scenario${scenarioCount !== 1 ? 's' : ''}</summary>`);
             lines.push('');
             for (const s of flow.advisoryScenarios!) {
                 lines.push(`- [ ] ${s}`);
