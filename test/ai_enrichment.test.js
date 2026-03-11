@@ -276,25 +276,72 @@ describe('enrichImpactWithAI', () => {
     });
 
     test('Test 6: Manifest summary included when provided', async () => {
-        // We verify no error is thrown when manifestSummary is provided
         const validAIResponse = JSON.stringify({
             impactedFlows: [],
             unboundFileAnalysis: [],
         });
 
-        const provider = makeMockProvider(validAIResponse);
+        const manifestSummary = 'This app has 42 route families covering messaging and collaboration.';
+        let capturedPrompt = '';
+
+        // Capture provider that records the prompt it receives
+        const capturingProvider = {
+            name: 'mock',
+            capabilities: {
+                vision: false,
+                streaming: false,
+                maxTokens: 8000,
+                costPer1MInputTokens: 0,
+                costPer1MOutputTokens: 0,
+                supportsTools: false,
+                supportsPromptCaching: false,
+                typicalResponseTimeMs: 100,
+            },
+            async generateText(prompt, _options) {
+                capturedPrompt = prompt;
+                return {
+                    text: validAIResponse,
+                    usage: {inputTokens: 100, outputTokens: 50, totalTokens: 150},
+                    cost: 0,
+                };
+            },
+            getUsageStats() {
+                return {
+                    requestCount: 1,
+                    totalInputTokens: 100,
+                    totalOutputTokens: 50,
+                    totalTokens: 150,
+                    totalCost: 0,
+                    averageResponseTimeMs: 100,
+                    failedRequests: 0,
+                    startTime: new Date(),
+                    lastUpdated: new Date(),
+                };
+            },
+            resetUsageStats() {},
+        };
+
         const deterministicImpact = makeDeterministicImpact();
 
-        // Should not throw
         const result = await enrichImpactWithAI({
             deterministicImpact,
             diffs: new Map(),
-            provider,
+            provider: capturingProvider,
             specList: [],
-            manifestSummary: 'This app has 42 route families covering messaging and collaboration.',
+            manifestSummary,
         });
 
         assert.ok(result, 'Should return a result when manifestSummary is provided');
         assert.equal(result.providerName, 'mock');
+
+        // Verify manifestSummary was included in the prompt sent to the AI
+        assert.ok(
+            capturedPrompt.includes(manifestSummary),
+            `Prompt should contain manifestSummary. Got prompt starting with: ${capturedPrompt.slice(0, 200)}`,
+        );
+        assert.ok(
+            capturedPrompt.includes('Application Overview'),
+            'Prompt should contain the Application Overview section header',
+        );
     });
 });

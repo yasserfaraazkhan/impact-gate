@@ -3,12 +3,13 @@
 
 import type {LLMProvider} from '../provider_interface.js';
 import type {ImpactResult, ImpactedFeature} from './impact_engine.js';
+import type {FeaturePriority} from '../knowledge/route_families.js';
 import {formatDiffsForPrompt} from './diff_loader.js';
 
 export interface EnrichedFeature {
     familyId: string;
     featureId?: string;
-    priority: 'P0' | 'P1' | 'P2';
+    priority: FeaturePriority;
     changedFiles: string[];
     coverageStatus: string;
     playwrightSpecs: string[];
@@ -57,14 +58,18 @@ interface AIResponse {
 
 const MAX_SPEC_LIST = 50;
 
+function normalizePriority(value: string): FeaturePriority {
+    if (value === 'P0' || value === 'P1' || value === 'P2') {
+        return value;
+    }
+    return 'P2';
+}
+
 function buildPrompt(options: AIEnrichmentOptions): string {
     const {deterministicImpact, diffs, specList, manifestSummary} = options;
     const {changedFiles, impactedFeatures, unboundFiles} = deterministicImpact;
 
     const lines: string[] = [];
-
-    lines.push('You are an expert E2E test analyst. Analyze the following code changes and identify which user flows are impacted.');
-    lines.push('');
 
     // Optional manifest summary
     if (manifestSummary) {
@@ -90,9 +95,11 @@ function buildPrompt(options: AIEnrichmentOptions): string {
     lines.push('The following features/flows have been deterministically identified as impacted:');
     lines.push('');
     for (const feature of impactedFeatures) {
-        const label = feature.featureId ?? feature.familyId;
+        const featureIdPart = feature.featureId ? `featureId=${feature.featureId}` : 'featureId=undefined';
         const specCount = feature.playwrightSpecs.length + feature.cypressSpecs.length;
-        lines.push(`- **${label}** | Priority: ${feature.priority} | Coverage: ${feature.coverageStatus} | Specs: ${specCount}`);
+        const specList2 = [...feature.playwrightSpecs, ...feature.cypressSpecs];
+        const specsDisplay = specList2.length > 0 ? specList2.join(', ') : 'none';
+        lines.push(`- familyId=${feature.familyId} ${featureIdPart} (${feature.priority}): ${specCount} files, coverage=${feature.coverageStatus}, specs=[${specsDisplay}]`);
     }
     lines.push('');
 
@@ -143,11 +150,19 @@ function buildPrompt(options: AIEnrichmentOptions): string {
 }
 
 function extractJSON(text: string): string {
-    // Strip markdown code fences if present
-    const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (fenceMatch) {
-        return fenceMatch[1].trim();
+    // Try markdown fenced block first
+    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    const candidates = fenced ? [fenced[1], text] : [text];
+
+    for (const candidate of candidates) {
+        const start = candidate.indexOf('{');
+        const end = candidate.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            return candidate.slice(start, end + 1).trim();
+        }
     }
+
+    // Fallback: return trimmed text
     return text.trim();
 }
 
@@ -155,7 +170,7 @@ function toEnrichedFeature(det: ImpactedFeature, aiFlow?: AIFlow): EnrichedFeatu
     return {
         familyId: det.familyId,
         featureId: det.featureId,
-        priority: det.priority as 'P0' | 'P1' | 'P2',
+        priority: normalizePriority(det.priority),
         changedFiles: det.changedFiles,
         coverageStatus: det.coverageStatus,
         playwrightSpecs: det.playwrightSpecs,
@@ -198,6 +213,19 @@ export async function enrichImpactWithAI(options: AIEnrichmentOptions): Promise<
 
         try {
             const parsed = JSON.parse(rawJSON) as AIResponse;
+
+            // Validate that impactedFlows is an array
+            if (!Array.isArray(parsed.impactedFlows)) {
+                warnings.push('AI response parsed but impactedFlows is not an array; returning empty enrichedFeatures');
+                return {
+                    enrichedFeatures: [],
+                    unboundFileInsights: [],
+                    warnings,
+                    providerName: provider.name,
+                    tokenUsage,
+                };
+            }
+
             aiResponse = parsed;
             unboundFileInsights = (parsed.unboundFileAnalysis ?? []).map((item) => ({
                 file: item.file,
@@ -237,6 +265,22 @@ export async function enrichImpactWithAI(options: AIEnrichmentOptions): Promise<
         }
     }
 
+    // Build a set of all deterministic ids for unmatched-flow detection
+    const deterministicIds = new Set<string>();
+    for (const det of deterministicImpact.impactedFeatures) {
+        if (det.featureId) {
+            deterministicIds.add(det.featureId);
+        }
+        deterministicIds.add(det.familyId);
+    }
+
+    // Warn on AI flows that don't match any deterministic feature
+    for (const flow of aiFlowMap.values()) {
+        if (!deterministicIds.has(flow.id)) {
+            warnings.push(`AI returned flow '${flow.id}' with no matching deterministic feature (using as-is)`);
+        }
+    }
+
     // Merge deterministic features with AI data
     const enrichedFeatures: EnrichedFeature[] = deterministicImpact.impactedFeatures.map((det) => {
         // Match by featureId first, then by familyId
@@ -245,6 +289,25 @@ export async function enrichImpactWithAI(options: AIEnrichmentOptions): Promise<
             : aiFlowMap.get(det.familyId);
         return toEnrichedFeature(det, aiFlow);
     });
+
+    // Include AI flows that had no deterministic match (as-is, with empty deterministic fields)
+    for (const flow of aiFlowMap.values()) {
+        if (!deterministicIds.has(flow.id)) {
+            enrichedFeatures.push({
+                familyId: flow.id,
+                featureId: undefined,
+                priority: normalizePriority(flow.priority),
+                changedFiles: [],
+                coverageStatus: 'uncovered',
+                playwrightSpecs: [],
+                cypressSpecs: [],
+                userFlows: [],
+                aiReasons: flow.reasons ?? [],
+                aiMissingScenarios: flow.missingScenarios ?? [],
+                aiCoveredBy: flow.coveredBy ?? [],
+            });
+        }
+    }
 
     return {
         enrichedFeatures,
