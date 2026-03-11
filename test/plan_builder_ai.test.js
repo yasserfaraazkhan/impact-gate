@@ -175,6 +175,53 @@ describe('buildPlanFromImpact with AI enrichment', () => {
         assert.equal(gap.reasons.length, 1);
     });
 
+    it('overlays aiReasons onto partial gap when aiEnrichment matches a partial-coverage feature', () => {
+        const impact = makeImpactResult({
+            impactedFeatures: [
+                {
+                    familyId: 'channels',
+                    featureId: 'channels/messaging',
+                    priority: 'P1',
+                    changedFiles: ['webapp/channels/src/components/post.tsx'],
+                    playwrightSpecs: ['tests/e2e/messaging.spec.ts'],
+                    cypressSpecs: [],
+                    userFlows: ['Send a message', 'Edit a message'],
+                    coverageStatus: 'partial',
+                },
+            ],
+        });
+        const ai = makeAIEnrichment({
+            enrichedFeatures: [
+                {
+                    familyId: 'channels',
+                    featureId: 'channels/messaging',
+                    priority: 'P1',
+                    changedFiles: ['webapp/channels/src/components/post.tsx'],
+                    coverageStatus: 'partial',
+                    playwrightSpecs: ['tests/e2e/messaging.spec.ts'],
+                    cypressSpecs: [],
+                    userFlows: ['Send a message', 'Edit a message'],
+                    aiReasons: ['Post component changed — Cypress coverage missing', 'Thread reply path affected'],
+                    aiMissingScenarios: [],
+                    aiCoveredBy: ['tests/e2e/messaging.spec.ts'],
+                },
+            ],
+        });
+        const plan = buildPlanFromImpact(impact, undefined, ai);
+
+        // The partial gap should be present (no full gaps exist)
+        assert.equal(plan.gapDetails.length, 1);
+        const partialGap = plan.gapDetails[0];
+        assert.ok(partialGap.name.includes('(partial)'));
+        // Source should be ai+deterministic
+        assert.equal(partialGap.source, 'ai+deterministic');
+        // AI reasons should be overlaid
+        assert.ok(partialGap.reasons.includes('Post component changed — Cypress coverage missing'));
+        assert.ok(partialGap.reasons.includes('Thread reply path affected'));
+        // Base partial reason should still be present
+        assert.ok(partialGap.reasons[0].includes('Missing'));
+    });
+
     it('matches enriched feature by featureId when available', () => {
         const impact = makeImpactResult();
         const ai = makeAIEnrichment({

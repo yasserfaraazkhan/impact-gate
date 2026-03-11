@@ -263,15 +263,17 @@ export function buildPlanFromImpact(
     const gaps = getGaps(impact);
     const partialGaps = getPartialGaps(impact);
 
-    // Build a lookup map from aiEnrichment by featureId or familyId
-    const aiFeatureMap = new Map<string, AIEnrichmentResult['enrichedFeatures'][number]>();
+    // Build two separate lookup maps from aiEnrichment: one by featureId, one by familyId.
+    // The familyId map stores only the FIRST feature encountered to avoid last-write-wins collisions.
+    const aiFeatureByFeatureId = new Map<string, AIEnrichmentResult['enrichedFeatures'][number]>();
+    const aiFeatureByFamilyId = new Map<string, AIEnrichmentResult['enrichedFeatures'][number]>();
     if (aiEnrichment) {
         for (const ef of aiEnrichment.enrichedFeatures) {
             if (ef.featureId) {
-                aiFeatureMap.set(ef.featureId, ef);
+                aiFeatureByFeatureId.set(ef.featureId, ef);
             }
-            if (ef.familyId) {
-                aiFeatureMap.set(ef.familyId, ef);
+            if (ef.familyId && !aiFeatureByFamilyId.has(ef.familyId)) {
+                aiFeatureByFamilyId.set(ef.familyId, ef);
             }
         }
     }
@@ -279,8 +281,8 @@ export function buildPlanFromImpact(
     const gapDetails: GapDetail[] = gaps.map((f) => {
         const label = featureLabel(f);
         const aiFeature = f.featureId
-            ? (aiFeatureMap.get(f.featureId) ?? aiFeatureMap.get(f.familyId))
-            : aiFeatureMap.get(f.familyId);
+            ? (aiFeatureByFeatureId.get(f.featureId) ?? aiFeatureByFamilyId.get(f.familyId))
+            : aiFeatureByFamilyId.get(f.familyId);
 
         const baseReasons = [`No Playwright or Cypress tests found for ${label}`];
         const reasons = aiFeature && aiFeature.aiReasons.length > 0
@@ -308,8 +310,8 @@ export function buildPlanFromImpact(
         const hasOpposite = f.playwrightSpecs.length > 0 ? 'Playwright' : 'Cypress';
         const label = featureLabel(f);
         const aiFeature = f.featureId
-            ? (aiFeatureMap.get(f.featureId) ?? aiFeatureMap.get(f.familyId))
-            : aiFeatureMap.get(f.familyId);
+            ? (aiFeatureByFeatureId.get(f.featureId) ?? aiFeatureByFamilyId.get(f.familyId))
+            : aiFeatureByFamilyId.get(f.familyId);
 
         const baseReasons = [`Missing ${coverageType} tests for ${label} (has ${hasOpposite} only)`];
         const reasons = aiFeature && aiFeature.aiReasons.length > 0
