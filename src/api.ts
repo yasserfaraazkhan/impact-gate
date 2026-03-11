@@ -15,6 +15,9 @@ import {
     writePlanReport,
 } from './engine/plan_builder.js';
 import {getChangedFiles} from './agent/git.js';
+import {loadDiffs} from './engine/diff_loader.js';
+import {enrichImpactWithAI, type AIEnrichmentResult} from './engine/ai_enrichment.js';
+import {AnthropicProvider} from './anthropic_provider.js';
 import {finalizeGeneratedTests, type FinalizeGeneratedTestsOptions, type FinalizeGeneratedTestsResult} from './agent/handoff.js';
 import {
     ingestTraceabilityInput,
@@ -114,6 +117,44 @@ export function recommendTestsDeterministic(options: AgentApiOptions = {}): Reco
     const ciSummaryPath = writeCiSummary(reportRoot, ciSummaryMarkdown);
     appendPlanMetrics(reportRoot, plan);
     return {impact, plan, planPath, ciSummaryMarkdown, ciSummaryPath};
+}
+
+export async function recommendTestsAI(options: AgentApiOptions = {}): Promise<RecommendTestsV2Result & { aiEnrichment?: AIEnrichmentResult }> {
+    const config = resolveAgent(options, 'impact');
+    const reportRoot = config.testsRoot || config.path;
+    const gitResult = getChangedFiles(config.path, config.git.since, {includeUncommitted: config.git.includeUncommitted});
+    const impact = analyzeImpactV2(gitResult.files, {
+        testsRoot: reportRoot,
+        routeFamilies: config.routeFamilies,
+    });
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    let aiEnrichment: AIEnrichmentResult | undefined;
+
+    if (apiKey) {
+        const diffs = loadDiffs(config.path, config.git.since, gitResult.files);
+        const provider = new AnthropicProvider({apiKey});
+        // Collect all known spec paths from impacted features
+        const specSet = new Set<string>();
+        for (const feature of impact.impactedFeatures) {
+            for (const s of feature.playwrightSpecs) {
+                specSet.add(s);
+            }
+        }
+        aiEnrichment = await enrichImpactWithAI({
+            deterministicImpact: impact,
+            diffs,
+            provider,
+            specList: [...specSet],
+        });
+    }
+
+    const plan = buildPlanFromImpact(impact, config.policy, aiEnrichment);
+    const planPath = writePlanReport(reportRoot, plan);
+    const ciSummaryMarkdown = renderCiSummaryMarkdown(plan);
+    const ciSummaryPath = writeCiSummary(reportRoot, ciSummaryMarkdown);
+    appendPlanMetrics(reportRoot, plan);
+    return {impact, plan, planPath, ciSummaryMarkdown, ciSummaryPath, aiEnrichment};
 }
 
 export function captureTraceability(options: TraceabilityCaptureApiOptions): TraceabilityCaptureResult {

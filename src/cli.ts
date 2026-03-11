@@ -17,6 +17,8 @@ import {
     writePlanReport,
 } from './engine/plan_builder.js';
 import {getChangedFiles} from './agent/git.js';
+import {loadDiffs} from './engine/diff_loader.js';
+import {enrichImpactWithAI} from './engine/ai_enrichment.js';
 import {appendFeedbackAndRecompute, type RecommendationFeedbackEntry} from './agent/feedback.js';
 import {finalizeGeneratedTests} from './agent/handoff.js';
 import {ingestTraceabilityInput} from './agent/traceability_ingest.js';
@@ -100,6 +102,7 @@ interface ParsedArgs {
     analyzeGenerateOutputDir?: string;
     analyzeHeal?: boolean;
     analyzeHealReport?: string;
+    noAi?: boolean;
 }
 
 const CONFIG_CANDIDATES = ['e2e-ai-agents.config.json', '.e2e-ai-agents.config.json'];
@@ -593,6 +596,10 @@ function parseArgs(argv: string[]): ParsedArgs {
             i += 1;
             continue;
         }
+        if (arg === '--no-ai') {
+            parsed.noAi = true;
+            continue;
+        }
     }
 
     return parsed;
@@ -1035,7 +1042,32 @@ async function main(): Promise<void> {
             testsRoot: reportRoot,
             routeFamilies: config.routeFamilies,
         });
-        const plan = buildPlanFromImpact(impactResult, config.policy);
+
+        let aiEnrichment: import('./engine/ai_enrichment.js').AIEnrichmentResult | undefined;
+        const apiKey = process.env.ANTHROPIC_API_KEY;
+        if (!args.noAi && apiKey) {
+            const diffs = loadDiffs(config.path, config.git.since, gitResult.files);
+            const provider = new AnthropicProvider({apiKey});
+            const specSet = new Set<string>();
+            for (const feature of impactResult.impactedFeatures) {
+                for (const s of feature.playwrightSpecs) {
+                    specSet.add(s);
+                }
+            }
+            aiEnrichment = await enrichImpactWithAI({
+                deterministicImpact: impactResult,
+                diffs,
+                provider,
+                specList: [...specSet],
+            });
+            // eslint-disable-next-line no-console
+            console.log(`AI enrichment: ${aiEnrichment.enrichedFeatures.length} features enriched (${aiEnrichment.tokenUsage.input + aiEnrichment.tokenUsage.output} tokens)`);
+        } else if (!args.noAi && !apiKey) {
+            // eslint-disable-next-line no-console
+            console.log('Tip: set ANTHROPIC_API_KEY to enable AI-powered enrichment');
+        }
+
+        const plan = buildPlanFromImpact(impactResult, config.policy, aiEnrichment);
         const planPath = writePlanReport(reportRoot, plan);
         const summaryMarkdown = renderCiSummaryMarkdown(plan);
         const summaryPath = writeCiSummary(reportRoot, summaryMarkdown, args.ciCommentPath);
