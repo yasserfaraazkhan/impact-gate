@@ -5,7 +5,7 @@ import {existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync}
 import {basename, dirname, join, relative, resolve} from 'path';
 import {spawnSync} from 'child_process';
 import type {PipelineConfig} from './config.js';
-import type {FlowImpact} from './analysis.js';
+import type {FlowImpact} from './types.js';
 import {baseNameWithoutExt, isPathWithinRoot, normalizePath, titleCase, tokenize, uniqueTokens} from './utils.js';
 
 export interface PipelineResult {

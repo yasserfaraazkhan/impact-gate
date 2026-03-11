@@ -4,13 +4,18 @@
 import {existsSync, readFileSync, statSync} from 'fs';
 import {join} from 'path';
 
+export type FeaturePriority = 'P0' | 'P1' | 'P2';
+
 export interface RouteFeature {
     id: string;
     routes?: string[];
     webappPaths?: string[];
     serverPaths?: string[];
     specDirs?: string[];
+    cypressSpecDirs?: string[];
     tags?: string[];
+    priority?: FeaturePriority;
+    userFlows?: string[];
 }
 
 export interface RouteFamily {
@@ -21,7 +26,10 @@ export interface RouteFamily {
     webappPaths?: string[];
     serverPaths?: string[];
     specDirs?: string[];
+    cypressSpecDirs?: string[];
     tags?: string[];
+    priority?: FeaturePriority;
+    userFlows?: string[];
     features?: RouteFeature[];
 }
 
@@ -108,8 +116,17 @@ function validateFamily(family: unknown): RouteFamily | null {
     if (Array.isArray(obj.specDirs)) {
         result.specDirs = obj.specDirs.filter((v): v is string => typeof v === 'string');
     }
+    if (Array.isArray(obj.cypressSpecDirs)) {
+        result.cypressSpecDirs = obj.cypressSpecDirs.filter((v): v is string => typeof v === 'string');
+    }
     if (Array.isArray(obj.tags)) {
         result.tags = obj.tags.filter((v): v is string => typeof v === 'string');
+    }
+    if (obj.priority === 'P0' || obj.priority === 'P1' || obj.priority === 'P2') {
+        result.priority = obj.priority;
+    }
+    if (Array.isArray(obj.userFlows)) {
+        result.userFlows = obj.userFlows.filter((v): v is string => typeof v === 'string');
     }
     if (Array.isArray(obj.features)) {
         result.features = obj.features
@@ -141,8 +158,17 @@ function validateFeature(feature: unknown): RouteFeature | null {
     if (Array.isArray(obj.specDirs)) {
         result.specDirs = obj.specDirs.filter((v): v is string => typeof v === 'string');
     }
+    if (Array.isArray(obj.cypressSpecDirs)) {
+        result.cypressSpecDirs = obj.cypressSpecDirs.filter((v): v is string => typeof v === 'string');
+    }
     if (Array.isArray(obj.tags)) {
         result.tags = obj.tags.filter((v): v is string => typeof v === 'string');
+    }
+    if (obj.priority === 'P0' || obj.priority === 'P1' || obj.priority === 'P2') {
+        result.priority = obj.priority;
+    }
+    if (Array.isArray(obj.userFlows)) {
+        result.userFlows = obj.userFlows.filter((v): v is string => typeof v === 'string');
     }
     return result;
 }
@@ -253,6 +279,57 @@ export function getSpecDirsForBinding(
         }
     }
     return family.specDirs || [];
+}
+
+export function getCypressSpecDirsForBinding(
+    manifest: RouteFamilyManifest,
+    binding: {family: string; feature?: string},
+): string[] {
+    const family = getFamilyById(manifest, binding.family);
+    if (!family) {
+        return [];
+    }
+    if (binding.feature) {
+        const feature = getFeatureById(family, binding.feature);
+        if (feature?.cypressSpecDirs && feature.cypressSpecDirs.length > 0) {
+            return feature.cypressSpecDirs;
+        }
+    }
+    return family.cypressSpecDirs || [];
+}
+
+export function getPriorityForBinding(
+    manifest: RouteFamilyManifest,
+    binding: {family: string; feature?: string},
+): FeaturePriority {
+    const family = getFamilyById(manifest, binding.family);
+    if (!family) {
+        return 'P2';
+    }
+    if (binding.feature) {
+        const feature = getFeatureById(family, binding.feature);
+        if (feature?.priority) {
+            return feature.priority;
+        }
+    }
+    return family.priority || 'P2';
+}
+
+export function getUserFlowsForBinding(
+    manifest: RouteFamilyManifest,
+    binding: {family: string; feature?: string},
+): string[] {
+    const family = getFamilyById(manifest, binding.family);
+    if (!family) {
+        return [];
+    }
+    if (binding.feature) {
+        const feature = getFeatureById(family, binding.feature);
+        if (feature?.userFlows && feature.userFlows.length > 0) {
+            return feature.userFlows;
+        }
+    }
+    return family.userFlows || [];
 }
 
 export function getRoutesForBinding(

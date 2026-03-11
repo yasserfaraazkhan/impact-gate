@@ -8,17 +8,15 @@ import {dirname, join, resolve} from 'path';
 import {resolveConfig, type AnalysisMode, type AnalysisProfile, type FrameworkType} from './agent/config.js';
 import {AnthropicProvider} from './anthropic_provider.js';
 import {LLMProviderError} from './provider_interface.js';
-import {runGap, runImpact} from './agent/runner.js';
+import {appendPlanMetrics} from './agent/plan.js';
+import {analyzeImpact as analyzeImpactV2} from './engine/impact_engine.js';
 import {
-    appendPlanMetrics,
-    attachDeveloperActions,
-    buildPlanFromImpactReport,
+    buildPlanFromImpact,
     renderCiSummaryMarkdown,
     writeCiSummary,
     writePlanReport,
-} from './agent/plan.js';
-import type {ReportData} from './agent/report.js';
-import {applyOperationalInsights} from './agent/operational_insights.js';
+} from './engine/plan_builder.js';
+import {getChangedFiles} from './agent/git.js';
 import {appendFeedbackAndRecompute, type RecommendationFeedbackEntry} from './agent/feedback.js';
 import {finalizeGeneratedTests} from './agent/handoff.js';
 import {ingestTraceabilityInput} from './agent/traceability_ingest.js';
@@ -28,13 +26,10 @@ import {extractPlaywrightUnstableSpecs} from './agent/playwright_report.js';
 import {runPipeline} from './pipeline/orchestrator.js';
 
 type Command =
-    AnalysisMode
+    'impact'
     | 'plan'
-    | 'generate'
     | 'heal'
     | 'suggest'
-    | 'approve-and-generate'
-    | 'auto-heal-pr'
     | 'finalize-generated-tests'
     | 'feedback'
     | 'traceability-capture'
@@ -157,13 +152,9 @@ function printUsage(): void {
         [
             'Usage:',
             '  e2e-ai-agents impact --path <app-root> [options]',
-            '  e2e-ai-agents gap --path <app-root> [options]',
             '  e2e-ai-agents plan --path <app-root> [options]',
-            '  e2e-ai-agents generate --path <app-root> [options]',
-            '  e2e-ai-agents heal --path <app-root> --traceability-report <json> [options]',
             '  e2e-ai-agents suggest --path <app-root> [options]',
-            '  e2e-ai-agents approve-and-generate --path <app-root> [options]',
-            '  e2e-ai-agents auto-heal-pr --path <app-root> [options]',
+            '  e2e-ai-agents heal --path <app-root> --traceability-report <json> [options]',
             '  e2e-ai-agents finalize-generated-tests --path <app-root> [options]',
             '  e2e-ai-agents feedback --path <app-root> --feedback-input <json>',
             '  e2e-ai-agents traceability-capture --path <app-root> --traceability-report <json>',
@@ -246,13 +237,9 @@ function parseArgs(argv: string[]): ParsedArgs {
     const command = argv[0];
     if (
         command === 'impact'
-        || command === 'gap'
         || command === 'plan'
-        || command === 'generate'
         || command === 'heal'
         || command === 'suggest'
-            || command === 'approve-and-generate'
-            || command === 'auto-heal-pr'
             || command === 'finalize-generated-tests'
             || command === 'feedback'
             || command === 'traceability-capture'
@@ -889,130 +876,6 @@ async function main(): Promise<void> {
         return;
     }
 
-    if (args.command === 'auto-heal-pr') {
-        if (!args.path && !autoConfig) {
-            // eslint-disable-next-line no-console
-            console.error('Error: --path is required for auto-heal-pr command');
-            process.exit(1);
-        }
-        const {config} = resolveConfig(process.cwd(), autoConfig, {
-            path: args.path,
-            profile: args.profile,
-            testsRoot: args.testsRoot,
-            mode: 'gap',
-            framework: args.framework,
-            timeLimitMinutes: args.timeLimitMinutes,
-            budget: {
-                maxUSD: args.budgetUSD,
-                maxTokens: args.budgetTokens,
-            },
-            testPatterns: args.testPatterns,
-            flowPatterns: args.flowPatterns,
-            flowExclude: args.flowExclude,
-            flowCatalogPath: args.flowCatalogPath,
-            specPDF: args.specPDF,
-            gitSince: args.gitSince,
-            pipeline: {
-                enabled: true,
-                scenarios: args.pipelineScenarios,
-                outputDir: args.pipelineOutput,
-                baseUrl: args.pipelineBaseUrl,
-                browser: args.pipelineBrowser,
-                headless: args.pipelineHeadless,
-                project: args.pipelineProject,
-                parallel: args.pipelineParallel,
-                dryRun: args.pipelineDryRun,
-                mcp: args.pipelineMcp,
-                mcpAllowFallback: args.pipelineMcpAllowFallback,
-                mcpOnly: args.pipelineMcpOnly,
-            },
-            llmProvider: args.llmProvider,
-        });
-        if (args.allowFallback) {
-            config.impact.allowFallback = true;
-        }
-
-        await runGap(config, {apply: true});
-        const reportRoot = config.testsRoot || config.path;
-        if (args.traceabilityReportPath) {
-            const unstableSpecs = extractPlaywrightUnstableSpecs(args.traceabilityReportPath, [reportRoot, config.path]);
-            if (unstableSpecs.length > 0) {
-                const targetedSummary = runTargetedSpecHeal(
-                    reportRoot,
-                    unstableSpecs.map((spec) => ({
-                        specPath: spec.specPath,
-                        status: spec.status,
-                        reason: `Playwright report: failingTests=${spec.failingTests}, flakyTests=${spec.flakyTests}`,
-                    })),
-                    {
-                        ...config.pipeline,
-                        enabled: true,
-                        heal: true,
-                    },
-                );
-                const healedCount = targetedSummary.results.filter((result) => result.healStatus === 'success').length;
-                // eslint-disable-next-line no-console
-                console.log(`Auto-heal targeted unstable specs: ${unstableSpecs.length} (healed=${healedCount})`);
-                if (targetedSummary.warnings.length > 0) {
-                    // eslint-disable-next-line no-console
-                    console.log(`Auto-heal warnings: ${targetedSummary.warnings.join(' | ')}`);
-                }
-
-                const gapPath = join(reportRoot, '.e2e-ai-agents', 'gap.json');
-                if (existsSync(gapPath)) {
-                    const gap = JSON.parse(readFileSync(gapPath, 'utf-8')) as {
-                        pipeline?: {
-                            runner?: string;
-                            results?: unknown[];
-                            warnings?: string[];
-                        };
-                    };
-                    const existingResults = Array.isArray(gap.pipeline?.results) ? gap.pipeline?.results : [];
-                    const existingWarnings = Array.isArray(gap.pipeline?.warnings) ? gap.pipeline?.warnings : [];
-                    gap.pipeline = {
-                        runner: gap.pipeline?.runner || targetedSummary.runner,
-                        results: [...existingResults, ...targetedSummary.results],
-                        warnings: Array.from(new Set([...(existingWarnings || []), ...targetedSummary.warnings])),
-                    };
-                    writeFileSync(gapPath, `${JSON.stringify(gap, null, 2)}\n`, 'utf-8');
-                }
-            } else {
-                // eslint-disable-next-line no-console
-                console.log('Auto-heal targeted unstable specs: 0');
-            }
-        }
-
-        const branchSuffix = new Date().toISOString().replace(/[:.]/g, '-');
-        const result = finalizeGeneratedTests({
-            appPath: config.path,
-            testsRoot: reportRoot,
-            branch: args.branch || `auto-heal-${branchSuffix}`,
-            commitMessage: args.commitMessage || 'test(e2e): auto-heal generated specs',
-            createPr: true,
-            prTitle: args.prTitle || 'test(e2e): auto-heal generated specs',
-            prBody: args.prBody || 'Automated e2e-heal run generated by @yasserkhanorg/e2e-agents.',
-            baseBranch: args.prBase || 'master',
-            dryRun: args.dryRun,
-        });
-        // eslint-disable-next-line no-console
-        console.log(`Auto-heal repo root: ${result.repoRoot}`);
-        // eslint-disable-next-line no-console
-        console.log(`Auto-heal branch: ${result.branch}`);
-        // eslint-disable-next-line no-console
-        console.log(`Auto-heal staged paths: ${result.stagedPaths.join(', ') || 'none'}`);
-        // eslint-disable-next-line no-console
-        console.log(`Auto-heal commit: ${result.committed ? 'created' : 'skipped'}`);
-        if (result.commitSha) {
-            // eslint-disable-next-line no-console
-            console.log(`Auto-heal commit sha: ${result.commitSha}`);
-        }
-        if (result.prUrl) {
-            // eslint-disable-next-line no-console
-            console.log(`Auto-heal PR: ${result.prUrl}`);
-        }
-        return;
-    }
-
     if (args.command === 'heal') {
         if (!args.path && !autoConfig) {
             // eslint-disable-next-line no-console
@@ -1086,13 +949,11 @@ async function main(): Promise<void> {
         process.exit(1);
     }
 
-    const forcePipelineFromApproval = args.command === 'approve-and-generate' || args.command === 'generate';
-    const forceAIPipelineFromApproval = args.command === 'approve-and-generate' || args.command === 'generate';
-    const {config, configPath} = resolveConfig(process.cwd(), autoConfig, {
+    const {config} = resolveConfig(process.cwd(), autoConfig, {
         path: args.path,
         profile: args.profile,
         testsRoot: args.testsRoot,
-        mode: (args.command === 'gap' || args.command === 'approve-and-generate' || args.command === 'generate') ? 'gap' : 'impact',
+        mode: 'impact',
         framework: args.framework,
         timeLimitMinutes: args.timeLimitMinutes,
         budget: {
@@ -1106,7 +967,7 @@ async function main(): Promise<void> {
         specPDF: args.specPDF,
         gitSince: args.gitSince,
         llmProvider: args.llmProvider,
-        pipeline: (args.pipeline || forcePipelineFromApproval)
+        pipeline: args.pipeline
             ? {
                   enabled: true,
                   scenarios: args.pipelineScenarios,
@@ -1117,9 +978,9 @@ async function main(): Promise<void> {
                   project: args.pipelineProject,
                   parallel: args.pipelineParallel,
                   dryRun: args.pipelineDryRun,
-                  mcp: args.pipelineMcp !== undefined ? args.pipelineMcp : forceAIPipelineFromApproval,
+                  mcp: args.pipelineMcp,
                   mcpAllowFallback: args.pipelineMcpAllowFallback,
-                  mcpOnly: args.pipelineMcpOnly !== undefined ? args.pipelineMcpOnly : forceAIPipelineFromApproval,
+                  mcpOnly: args.pipelineMcpOnly,
                   mcpCommandTimeoutMs: args.pipelineMcpTimeoutMs,
                   mcpRetries: args.pipelineMcpRetries,
               }
@@ -1142,42 +1003,39 @@ async function main(): Promise<void> {
                 : undefined,
     });
 
-    if (args.allowFallback) {
-        config.impact.allowFallback = true;
-    }
-
     if (args.command === 'impact') {
-        await runImpact(config, {apply: args.apply});
+        const reportRoot = config.testsRoot || config.path;
+        const gitResult = getChangedFiles(config.path, config.git.since, {includeUncommitted: config.git.includeUncommitted});
+        const impactResult = analyzeImpactV2(gitResult.files, {
+            testsRoot: reportRoot,
+            routeFamilies: config.routeFamilies,
+        });
+        // eslint-disable-next-line no-console
+        console.log(`Impact: ${impactResult.changedFiles.length} changed files → ${impactResult.impactedFeatures.length} features impacted`);
+        // eslint-disable-next-line no-console
+        console.log(`Unbound files: ${impactResult.unboundFiles.length}`);
+        for (const f of impactResult.impactedFeatures) {
+            const label = f.featureId || f.familyId;
+            // eslint-disable-next-line no-console
+            console.log(`  [${f.priority}] ${label}: ${f.coverageStatus} (PW=${f.playwrightSpecs.length}, Cy=${f.cypressSpecs.length})`);
+        }
+        if (impactResult.warnings.length > 0) {
+            for (const w of impactResult.warnings) {
+                // eslint-disable-next-line no-console
+                console.warn(`  Warning: ${w}`);
+            }
+        }
         return;
     }
 
     if (args.command === 'suggest' || args.command === 'plan') {
         const reportRoot = config.testsRoot || config.path;
-        const impactPath = join(reportRoot, '.e2e-ai-agents', 'impact.json');
-        try {
-            await runImpact(config, {apply: args.apply});
-        } catch (err) {
-            // If impact analysis already ran (e.g. a prior CI step wrote impact.json),
-            // fall back to that data rather than failing the plan step.
-            if (existsSync(impactPath)) {
-                // eslint-disable-next-line no-console
-                console.warn(`Impact re-run failed (${err instanceof Error ? err.message : String(err)}); using existing impact.json.`);
-            } else {
-                throw err;
-            }
-        }
-        if (!existsSync(impactPath)) {
-            throw new Error(`Impact report not found at ${impactPath}`);
-        }
-        const impact = JSON.parse(readFileSync(impactPath, 'utf-8')) as ReportData;
-        const basePlan = buildPlanFromImpactReport(impact, config.policy);
-        const withActions = attachDeveloperActions(basePlan, {
-            appPath: config.path,
+        const gitResult = getChangedFiles(config.path, config.git.since, {includeUncommitted: config.git.includeUncommitted});
+        const impactResult = analyzeImpactV2(gitResult.files, {
             testsRoot: reportRoot,
-            sinceRef: config.git.since,
-            configPath,
+            routeFamilies: config.routeFamilies,
         });
-        const plan = applyOperationalInsights(withActions, reportRoot);
+        const plan = buildPlanFromImpact(impactResult, config.policy);
         const planPath = writePlanReport(reportRoot, plan);
         const summaryMarkdown = renderCiSummaryMarkdown(plan);
         const summaryPath = writeCiSummary(reportRoot, summaryMarkdown, args.ciCommentPath);
@@ -1208,14 +1066,6 @@ async function main(): Promise<void> {
         console.log(`CI summary: ${summaryPath}`);
         // eslint-disable-next-line no-console
         console.log(`Plan metrics: ${metrics.summaryPath}`);
-        if (plan.nextActions) {
-            // eslint-disable-next-line no-console
-            console.log(`Next action (run existing): ${plan.nextActions.runRecommendedTests || plan.nextActions.runSmokeSuite}`);
-            // eslint-disable-next-line no-console
-            console.log(`Next action (approve + generate): ${plan.nextActions.approveAndGenerate || plan.nextActions.generateMissingTests}`);
-            // eslint-disable-next-line no-console
-            console.log(`Next action (heal): ${plan.nextActions.healGeneratedTests}`);
-        }
         const failOnLegacyFlag = args.failOnMustAddTests && plan.decision.action === 'must-add-tests';
         if (failOnLegacyFlag || plan.enforcement.shouldFail) {
             process.exit(2);
@@ -1223,12 +1073,10 @@ async function main(): Promise<void> {
         return;
     }
 
-    if (args.command === 'approve-and-generate' || args.command === 'generate') {
-        await runGap(config, {apply: args.apply});
-        return;
-    }
-
-    await runGap(config, {apply: args.apply});
+    // eslint-disable-next-line no-console
+    console.error(`Unknown command: ${args.command}`);
+    printUsage();
+    process.exit(1);
 }
 
 async function runLlmHealth(): Promise<void> {
