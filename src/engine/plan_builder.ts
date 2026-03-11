@@ -461,38 +461,33 @@ export function renderCiSummaryMarkdown(plan: PlanReport): string {
         }
     }
 
-    // ── Advisory: covered flows with new behavior detected ────────────────────
+    // ── Advisory: covered flows with new behavior (collapsible) ─────────────
     if (flowsWithAdvisory.length > 0) {
         lines.push('');
-        lines.push(`### 💡 New behavior detected in ${flowsWithAdvisory.length} covered feature${flowsWithAdvisory.length !== 1 ? 's' : ''}`);
+        lines.push(`<details>`);
+        lines.push(`<summary>💡 New behavior detected in ${flowsWithAdvisory.length} covered feature${flowsWithAdvisory.length !== 1 ? 's' : ''} — consider adding tests</summary>`);
         lines.push('');
         lines.push('These features already have E2E tests, but this PR introduces new behavior worth covering:');
         lines.push('');
         for (const flow of flowsWithAdvisory) {
-            lines.push(`> [!TIP]`);
-            lines.push(`> **${flow.name}** · ${flow.priority} — ${flow.coveredBy.join(', ')}`);
-            lines.push(`>`);
-            lines.push(`> Consider adding tests for:`);
+            lines.push(`#### ${flow.name} · ${flow.priority}`);
+            lines.push(`*${flow.coveredBy.join(', ')}*`);
+            lines.push('');
             for (const s of flow.advisoryScenarios!) {
-                lines.push(`> - [ ] ${s}`);
+                lines.push(`- [ ] ${s}`);
             }
             lines.push('');
         }
+        lines.push('</details>');
     }
 
     // ── Clean covered flows (collapsed) ───────────────────────────────────────
-    if (cleanFlows.length > 0 || flowsWithAdvisory.length > 0) {
+    if (cleanFlows.length > 0) {
         lines.push('');
-        const label = cleanFlows.length > 0
-            ? `✅ Covered flows (${cleanFlows.length})`
-            : `✅ All covered flows have advisory notes above`;
-        lines.push(`<details><summary>${label}</summary>`);
+        lines.push(`<details><summary>✅ Covered flows (${cleanFlows.length})</summary>`);
         lines.push('');
         for (const flow of cleanFlows) {
             lines.push(`- **${flow.name}** [${flow.priority}] — ${flow.coveredBy.join(', ')}`);
-        }
-        for (const flow of flowsWithAdvisory) {
-            lines.push(`- **${flow.name}** [${flow.priority}] — ${flow.coveredBy.join(', ')} 💡`);
         }
         lines.push('');
         lines.push('</details>');
