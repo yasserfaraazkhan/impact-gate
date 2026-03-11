@@ -134,11 +134,22 @@ export async function recommendTestsAI(options: AgentApiOptions = {}): Promise<R
     if (apiKey) {
         const diffs = loadDiffs(config.path, config.git.since, gitResult.files);
         const provider = new AnthropicProvider({apiKey});
-        // Collect all known spec paths from impacted features
+        // Collect all known spec paths and scenario details from impacted features
         const specSet = new Set<string>();
+        const specDetailsMap = new Map<string, {file: string; scenarios: string[]}>();
         for (const feature of impact.impactedFeatures) {
             for (const s of feature.playwrightSpecs) {
                 specSet.add(s);
+            }
+            for (const detail of feature.playwrightSpecDetails) {
+                if (!specDetailsMap.has(detail.file)) {
+                    specDetailsMap.set(detail.file, detail);
+                }
+            }
+            for (const detail of feature.cypressSpecDetails) {
+                if (!specDetailsMap.has(detail.file)) {
+                    specDetailsMap.set(detail.file, detail);
+                }
             }
         }
         aiEnrichment = await enrichImpactWithAI({
@@ -146,6 +157,7 @@ export async function recommendTestsAI(options: AgentApiOptions = {}): Promise<R
             diffs,
             provider,
             specList: [...specSet],
+            specDetails: [...specDetailsMap.values()],
         });
     }
 

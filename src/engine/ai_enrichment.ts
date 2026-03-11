@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import type {LLMProvider} from '../provider_interface.js';
-import type {ImpactResult, ImpactedFeature} from './impact_engine.js';
+import type {ImpactResult, ImpactedFeature, SpecWithScenarios} from './impact_engine.js';
 import type {FeaturePriority} from '../knowledge/route_families.js';
 import {formatDiffsForPrompt} from './diff_loader.js';
 
@@ -33,6 +33,7 @@ export interface AIEnrichmentOptions {
     diffs: Map<string, string>;
     provider: LLMProvider;
     specList: string[];
+    specDetails?: SpecWithScenarios[];
     manifestSummary?: string;
 }
 
@@ -65,8 +66,10 @@ function normalizePriority(value: string): FeaturePriority {
     return 'P2';
 }
 
+const MAX_SCENARIOS_PER_SPEC = 20;
+
 function buildPrompt(options: AIEnrichmentOptions): string {
-    const {deterministicImpact, diffs, specList, manifestSummary} = options;
+    const {deterministicImpact, diffs, specList, specDetails, manifestSummary} = options;
     const {changedFiles, impactedFeatures, unboundFiles} = deterministicImpact;
 
     const lines: string[] = [];
@@ -112,8 +115,25 @@ function buildPrompt(options: AIEnrichmentOptions): string {
         lines.push('');
     }
 
-    // Spec list (capped at 50)
-    if (specList.length > 0) {
+    // Spec coverage with scenario titles (when available) or bare file paths
+    if (specDetails && specDetails.length > 0) {
+        const cappedDetails = specDetails.slice(0, MAX_SPEC_LIST);
+        const totalScenarios = cappedDetails.reduce((sum, s) => sum + s.scenarios.length, 0);
+        lines.push(`## Existing Test Coverage (${cappedDetails.length} specs, ${totalScenarios} scenarios)`);
+        lines.push('Use this to avoid suggesting scenarios that already exist.');
+        lines.push('');
+        for (const spec of cappedDetails) {
+            lines.push(`- ${spec.file}`);
+            const cappedScenarios = spec.scenarios.slice(0, MAX_SCENARIOS_PER_SPEC);
+            for (const scenario of cappedScenarios) {
+                lines.push(`  • "${scenario}"`);
+            }
+            if (spec.scenarios.length > MAX_SCENARIOS_PER_SPEC) {
+                lines.push(`  • ... and ${spec.scenarios.length - MAX_SCENARIOS_PER_SPEC} more`);
+            }
+        }
+        lines.push('');
+    } else if (specList.length > 0) {
         const cappedSpecs = specList.slice(0, MAX_SPEC_LIST);
         lines.push(`## Available Test Specs (showing ${cappedSpecs.length} of ${specList.length})`);
         for (const s of cappedSpecs) {
@@ -126,9 +146,14 @@ function buildPrompt(options: AIEnrichmentOptions): string {
     lines.push('## Instructions');
     lines.push('Return ONLY valid JSON (no markdown fences, no explanation) in this exact shape:');
     lines.push('');
+    lines.push('Rules for coveredBy:');
+    lines.push('- Reference SPECIFIC scenario titles from the Existing Test Coverage section when possible.');
+    lines.push('- Format: "file.spec.ts → scenario title"');
+    lines.push('');
     lines.push('Rules for missingScenarios:');
+    lines.push('- Cross-reference the scenario titles in Existing Test Coverage. If a scenario already exists that covers the behavior, do NOT suggest it — instead list it in coveredBy.');
     lines.push('- For coverage=uncovered: list all scenarios the feature needs.');
-    lines.push('- For coverage=covered or coverage=partial: ONLY list scenarios introduced by THIS diff that are likely not covered by existing tests. If the diff adds no new user-visible behavior, return []. Do not pad with generic scenarios.');
+    lines.push('- For coverage=covered or coverage=partial: ONLY list scenarios introduced by THIS diff that have NO matching scenario in existing coverage. If the diff adds no new user-visible behavior, return []. Do not pad with generic scenarios.');
     lines.push('');
     lines.push(JSON.stringify({
         impactedFlows: [

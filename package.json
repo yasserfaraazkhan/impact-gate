@@ -1,6 +1,6 @@
 {
   "name": "@yasserkhanorg/e2e-agents",
-  "version": "0.7.7",
+  "version": "0.8.0",
   "description": "Pluggable LLM provider library for AI-powered test automation. Use Claude, Ollama, or your own LLM. Integrate with Playwright, Jest, or any test framework. MCP server for test agents, cost tracking, and hybrid provider mode.",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",

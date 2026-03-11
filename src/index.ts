@@ -53,7 +53,8 @@ export type {
 
 // V2 Engine (deterministic impact + plan)
 export {analyzeImpact as analyzeImpactV2, getGaps, getPartialGaps} from './engine/impact_engine.js';
-export type {ImpactResult, ImpactedFeature, CoverageStatus, ImpactEngineOptions} from './engine/impact_engine.js';
+export type {ImpactResult, ImpactedFeature, CoverageStatus, ImpactEngineOptions, SpecWithScenarios} from './engine/impact_engine.js';
+export {extractScenarios} from './engine/impact_engine.js';
 export {buildPlanFromImpact} from './engine/plan_builder.js';
 export {appendFeedbackAndRecompute, readCalibration} from './agent/feedback.js';
 export type {RecommendationFeedbackEntry, CalibrationSummary} from './agent/feedback.js';

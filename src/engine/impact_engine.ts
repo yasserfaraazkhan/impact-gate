@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {existsSync, readdirSync} from 'fs';
+import {existsSync, readdirSync, readFileSync} from 'fs';
 import {join} from 'path';
 
 import type {
@@ -21,6 +21,11 @@ import type {RouteFamiliesConfig} from '../agent/config.js';
 
 export type CoverageStatus = 'covered' | 'partial' | 'uncovered';
 
+export interface SpecWithScenarios {
+    file: string;
+    scenarios: string[];
+}
+
 export interface ImpactedFeature {
     familyId: string;
     featureId?: string;
@@ -28,6 +33,8 @@ export interface ImpactedFeature {
     changedFiles: string[];
     playwrightSpecs: string[];
     cypressSpecs: string[];
+    playwrightSpecDetails: SpecWithScenarios[];
+    cypressSpecDetails: SpecWithScenarios[];
     userFlows: string[];
     coverageStatus: CoverageStatus;
 }
@@ -87,16 +94,50 @@ function scanDirForSpecsRecursive(dir: string, extension: string): string[] {
     return specs;
 }
 
-function resolvePlaywrightSpecs(testsRoot: string, specDirs: string[]): string[] {
-    const specs: string[] = [];
-    for (const dir of specDirs) {
-        specs.push(...scanDirForSpecs(testsRoot, dir, '.spec.ts'));
+// Regex patterns for extracting test scenario titles from spec files.
+// Playwright uses test() and test.describe(); Cypress uses describe(), context(), it().
+const PLAYWRIGHT_SCENARIO_RE = /(?:test\.describe|test)\(\s*['"`]([^'"`]+)['"`]/g;
+const CYPRESS_SCENARIO_RE = /(?:describe|context|it)\(\s*['"`]([^'"`]+)['"`]/g;
+
+/**
+ * Extract describe/test/it titles from a spec file using regex.
+ * Returns an empty array if the file cannot be read.
+ */
+export function extractScenarios(filePath: string, framework: 'playwright' | 'cypress'): string[] {
+    let content: string;
+    try {
+        content = readFileSync(filePath, 'utf-8');
+    } catch {
+        return [];
     }
-    return specs;
+    const re = framework === 'playwright' ? PLAYWRIGHT_SCENARIO_RE : CYPRESS_SCENARIO_RE;
+    const scenarios: string[] = [];
+    let match: RegExpExecArray | null;
+    // Reset lastIndex in case the regex was used before
+    re.lastIndex = 0;
+    while ((match = re.exec(content)) !== null) {
+        scenarios.push(match[1]);
+    }
+    return scenarios;
 }
 
-function resolveCypressSpecs(cypressRoot: string, specDirs: string[]): string[] {
-    const specs: string[] = [];
+function resolvePlaywrightSpecs(testsRoot: string, specDirs: string[]): {paths: string[]; details: SpecWithScenarios[]} {
+    const paths: string[] = [];
+    const details: SpecWithScenarios[] = [];
+    for (const dir of specDirs) {
+        const found = scanDirForSpecs(testsRoot, dir, '.spec.ts');
+        for (const relPath of found) {
+            paths.push(relPath);
+            const absPath = join(testsRoot, relPath);
+            details.push({file: relPath, scenarios: extractScenarios(absPath, 'playwright')});
+        }
+    }
+    return {paths, details};
+}
+
+function resolveCypressSpecs(cypressRoot: string, specDirs: string[]): {paths: string[]; details: SpecWithScenarios[]} {
+    const paths: string[] = [];
+    const details: SpecWithScenarios[] = [];
     for (const dir of specDirs) {
         // cypressSpecDirs are relative to testsRoot (e.g. ../cypress/tests/integration/channels/search/)
         // Resolve them relative to the cypress root
@@ -106,9 +147,12 @@ function resolveCypressSpecs(cypressRoot: string, specDirs: string[]): string[] 
         }
         const found = scanDirForSpecsRecursive(resolvedDir, '.js');
         const tsFound = scanDirForSpecsRecursive(resolvedDir, '.ts');
-        specs.push(...found, ...tsFound);
+        for (const absPath of [...found, ...tsFound]) {
+            paths.push(absPath);
+            details.push({file: absPath, scenarios: extractScenarios(absPath, 'cypress')});
+        }
     }
-    return specs;
+    return {paths, details};
 }
 
 function computeCoverageStatus(pwSpecs: string[], cySpecs: string[]): CoverageStatus {
@@ -194,17 +238,19 @@ export function analyzeImpact(
         const priority = getPriorityForBinding(manifest, binding);
         const userFlows = getUserFlowsForBinding(manifest, binding);
 
-        const playwrightSpecs = resolvePlaywrightSpecs(testsRoot, specDirs);
-        const cypressSpecs = cypressRoot ? resolveCypressSpecs(cypressRoot, cypressSpecDirs) : [];
-        const coverageStatus = computeCoverageStatus(playwrightSpecs, cypressSpecs);
+        const pw = resolvePlaywrightSpecs(testsRoot, specDirs);
+        const cy = cypressRoot ? resolveCypressSpecs(cypressRoot, cypressSpecDirs) : {paths: [], details: []};
+        const coverageStatus = computeCoverageStatus(pw.paths, cy.paths);
 
         impactedFeatures.push({
             familyId: group.familyId,
             featureId: group.featureId,
             priority,
             changedFiles: group.files,
-            playwrightSpecs,
-            cypressSpecs,
+            playwrightSpecs: pw.paths,
+            cypressSpecs: cy.paths,
+            playwrightSpecDetails: pw.details,
+            cypressSpecDetails: cy.details,
             userFlows,
             coverageStatus,
         });
