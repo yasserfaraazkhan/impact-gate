@@ -286,7 +286,7 @@ export function buildPlanFromImpact(
 
         const baseReasons = [`No Playwright or Cypress tests found for ${label}`];
         const reasons = aiFeature && aiFeature.aiReasons.length > 0
-            ? [...baseReasons, ...aiFeature.aiReasons]
+            ? [...baseReasons, ...aiFeature.aiReasons.slice(0, 2)]
             : baseReasons;
 
         const missingScenarios = aiFeature && aiFeature.aiMissingScenarios.length > 0
@@ -315,7 +315,7 @@ export function buildPlanFromImpact(
 
         const baseReasons = [`Missing ${coverageType} tests for ${label} (has ${hasOpposite} only)`];
         const reasons = aiFeature && aiFeature.aiReasons.length > 0
-            ? [...baseReasons, ...aiFeature.aiReasons]
+            ? [...baseReasons, ...aiFeature.aiReasons.slice(0, 2)]
             : baseReasons;
 
         gapDetails.push({
@@ -346,6 +346,8 @@ export function buildPlanFromImpact(
     const p0 = impact.impactedFeatures.filter((f) => f.priority === 'P0').length;
     const p1 = impact.impactedFeatures.filter((f) => f.priority === 'P1').length;
     const p2 = impact.impactedFeatures.filter((f) => f.priority === 'P2').length;
+    const coveredCount = impact.impactedFeatures.filter((f) => f.coverageStatus === 'covered').length;
+    const partialCount = impact.impactedFeatures.filter((f) => f.coverageStatus === 'partial').length;
 
     const runId = `plan-${Date.now().toString(36)}`;
     const planSource = aiEnrichment ? 'ai+deterministic' : 'impact';
@@ -375,6 +377,8 @@ export function buildPlanFromImpact(
             p0Flows: p0,
             p1Flows: p1,
             p2Flows: p2,
+            coveredFlows: coveredCount,
+            partialFlows: partialCount,
             uncoveredP0P1Flows: gaps.length,
             warnings: impact.warnings.length,
         },
@@ -391,7 +395,7 @@ export function writePlanReport(appRoot: string, plan: PlanReport): string {
 
 export function renderCiSummaryMarkdown(plan: PlanReport): string {
     const lines: string[] = [];
-    const {p0Flows, p1Flows, uncoveredP0P1Flows, changedFiles, impactedFlows} = plan.metrics;
+    const {uncoveredP0P1Flows, changedFiles, impactedFlows, coveredFlows: coveredCount, partialFlows: partialCount} = plan.metrics;
     const mustAddTests = plan.decision.action === 'must-add-tests';
 
     const statusEmoji = mustAddTests ? '🔴' : plan.decision.action === 'safe-to-merge' ? '🟢' : '🟡';
@@ -399,9 +403,21 @@ export function renderCiSummaryMarkdown(plan: PlanReport): string {
     lines.push('');
     lines.push(`${plan.decision.summary}`);
     lines.push('');
+
+    // Build a readable coverage breakdown instead of raw P0/P1 counts
+    const parts: string[] = [];
+    if ((coveredCount ?? 0) > 0) {
+        parts.push(`${coveredCount} covered`);
+    }
+    if (uncoveredP0P1Flows > 0) {
+        parts.push(`${uncoveredP0P1Flows} gap${uncoveredP0P1Flows !== 1 ? 's' : ''}`);
+    }
+    if ((partialCount ?? 0) > 0) {
+        parts.push(`${partialCount} partial`);
+    }
+    const breakdown = parts.length > 0 ? ` (${parts.join(' · ')})` : '';
     lines.push(
-        `**${changedFiles}** files changed → **${impactedFlows}** features impacted` +
-        (p0Flows > 0 || p1Flows > 0 ? ` (P0: ${p0Flows}, P1: ${p1Flows})` : ''),
+        `**${changedFiles}** files changed → **${impactedFlows}** features impacted${breakdown}`,
     );
 
     if (mustAddTests && plan.requiredNewTests.length > 0) {

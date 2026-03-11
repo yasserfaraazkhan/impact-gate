@@ -132,9 +132,11 @@ function buildPrompt(options: AIEnrichmentOptions): string {
                 id: '<featureId or familyId from the deterministic list above>',
                 name: '<human-readable flow name>',
                 priority: 'P0|P1|P2',
-                reasons: ['<specific reason why this flow is impacted by the changes>'],
+                reasons: [
+                    '<EXACTLY 1-2 sentences describing user-visible behavioral impact. Focus on what a user would observe or do differently — NOT file names, NOT implementation details. Example: "Users can now open search results in a detached browser window that persists independently.">',
+                ],
                 coveredBy: ['<spec file paths that cover this flow>'],
-                missingScenarios: ['<specific test scenarios that are missing or should be added>'],
+                missingScenarios: ['<concrete user action to test, phrased as a scenario title. E.g. "Thread popout opens and displays replies correctly">'],
             },
         ],
         unboundFileAnalysis: [

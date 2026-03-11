@@ -104,6 +104,8 @@ export interface PlanReport {
         p0Flows: number;
         p1Flows: number;
         p2Flows: number;
+        coveredFlows?: number;
+        partialFlows?: number;
         uncoveredP0P1Flows: number;
         warnings: number;
     };
