@@ -168,7 +168,7 @@ for (const [flag, def] of Object.entries(FLAGS)) {
 }
 
 const COMMANDS = new Set<Command>([
-    'impact', 'plan', 'heal', 'suggest', 'generate',
+    'init', 'impact', 'plan', 'heal', 'suggest', 'generate',
     'finalize-generated-tests', 'feedback',
     'traceability-capture', 'traceability-ingest',
     'analyze', 'llm-health',

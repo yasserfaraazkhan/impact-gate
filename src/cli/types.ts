@@ -4,7 +4,8 @@
 import type {AnalysisProfile, FrameworkType} from '../agent/config.js';
 
 export type Command =
-    'impact'
+    'init'
+    | 'impact'
     | 'plan'
     | 'heal'
     | 'suggest'

@@ -14,10 +14,17 @@ import {runHealCommand} from './cli/commands/heal.js';
 import {runImpactCommand} from './cli/commands/impact.js';
 import {runPlanCommand} from './cli/commands/plan.js';
 import {runGenerateCommand} from './cli/commands/generate.js';
+import {runInitCommand} from './cli/commands/init.js';
 
 async function main(): Promise<void> {
     const args = parseArgs(process.argv.slice(2));
     const autoConfig = resolveAutoConfig(args);
+
+    if (args.command === 'init') {
+        const hasYes = process.argv.includes('--yes') || process.argv.includes('-y');
+        await runInitCommand(hasYes);
+        return;
+    }
 
     if (args.help || !args.command) {
         printUsage();

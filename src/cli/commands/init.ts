@@ -1,0 +1,222 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
+import {existsSync, writeFileSync, readFileSync} from 'fs';
+import {execFileSync} from 'child_process';
+import {join, resolve} from 'path';
+import * as readline from 'readline';
+
+const CONFIG_FILENAME = 'e2e-ai-agents.config.json';
+
+interface InitAnswers {
+    path: string;
+    testsRoot: string;
+    framework: string;
+    gitSince: string;
+    provider: string;
+    enableAi: boolean;
+    enforcementMode: string;
+}
+
+function createInterface(): readline.Interface {
+    return readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+    });
+}
+
+function ask(rl: readline.Interface, question: string, defaultValue?: string): Promise<string> {
+    const suffix = defaultValue ? ` (${defaultValue})` : '';
+    return new Promise((resolve) => {
+        rl.question(`${question}${suffix}: `, (answer) => {
+            resolve(answer.trim() || defaultValue || '');
+        });
+    });
+}
+
+function detectFramework(appPath: string): string {
+    const resolvedPath = resolve(appPath);
+    const pkgPath = join(resolvedPath, 'package.json');
+    if (!existsSync(pkgPath)) {
+        return 'auto';
+    }
+    try {
+        const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+        const allDeps = {...(pkg.dependencies || {}), ...(pkg.devDependencies || {})};
+        if (allDeps['@playwright/test'] || allDeps.playwright) {
+            return 'playwright';
+        }
+        if (allDeps.cypress) {
+            return 'cypress';
+        }
+        if (allDeps['selenium-webdriver'] || allDeps.webdriverio) {
+            return 'selenium';
+        }
+    } catch {
+        // ignore
+    }
+    return 'auto';
+}
+
+function detectGitDefaultBranch(appPath: string): string {
+    try {
+        const result = execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
+            cwd: resolve(appPath),
+            encoding: 'utf-8',
+            stdio: ['pipe', 'pipe', 'pipe'],
+        }).trim();
+        return `origin/${result}`;
+    } catch {
+        return 'origin/main';
+    }
+}
+
+function detectTestsRoot(appPath: string): string | undefined {
+    const resolvedPath = resolve(appPath);
+    const candidates = [
+        'e2e-tests/playwright',
+        'e2e-tests',
+        'e2e',
+        'tests/e2e',
+        'test/e2e',
+        'tests',
+        'test',
+    ];
+    for (const candidate of candidates) {
+        if (existsSync(join(resolvedPath, candidate))) {
+            return candidate;
+        }
+    }
+    return undefined;
+}
+
+function buildConfig(answers: InitAnswers): Record<string, unknown> {
+    const config: Record<string, unknown> = {
+        path: answers.path,
+        framework: answers.framework,
+        git: {since: answers.gitSince},
+        impact: {
+            dependencyGraph: {enabled: true, maxDepth: 3},
+            traceability: {enabled: true},
+            aiFlow: {
+                enabled: answers.enableAi,
+                provider: answers.enableAi ? answers.provider : undefined,
+            },
+        },
+        policy: {
+            enforcementMode: answers.enforcementMode,
+            blockOnActions: ['must-add-tests'],
+        },
+    };
+
+    if (answers.testsRoot && answers.testsRoot !== '.' && answers.testsRoot !== answers.path) {
+        config.testsRoot = answers.testsRoot;
+    }
+
+    return config;
+}
+
+function printNextSteps(): void {
+    console.log('');
+    console.log('  Next steps:');
+    console.log('    1. Set your API key:  export ANTHROPIC_API_KEY=sk-ant-...');
+    console.log('    2. Test connectivity:  npx e2e-ai-agents llm-health');
+    console.log('    3. Run impact analysis: npx e2e-ai-agents impact');
+    console.log('    4. Add to CI: see examples/github-actions/pr-impact.yml');
+    console.log('');
+}
+
+export async function runInitCommand(yes = false): Promise<void> {
+    const targetDir = process.cwd();
+    const configPath = join(targetDir, CONFIG_FILENAME);
+
+    if (existsSync(configPath)) {
+        console.error(`${CONFIG_FILENAME} already exists in this directory.`);
+        console.error('Remove it first if you want to re-initialize.');
+        process.exit(1);
+    }
+
+    // Non-interactive mode: auto-detect everything and write immediately
+    if (yes) {
+        const appPath = '.';
+        const answers: InitAnswers = {
+            path: appPath,
+            testsRoot: detectTestsRoot(appPath) || '.',
+            framework: detectFramework(appPath),
+            gitSince: detectGitDefaultBranch(appPath),
+            provider: 'auto',
+            enableAi: true,
+            enforcementMode: 'advisory',
+        };
+
+        const config = buildConfig(answers);
+        const json = JSON.stringify(config, null, 2) + '\n';
+        writeFileSync(configPath, json, 'utf-8');
+        console.log(`Created ${CONFIG_FILENAME}`);
+        printNextSteps();
+        return;
+    }
+
+    console.log('');
+    console.log('  e2e-ai-agents init');
+    console.log('  ==================');
+    console.log('');
+    console.log('  This will create an e2e-ai-agents.config.json in the current directory.');
+    console.log('');
+
+    const rl = createInterface();
+
+    try {
+        const appPath = await ask(rl, '  Path to your web app root', '.');
+        const detectedFramework = detectFramework(appPath);
+        const framework = await ask(rl, '  Test framework (auto | playwright | cypress | selenium)', detectedFramework);
+
+        const detectedTestsRoot = detectTestsRoot(appPath);
+        const testsRoot = await ask(
+            rl,
+            '  Path to tests root (relative to app root, "." if same)',
+            detectedTestsRoot || '.',
+        );
+
+        const detectedBranch = detectGitDefaultBranch(appPath);
+        const gitSince = await ask(rl, '  Git ref to diff against', detectedBranch);
+
+        const providerAnswer = await ask(rl, '  LLM provider for AI features (anthropic | openai | ollama | auto)', 'auto');
+        const enableAi = providerAnswer !== 'none';
+
+        const enforcementMode = await ask(rl, '  Policy enforcement mode (advisory | warn | block)', 'advisory');
+
+        const answers: InitAnswers = {
+            path: appPath,
+            testsRoot,
+            framework,
+            gitSince,
+            provider: providerAnswer,
+            enableAi,
+            enforcementMode,
+        };
+
+        const config = buildConfig(answers);
+        const json = JSON.stringify(config, null, 2) + '\n';
+
+        console.log('');
+        console.log('  Generated config:');
+        console.log('');
+        for (const line of json.split('\n')) {
+            console.log(`    ${line}`);
+        }
+
+        const confirm = await ask(rl, '  Write this config? (Y/n)', 'Y');
+        if (confirm.toLowerCase() !== 'y' && confirm !== '') {
+            console.log('  Aborted.');
+            process.exit(0);
+        }
+
+        writeFileSync(configPath, json, 'utf-8');
+        console.log('');
+        console.log(`  Created ${CONFIG_FILENAME}`);
+        printNextSteps();
+    } finally {
+        rl.close();
+    }
+}

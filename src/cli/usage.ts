@@ -5,6 +5,7 @@ export function printUsage(): void {
     console.log(
         [
             'Usage:',
+            '  e2e-ai-agents init [--yes]',
             '  e2e-ai-agents impact --path <app-root> [options]',
             '  e2e-ai-agents plan --path <app-root> [options]',
             '  e2e-ai-agents suggest --path <app-root> [options]',
