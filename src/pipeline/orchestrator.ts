@@ -51,6 +51,7 @@ function createRunId(): string {
 function isTestFile(file: string): boolean {
     const normalized = file.replace(/\\/g, '/');
     return /\.(spec|test)\.(ts|tsx|js|jsx)$/.test(normalized) ||
+           /_test\.go$/.test(normalized) ||
            normalized.includes('__tests__/') ||
            normalized.includes('/tests/') ||
            normalized.includes('/test/');

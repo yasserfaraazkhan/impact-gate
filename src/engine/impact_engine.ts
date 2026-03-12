@@ -193,12 +193,25 @@ function groupBindings(fileBindings: FileBinding[]): Map<string, {familyId: stri
     return groups;
 }
 
+/** Filter out test files that should not be treated as application changes. */
+function isTestFile(file: string): boolean {
+    const normalized = file.replace(/\\/g, '/');
+    return /\.(spec|test)\.(ts|tsx|js|jsx)$/.test(normalized) ||
+           /_test\.go$/.test(normalized) ||
+           normalized.includes('__tests__/') ||
+           normalized.includes('/tests/') ||
+           normalized.includes('/test/');
+}
+
 export function analyzeImpact(
     changedFiles: string[],
     options: ImpactEngineOptions,
 ): ImpactResult {
     const {testsRoot, routeFamilies} = options;
     const warnings: string[] = [];
+
+    // Filter out test files before analysis
+    changedFiles = changedFiles.filter((f) => !isTestFile(f));
 
     // Load manifest
     const manifest = loadRouteFamilyManifest(testsRoot, routeFamilies);
