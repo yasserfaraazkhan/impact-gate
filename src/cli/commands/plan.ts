@@ -45,10 +45,8 @@ export async function runPlanCommand(args: ParsedArgs, autoConfig: string | unde
         result = await recommendTestsAI(apiOptions);
         if (result.aiEnrichment) {
             const {aiEnrichment} = result;
-            // eslint-disable-next-line no-console
             console.log(`AI enrichment: ${aiEnrichment.enrichedFeatures.length} features enriched (${aiEnrichment.tokenUsage.input + aiEnrichment.tokenUsage.output} tokens)`);
         } else if (!process.env.ANTHROPIC_API_KEY) {
-            // eslint-disable-next-line no-console
             console.log('Tip: set ANTHROPIC_API_KEY to enable AI-powered enrichment');
         }
     }
@@ -78,17 +76,11 @@ export async function runPlanCommand(args: ParsedArgs, autoConfig: string | unde
         appendFileSync(ghaOutput, `metrics_events_path=${metricsEventsPath}\n`);
         appendFileSync(ghaOutput, `metrics_summary_path=${metricsSummaryPath}\n`);
     }
-    // eslint-disable-next-line no-console
     console.log(`Suggested run set: ${plan.runSet} (confidence ${plan.confidence})`);
-    // eslint-disable-next-line no-console
     console.log(`Decision: ${plan.decision.action} - ${plan.decision.summary}`);
-    // eslint-disable-next-line no-console
     console.log(`Enforcement: ${plan.enforcement.mode} (shouldFail=${plan.enforcement.shouldFail})`);
-    // eslint-disable-next-line no-console
     console.log(`Plan data: ${planPath}`);
-    // eslint-disable-next-line no-console
     console.log(`CI summary: ${summaryPath}`);
-    // eslint-disable-next-line no-console
     console.log(`Plan metrics: ${metricsSummaryPath}`);
     const failOnLegacyFlag = args.failOnMustAddTests && plan.decision.action === 'must-add-tests';
     if (failOnLegacyFlag || plan.enforcement.shouldFail) {

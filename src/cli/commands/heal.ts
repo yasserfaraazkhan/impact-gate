@@ -9,12 +9,10 @@ import type {ParsedArgs} from '../types.js';
 
 export function runHealCommand(args: ParsedArgs, autoConfig: string | undefined): void {
     if (!args.path && !autoConfig) {
-        // eslint-disable-next-line no-console
         console.error('Error: --path is required for heal command');
         process.exit(1);
     }
     if (!args.traceabilityReportPath) {
-        // eslint-disable-next-line no-console
         console.error('Error: --traceability-report <path> is required for heal command');
         process.exit(1);
     }
@@ -45,7 +43,6 @@ export function runHealCommand(args: ParsedArgs, autoConfig: string | undefined)
     const reportRoot = config.testsRoot || config.path;
     const unstableSpecs = extractPlaywrightUnstableSpecs(args.traceabilityReportPath, [reportRoot, config.path]);
     if (unstableSpecs.length === 0) {
-        // eslint-disable-next-line no-console
         console.log('Heal targeted unstable specs: 0');
         return;
     }
@@ -64,10 +61,8 @@ export function runHealCommand(args: ParsedArgs, autoConfig: string | undefined)
         },
     );
     const healedCount = targetedSummary.results.filter((result) => result.healStatus === 'success').length;
-    // eslint-disable-next-line no-console
     console.log(`Heal targeted unstable specs: ${unstableSpecs.length} (healed=${healedCount})`);
     if (targetedSummary.warnings.length > 0) {
-        // eslint-disable-next-line no-console
         console.log(`Heal warnings: ${targetedSummary.warnings.join(' | ')}`);
     }
 }

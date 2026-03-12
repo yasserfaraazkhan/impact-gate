@@ -2,7 +2,6 @@
 // See LICENSE.txt for license information.
 
 export function printUsage(): void {
-    // eslint-disable-next-line no-console
     console.log(
         [
             'Usage:',

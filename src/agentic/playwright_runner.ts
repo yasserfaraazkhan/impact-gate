@@ -116,7 +116,7 @@ export function runPlaywrightSpec(
     if (!existsSync(reportDir)) {
         mkdirSync(reportDir, {recursive: true});
     }
-    const reportPath = join(reportDir, `report-${Date.now()}.json`);
+    const reportPath = join(reportDir, `report-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.json`);
 
     const args = [
         'playwright', 'test',

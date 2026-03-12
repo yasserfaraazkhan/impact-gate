@@ -10,12 +10,10 @@ import type {ParsedArgs} from '../types.js';
 
 export function runFeedbackCommand(args: ParsedArgs, autoConfig: string | undefined): void {
     if (!args.path && !autoConfig) {
-        // eslint-disable-next-line no-console
         console.error('Error: --path is required for feedback command');
         process.exit(1);
     }
     if (!args.feedbackInputPath) {
-        // eslint-disable-next-line no-console
         console.error('Error: --feedback-input <path> is required for feedback command');
         process.exit(1);
     }
@@ -38,11 +36,8 @@ export function runFeedbackCommand(args: ParsedArgs, autoConfig: string | undefi
         escapedFailures: raw.escapedFailures || [],
     };
     const output = appendFeedbackAndRecompute(reportRoot, payload);
-    // eslint-disable-next-line no-console
     console.log(`Feedback data: ${output.feedbackPath}`);
-    // eslint-disable-next-line no-console
     console.log(`Calibration data: ${output.calibrationPath}`);
-    // eslint-disable-next-line no-console
     console.log(
         `Calibration overall: precision=${output.calibration.overall.precision}, recall=${output.calibration.overall.recall}, fnr=${output.calibration.overall.falseNegativeRate}`,
     );

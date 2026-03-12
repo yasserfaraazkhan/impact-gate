@@ -60,7 +60,6 @@ async function main(): Promise<void> {
     }
 
     if (!args.path && !autoConfig) {
-        // eslint-disable-next-line no-console
         console.error('Error: --path is required (or provide a config file with path set)');
         printUsage();
         process.exit(1);
@@ -135,14 +134,12 @@ async function main(): Promise<void> {
         return;
     }
 
-    // eslint-disable-next-line no-console
     console.error(`Unknown command: ${args.command}`);
     printUsage();
     process.exit(1);
 }
 
 main().catch((error) => {
-    // eslint-disable-next-line no-console
     console.error(error instanceof Error ? error.message : String(error));
     process.exit(1);
 });

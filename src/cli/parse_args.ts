@@ -6,7 +6,7 @@ import {dirname, join, resolve} from 'path';
 
 import type {FrameworkType} from '../agent/config.js';
 
-import type {ParsedArgs} from './types.js';
+import type {Command, ParsedArgs} from './types.js';
 
 export const CONFIG_CANDIDATES = ['e2e-ai-agents.config.json', '.e2e-ai-agents.config.json'];
 
@@ -52,6 +52,137 @@ export function resolveAutoConfig(args: ParsedArgs): string | undefined {
     return undefined;
 }
 
+// ---------------------------------------------------------------------------
+// Declarative flag definitions
+// ---------------------------------------------------------------------------
+
+type FlagType = 'boolean' | 'boolean-false' | 'string' | 'number' | 'number-raw' | 'csv' | 'enum';
+
+interface FlagDef {
+    key: keyof ParsedArgs;
+    type: FlagType;
+    aliases?: string[];
+    enumValues?: string[];
+    transform?: (value: string) => unknown;
+}
+
+const csvSplit = (v: string): string[] => v.split(',').map((s) => s.trim()).filter(Boolean);
+
+// prettier-ignore
+const FLAGS: Record<string, FlagDef> = {
+    // -- boolean flags --
+    '--help':                       {key: 'help', type: 'boolean', aliases: ['-h']},
+    '--apply':                      {key: 'apply', type: 'boolean'},
+    '--allow-fallback':             {key: 'allowFallback', type: 'boolean'},
+    '--pipeline':                   {key: 'pipeline', type: 'boolean'},
+    '--pipeline-mcp':               {key: 'pipelineMcp', type: 'boolean'},
+    '--pipeline-mcp-allow-fallback': {key: 'pipelineMcpAllowFallback', type: 'boolean'},
+    '--pipeline-mcp-only':          {key: 'pipelineMcpOnly', type: 'boolean'},
+    '--pipeline-headless':          {key: 'pipelineHeadless', type: 'boolean'},
+    '--pipeline-headed':            {key: 'pipelineHeadless', type: 'boolean-false'},
+    '--pipeline-parallel':          {key: 'pipelineParallel', type: 'boolean'},
+    '--pipeline-dry-run':           {key: 'pipelineDryRun', type: 'boolean'},
+    '--fail-on-must-add-tests':     {key: 'failOnMustAddTests', type: 'boolean'},
+    '--create-pr':                  {key: 'createPr', type: 'boolean'},
+    '--dry-run':                    {key: 'dryRun', type: 'boolean'},
+    '--generate':                   {key: 'analyzeGenerate', type: 'boolean'},
+    '--heal':                       {key: 'analyzeHeal', type: 'boolean'},
+    '--no-ai':                      {key: 'noAi', type: 'boolean'},
+    '--mattermost':                 {key: 'profile', type: 'boolean', transform: () => 'mattermost'},
+
+    // -- string flags --
+    '--config':                        {key: 'configPath', type: 'string'},
+    '--path':                          {key: 'path', type: 'string'},
+    '--tests-root':                    {key: 'testsRoot', type: 'string'},
+    '--framework':                     {key: 'framework', type: 'string', transform: (v) => v as FrameworkType},
+    '--scenarios':                     {key: 'generateScenarios', type: 'string'},
+    '--pipeline-output':               {key: 'pipelineOutput', type: 'string'},
+    '--pipeline-base-url':             {key: 'pipelineBaseUrl', type: 'string'},
+    '--pipeline-project':              {key: 'pipelineProject', type: 'string'},
+    '--spec':                          {key: 'specPDF', type: 'string'},
+    '--since':                         {key: 'gitSince', type: 'string'},
+    '--llm-provider':                  {key: 'llmProvider', type: 'string'},
+    '--ci-comment-path':               {key: 'ciCommentPath', type: 'string'},
+    '--github-output':                 {key: 'githubOutputPath', type: 'string'},
+    '--feedback-input':                {key: 'feedbackInputPath', type: 'string'},
+    '--traceability-report':           {key: 'traceabilityReportPath', type: 'string'},
+    '--traceability-capture-output':   {key: 'traceabilityCaptureOutputPath', type: 'string'},
+    '--traceability-coverage-map':     {key: 'traceabilityCoverageMapPath', type: 'string'},
+    '--traceability-changed-files':    {key: 'traceabilityChangedFilesPath', type: 'string'},
+    '--traceability-input':            {key: 'traceabilityInputPath', type: 'string'},
+    '--branch':                        {key: 'branch', type: 'string'},
+    '--commit-message':                {key: 'commitMessage', type: 'string'},
+    '--pr-title':                      {key: 'prTitle', type: 'string'},
+    '--pr-body':                       {key: 'prBody', type: 'string'},
+    '--pr-base':                       {key: 'prBase', type: 'string'},
+    '--generate-output':               {key: 'analyzeGenerateOutputDir', type: 'string'},
+    '--heal-report':                   {key: 'analyzeHealReport', type: 'string'},
+    '--flow-catalog':                  {key: 'flowCatalogPath', type: 'string'},
+
+    // -- number flags (with isFinite guard) --
+    '--pipeline-scenarios':              {key: 'pipelineScenarios', type: 'number'},
+    '--time':                            {key: 'timeLimitMinutes', type: 'number'},
+    '--budget-usd':                      {key: 'budgetUSD', type: 'number'},
+    '--budget-tokens':                   {key: 'budgetTokens', type: 'number'},
+    '--policy-min-confidence':           {key: 'policyMinConfidence', type: 'number'},
+    '--policy-safe-merge-confidence':    {key: 'policySafeMergeConfidence', type: 'number'},
+    '--policy-force-full-on-warnings':   {key: 'policyWarningsThreshold', type: 'number'},
+    '--traceability-min-hits':           {key: 'traceabilityMinHits', type: 'number'},
+    '--traceability-max-files-per-test': {key: 'traceabilityMaxFilesPerTest', type: 'number'},
+    '--traceability-max-age-days':       {key: 'traceabilityMaxAgeDays', type: 'number'},
+
+    // -- number-raw flags (no isFinite guard, assigned directly via Number()) --
+    '--max-attempts':           {key: 'maxAttempts', type: 'number-raw', transform: (v) => parseInt(v, 10)},
+    '--pipeline-mcp-timeout-ms': {key: 'pipelineMcpTimeoutMs', type: 'number-raw'},
+    '--pipeline-mcp-retries':   {key: 'pipelineMcpRetries', type: 'number-raw'},
+
+    // -- enum flags --
+    '--profile':                  {key: 'profile', type: 'enum', enumValues: ['default', 'mattermost']},
+    '--pipeline-browser':         {key: 'pipelineBrowser', type: 'enum', enumValues: ['chrome', 'chromium', 'firefox', 'webkit']},
+    '--policy-enforcement-mode':  {key: 'policyEnforcementMode', type: 'enum', enumValues: ['advisory', 'warn', 'block']},
+
+    // -- csv flags --
+    '--patterns':              {key: 'testPatterns', type: 'csv'},
+    '--flow-patterns':         {key: 'flowPatterns', type: 'csv'},
+    '--flow-exclude':          {key: 'flowExclude', type: 'csv'},
+    '--policy-risky-patterns': {key: 'policyRiskyPatterns', type: 'csv'},
+    '--policy-block-actions':  {
+        key: 'policyBlockActions',
+        type: 'csv',
+        transform: (v) => csvSplit(v).filter(
+            (s): s is 'run-now' | 'must-add-tests' | 'safe-to-merge' =>
+                s === 'run-now' || s === 'must-add-tests' || s === 'safe-to-merge',
+        ),
+    },
+};
+
+// Build a lookup from alias -> canonical flag name
+const ALIAS_MAP: Record<string, string> = {};
+for (const [flag, def] of Object.entries(FLAGS)) {
+    ALIAS_MAP[flag] = flag;
+    if (def.aliases) {
+        for (const alias of def.aliases) {
+            ALIAS_MAP[alias] = flag;
+        }
+    }
+}
+
+const COMMANDS = new Set<Command>([
+    'impact', 'plan', 'heal', 'suggest', 'generate',
+    'finalize-generated-tests', 'feedback',
+    'traceability-capture', 'traceability-ingest',
+    'analyze', 'llm-health',
+]);
+
+// ---------------------------------------------------------------------------
+// Parser
+// ---------------------------------------------------------------------------
+
+function setField(obj: ParsedArgs, key: keyof ParsedArgs, value: unknown): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (obj as any)[key] = value;
+}
+
 export function parseArgs(argv: string[]): ParsedArgs {
     const parsed: ParsedArgs = {apply: false, help: false};
     if (argv.length === 0) {
@@ -59,378 +190,71 @@ export function parseArgs(argv: string[]): ParsedArgs {
     }
 
     const command = argv[0];
-    if (
-        command === 'impact'
-        || command === 'plan'
-        || command === 'heal'
-        || command === 'suggest'
-        || command === 'generate'
-            || command === 'finalize-generated-tests'
-            || command === 'feedback'
-            || command === 'traceability-capture'
-            || command === 'traceability-ingest'
-            || command === 'analyze'
-            || command === 'llm-health'
-    ) {
-        parsed.command = command;
+    if (COMMANDS.has(command as Command)) {
+        parsed.command = command as Command;
     }
 
     for (let i = 1; i < argv.length; i += 1) {
         const arg = argv[i];
+        const canonical = ALIAS_MAP[arg];
+        if (!canonical) {
+            continue;
+        }
+
+        const def = FLAGS[canonical];
         const next = argv[i + 1];
-        if (arg === '--help' || arg === '-h') {
-            parsed.help = true;
-            continue;
-        }
-        if (arg === '--max-attempts' && next) {
-            parsed.maxAttempts = parseInt(next, 10);
-            i += 1;
-            continue;
-        }
-        if (arg === '--scenarios' && next) {
-            parsed.generateScenarios = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--apply') {
-            parsed.apply = true;
-            continue;
-        }
-        if (arg === '--config' && next) {
-            parsed.configPath = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--path' && next) {
-            parsed.path = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--profile' && next) {
-            if (next === 'default' || next === 'mattermost') {
-                parsed.profile = next;
+
+        switch (def.type) {
+        case 'boolean':
+            setField(parsed, def.key, def.transform ? def.transform('') : true);
+            break;
+
+        case 'boolean-false':
+            setField(parsed, def.key, false);
+            break;
+
+        case 'string':
+            if (next) {
+                setField(parsed, def.key, def.transform ? def.transform(next) : next);
+                i += 1;
             }
-            i += 1;
-            continue;
-        }
-        if (arg === '--mattermost') {
-            parsed.profile = 'mattermost';
-            continue;
-        }
-        if (arg === '--tests-root' && next) {
-            parsed.testsRoot = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--framework' && next) {
-            parsed.framework = next as FrameworkType;
-            i += 1;
-            continue;
-        }
-        if (arg === '--patterns' && next) {
-            parsed.testPatterns = next.split(',').map((value) => value.trim()).filter(Boolean);
-            i += 1;
-            continue;
-        }
-        if (arg === '--flow-patterns' && next) {
-            parsed.flowPatterns = next.split(',').map((value) => value.trim()).filter(Boolean);
-            i += 1;
-            continue;
-        }
-        if (arg === '--flow-exclude' && next) {
-            parsed.flowExclude = next.split(',').map((value) => value.trim()).filter(Boolean);
-            i += 1;
-            continue;
-        }
-        if (arg === '--flow-catalog' && next) {
-            parsed.flowCatalogPath = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--allow-fallback') {
-            parsed.allowFallback = true;
-            continue;
-        }
-        if (arg === '--pipeline') {
-            parsed.pipeline = true;
-            continue;
-        }
-        if (arg === '--pipeline-mcp') {
-            parsed.pipelineMcp = true;
-            continue;
-        }
-        if (arg === '--pipeline-mcp-allow-fallback') {
-            parsed.pipelineMcpAllowFallback = true;
-            continue;
-        }
-        if (arg === '--pipeline-mcp-only') {
-            parsed.pipelineMcpOnly = true;
-            continue;
-        }
-        if (arg === '--pipeline-mcp-timeout-ms' && next) {
-            parsed.pipelineMcpTimeoutMs = Number(next);
-            i += 1;
-            continue;
-        }
-        if (arg === '--pipeline-mcp-retries' && next) {
-            parsed.pipelineMcpRetries = Number(next);
-            i += 1;
-            continue;
-        }
-        if (arg === '--pipeline-scenarios' && next) {
-            const value = Number(next);
-            if (Number.isFinite(value)) {
-                parsed.pipelineScenarios = value;
+            break;
+
+        case 'number':
+            if (next) {
+                const value = Number(next);
+                if (Number.isFinite(value)) {
+                    setField(parsed, def.key, value);
+                }
+                i += 1;
             }
-            i += 1;
-            continue;
-        }
-        if (arg === '--pipeline-output' && next) {
-            parsed.pipelineOutput = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--pipeline-base-url' && next) {
-            parsed.pipelineBaseUrl = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--pipeline-browser' && next) {
-            const value = next as ParsedArgs['pipelineBrowser'];
-            if (value === 'chrome' || value === 'chromium' || value === 'firefox' || value === 'webkit') {
-                parsed.pipelineBrowser = value;
+            break;
+
+        case 'number-raw':
+            if (next) {
+                setField(parsed, def.key, def.transform ? def.transform(next) : Number(next));
+                i += 1;
             }
-            i += 1;
-            continue;
-        }
-        if (arg === '--pipeline-headless') {
-            parsed.pipelineHeadless = true;
-            continue;
-        }
-        if (arg === '--pipeline-headed') {
-            parsed.pipelineHeadless = false;
-            continue;
-        }
-        if (arg === '--pipeline-project' && next) {
-            parsed.pipelineProject = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--pipeline-parallel') {
-            parsed.pipelineParallel = true;
-            continue;
-        }
-        if (arg === '--pipeline-dry-run') {
-            parsed.pipelineDryRun = true;
-            continue;
-        }
-        if (arg === '--spec' && next) {
-            parsed.specPDF = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--since' && next) {
-            parsed.gitSince = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--time' && next) {
-            const value = Number(next);
-            if (Number.isFinite(value)) {
-                parsed.timeLimitMinutes = value;
+            break;
+
+        case 'csv':
+            if (next) {
+                setField(parsed, def.key, def.transform ? def.transform(next) : csvSplit(next));
+                i += 1;
             }
-            i += 1;
-            continue;
-        }
-        if (arg === '--budget-usd' && next) {
-            const value = Number(next);
-            if (Number.isFinite(value)) {
-                parsed.budgetUSD = value;
+            break;
+
+        case 'enum':
+            if (next) {
+                if (def.enumValues!.includes(next)) {
+                    setField(parsed, def.key, next);
+                }
+                i += 1;
             }
-            i += 1;
-            continue;
-        }
-        if (arg === '--budget-tokens' && next) {
-            const value = Number(next);
-            if (Number.isFinite(value)) {
-                parsed.budgetTokens = value;
-            }
-            i += 1;
-            continue;
-        }
-        if (arg === '--llm-provider' && next) {
-            parsed.llmProvider = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--policy-min-confidence' && next) {
-            const value = Number(next);
-            if (Number.isFinite(value)) {
-                parsed.policyMinConfidence = value;
-            }
-            i += 1;
-            continue;
-        }
-        if (arg === '--policy-safe-merge-confidence' && next) {
-            const value = Number(next);
-            if (Number.isFinite(value)) {
-                parsed.policySafeMergeConfidence = value;
-            }
-            i += 1;
-            continue;
-        }
-        if (arg === '--policy-force-full-on-warnings' && next) {
-            const value = Number(next);
-            if (Number.isFinite(value)) {
-                parsed.policyWarningsThreshold = value;
-            }
-            i += 1;
-            continue;
-        }
-        if (arg === '--policy-risky-patterns' && next) {
-            parsed.policyRiskyPatterns = next.split(',').map((value) => value.trim()).filter(Boolean);
-            i += 1;
-            continue;
-        }
-        if (arg === '--policy-enforcement-mode' && next) {
-            if (next === 'advisory' || next === 'warn' || next === 'block') {
-                parsed.policyEnforcementMode = next;
-            }
-            i += 1;
-            continue;
-        }
-        if (arg === '--policy-block-actions' && next) {
-            parsed.policyBlockActions = next
-                .split(',')
-                .map((value) => value.trim())
-                .filter((value): value is 'run-now' | 'must-add-tests' | 'safe-to-merge' => (
-                    value === 'run-now' || value === 'must-add-tests' || value === 'safe-to-merge'
-                ));
-            i += 1;
-            continue;
-        }
-        if (arg === '--ci-comment-path' && next) {
-            parsed.ciCommentPath = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--github-output' && next) {
-            parsed.githubOutputPath = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--fail-on-must-add-tests') {
-            parsed.failOnMustAddTests = true;
-            continue;
-        }
-        if (arg === '--feedback-input' && next) {
-            parsed.feedbackInputPath = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--traceability-report' && next) {
-            parsed.traceabilityReportPath = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--traceability-capture-output' && next) {
-            parsed.traceabilityCaptureOutputPath = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--traceability-coverage-map' && next) {
-            parsed.traceabilityCoverageMapPath = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--traceability-changed-files' && next) {
-            parsed.traceabilityChangedFilesPath = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--traceability-input' && next) {
-            parsed.traceabilityInputPath = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--traceability-min-hits' && next) {
-            const value = Number(next);
-            if (Number.isFinite(value)) {
-                parsed.traceabilityMinHits = value;
-            }
-            i += 1;
-            continue;
-        }
-        if (arg === '--traceability-max-files-per-test' && next) {
-            const value = Number(next);
-            if (Number.isFinite(value)) {
-                parsed.traceabilityMaxFilesPerTest = value;
-            }
-            i += 1;
-            continue;
-        }
-        if (arg === '--traceability-max-age-days' && next) {
-            const value = Number(next);
-            if (Number.isFinite(value)) {
-                parsed.traceabilityMaxAgeDays = value;
-            }
-            i += 1;
-            continue;
-        }
-        if (arg === '--branch' && next) {
-            parsed.branch = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--commit-message' && next) {
-            parsed.commitMessage = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--create-pr') {
-            parsed.createPr = true;
-            continue;
-        }
-        if (arg === '--pr-title' && next) {
-            parsed.prTitle = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--pr-body' && next) {
-            parsed.prBody = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--pr-base' && next) {
-            parsed.prBase = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--dry-run') {
-            parsed.dryRun = true;
-            continue;
-        }
-        if (arg === '--generate') {
-            parsed.analyzeGenerate = true;
-            continue;
-        }
-        if (arg === '--generate-output' && next) {
-            parsed.analyzeGenerateOutputDir = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--heal') {
-            parsed.analyzeHeal = true;
-            continue;
-        }
-        if (arg === '--heal-report' && next) {
-            parsed.analyzeHealReport = next;
-            i += 1;
-            continue;
-        }
-        if (arg === '--no-ai') {
-            parsed.noAi = true;
-            continue;
+            break;
+
+        default:
+            break;
         }
     }
 

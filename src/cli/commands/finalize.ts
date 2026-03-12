@@ -8,7 +8,6 @@ import type {ParsedArgs} from '../types.js';
 
 export function runFinalizeCommand(args: ParsedArgs, autoConfig: string | undefined): void {
     if (!args.path && !autoConfig) {
-        // eslint-disable-next-line no-console
         console.error('Error: --path is required for finalize-generated-tests command');
         process.exit(1);
     }
@@ -30,20 +29,14 @@ export function runFinalizeCommand(args: ParsedArgs, autoConfig: string | undefi
         baseBranch: args.prBase,
         dryRun: args.dryRun,
     });
-    // eslint-disable-next-line no-console
     console.log(`Finalize repo root: ${result.repoRoot}`);
-    // eslint-disable-next-line no-console
     console.log(`Finalize branch: ${result.branch}`);
-    // eslint-disable-next-line no-console
     console.log(`Finalize staged paths: ${result.stagedPaths.join(', ') || 'none'}`);
-    // eslint-disable-next-line no-console
     console.log(`Finalize commit: ${result.committed ? 'created' : 'skipped'}`);
     if (result.commitSha) {
-        // eslint-disable-next-line no-console
         console.log(`Finalize commit sha: ${result.commitSha}`);
     }
     if (result.prUrl) {
-        // eslint-disable-next-line no-console
         console.log(`Finalize PR: ${result.prUrl}`);
     }
 }

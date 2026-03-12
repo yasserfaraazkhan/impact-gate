@@ -25,13 +25,11 @@ export async function runGenerateCommand(args: ParsedArgs, config: ReturnType<ty
             raw = JSON.parse(args.generateScenarios);
         }
         if (!Array.isArray(raw)) {
-            // eslint-disable-next-line no-console
             console.error('--scenarios must be a JSON array of ScenarioInput objects.');
             process.exit(1);
         }
         for (const item of raw as Record<string, unknown>[]) {
             if (!item.id || !item.name || !Array.isArray(item.scenarios) || !item.routeFamily || !item.priority) {
-                // eslint-disable-next-line no-console
                 console.error(`Invalid scenario: each must have id, name, scenarios[], routeFamily, priority.`);
                 process.exit(1);
             }
@@ -43,7 +41,6 @@ export async function runGenerateCommand(args: ParsedArgs, config: ReturnType<ty
         const planReportPath = join(reportRoot, '.e2e-ai-agents', 'plan-report.json');
         const resolvedPlanPath = existsSync(planJsonPath) ? planJsonPath : existsSync(planReportPath) ? planReportPath : null;
         if (!resolvedPlanPath) {
-            // eslint-disable-next-line no-console
             console.error('No plan report found. Run `plan` first or pass --scenarios.');
             process.exit(1);
         }
@@ -58,7 +55,6 @@ export async function runGenerateCommand(args: ParsedArgs, config: ReturnType<ty
     }
 
     if (scenarios.length === 0) {
-        // eslint-disable-next-line no-console
         console.log('No scenarios to generate tests for.');
         return;
     }
@@ -67,13 +63,11 @@ export async function runGenerateCommand(args: ParsedArgs, config: ReturnType<ty
     try {
         apiSurface = loadOrBuildApiSurface(reportRoot, config.apiSurface);
     } catch {
-        // eslint-disable-next-line no-console
         console.warn('Could not load API surface catalog. Generation will use generic selectors.');
     }
 
     const provider = await LLMProviderFactory.createFromEnv();
 
-    // eslint-disable-next-line no-console
     console.log(`Generating tests for ${scenarios.length} scenario(s)...`);
 
     const summary = await runAgenticGeneration({
@@ -90,34 +84,24 @@ export async function runGenerateCommand(args: ParsedArgs, config: ReturnType<ty
         apiSurface,
     });
 
-    // eslint-disable-next-line no-console
     console.log(`\nAgentic Generation Summary:`);
-    // eslint-disable-next-line no-console
     console.log(`  Generated: ${summary.totalGenerated}`);
-    // eslint-disable-next-line no-console
     console.log(`  Passed:    ${summary.totalPassed}`);
-    // eslint-disable-next-line no-console
     console.log(`  Failed:    ${summary.totalFailed}`);
-    // eslint-disable-next-line no-console
     console.log(`  Attempts:  ${summary.totalAttempts}`);
-    // eslint-disable-next-line no-console
     console.log(`  Duration:  ${(summary.durationMs / 1000).toFixed(1)}s`);
 
     for (const result of summary.results) {
         const icon = result.status === 'passed' ? 'PASS' : result.status === 'skipped' ? 'SKIP' : 'FAIL';
-        // eslint-disable-next-line no-console
         console.log(`  [${icon}] ${result.scenarioSource} (${result.attempts} attempts)`);
         if (result.status === 'passed' || result.status === 'skipped') {
-            // eslint-disable-next-line no-console
             console.log(`     ${result.specPath}`);
         }
     }
 
     if (summary.warnings.length > 0) {
-        // eslint-disable-next-line no-console
         console.log(`\nWarnings:`);
         for (const w of summary.warnings) {
-            // eslint-disable-next-line no-console
             console.warn(`  - ${w}`);
         }
     }
@@ -128,7 +112,6 @@ export async function runGenerateCommand(args: ParsedArgs, config: ReturnType<ty
     }
     const summaryPath = join(summaryDir, 'agentic-summary.json');
     writeFileSync(summaryPath, JSON.stringify(summary, null, 2), 'utf-8');
-    // eslint-disable-next-line no-console
     console.log(`\nReport: ${summaryPath}`);
 
     if (summary.totalFailed > 0) {

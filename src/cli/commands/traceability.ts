@@ -11,12 +11,10 @@ import type {ParsedArgs} from '../types.js';
 
 export function runTraceabilityCaptureCommand(args: ParsedArgs, autoConfig: string | undefined): void {
     if (!args.path && !autoConfig) {
-        // eslint-disable-next-line no-console
         console.error('Error: --path is required for traceability-capture command');
         process.exit(1);
     }
     if (!args.traceabilityReportPath) {
-        // eslint-disable-next-line no-console
         console.error('Error: --traceability-report <path> is required for traceability-capture command');
         process.exit(1);
     }
@@ -39,28 +37,21 @@ export function runTraceabilityCaptureCommand(args: ParsedArgs, autoConfig: stri
         coverageMapPath: args.traceabilityCoverageMapPath,
         changedFilesPath: args.traceabilityChangedFilesPath,
     });
-    // eslint-disable-next-line no-console
     console.log(`Traceability input: ${output.outputPath}`);
-    // eslint-disable-next-line no-console
     console.log(`Traceability tests seen: ${output.testsSeen}`);
-    // eslint-disable-next-line no-console
     console.log(`Traceability runs generated: ${output.runsGenerated}`);
-    // eslint-disable-next-line no-console
     console.log(`Traceability changed files used: ${output.changedFilesUsed}`);
     if (output.warnings.length > 0) {
-        // eslint-disable-next-line no-console
         console.log(`Traceability warnings: ${output.warnings.join(' | ')}`);
     }
 }
 
 export function runTraceabilityIngestCommand(args: ParsedArgs, autoConfig: string | undefined): void {
     if (!args.path && !autoConfig) {
-        // eslint-disable-next-line no-console
         console.error('Error: --path is required for traceability-ingest command');
         process.exit(1);
     }
     if (!args.traceabilityInputPath) {
-        // eslint-disable-next-line no-console
         console.error('Error: --traceability-input <path> is required for traceability-ingest command');
         process.exit(1);
     }
@@ -84,18 +75,12 @@ export function runTraceabilityIngestCommand(args: ParsedArgs, autoConfig: strin
             maxAgeDays: args.traceabilityMaxAgeDays,
         },
     );
-    // eslint-disable-next-line no-console
     console.log(`Traceability manifest: ${output.manifestPath}`);
-    // eslint-disable-next-line no-console
     console.log(`Traceability state: ${output.statePath}`);
-    // eslint-disable-next-line no-console
     console.log(`Traceability ingested entries: ${output.entriesIngested}`);
-    // eslint-disable-next-line no-console
     console.log(`Traceability tracked tests: ${output.testsTracked}`);
-    // eslint-disable-next-line no-console
     console.log(`Traceability tracked edges: ${output.edgesTracked}`);
     if (output.warnings.length > 0) {
-        // eslint-disable-next-line no-console
         console.log(`Traceability warnings: ${output.warnings.join(' | ')}`);
     }
 }
