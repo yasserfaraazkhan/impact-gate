@@ -4,13 +4,17 @@
 import {spawnSync} from 'child_process';
 import {normalizePath} from './utils.js';
 
-// Directories that contain CI/tooling/docs — never relevant to impact analysis.
+// Directories that contain CI/tooling/docs/tests — never relevant to impact analysis.
 const IGNORED_DIR_SEGMENTS = [
     '.github',
     '.claude',
     '.vscode',
     '.idea',
     'node_modules',
+    'e2e-tests',
+    '__tests__',
+    '__mocks__',
+    'testlib',
 ];
 
 // Exact filenames (basename) that are never relevant.
