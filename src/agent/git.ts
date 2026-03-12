@@ -76,18 +76,22 @@ export function getChangedFiles(appRoot: string, since: string, options?: GitCha
             }
         }
 
-        const diffFiles = runGit(['diff', '--name-only', `${baseRef}..HEAD`, '--', '.'], appRoot);
+        // Get repo root so we capture ALL changed files (including server/, webapp/, etc.)
+        // not just files under the appRoot subdirectory.
+        const repoRoot = runGitRaw(['rev-parse', '--show-toplevel'], appRoot)?.trim() || appRoot;
+
+        const diffFiles = runGit(['diff', '--name-only', `${baseRef}..HEAD`], repoRoot);
         if (!diffFiles) {
             return {files: [], error: 'git diff failed'};
         }
         diffFiles.forEach((file) => files.add(file));
 
         if (options?.includeUncommitted) {
-            const staged = runGit(['diff', '--name-only', '--cached', '--', '.'], appRoot) || [];
+            const staged = runGit(['diff', '--name-only', '--cached'], repoRoot) || [];
             staged.forEach((file) => files.add(file));
-            const unstaged = runGit(['diff', '--name-only', '--', '.'], appRoot) || [];
+            const unstaged = runGit(['diff', '--name-only'], repoRoot) || [];
             unstaged.forEach((file) => files.add(file));
-            const statusOutput = runGitRaw(['status', '--porcelain', '--', '.'], appRoot);
+            const statusOutput = runGitRaw(['status', '--porcelain'], repoRoot);
             if (statusOutput) {
                 const statusLines = statusOutput.split('\n').filter(Boolean);
                 parseStatusLines(statusLines).forEach((file) => files.add(file));
