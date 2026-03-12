@@ -1162,13 +1162,16 @@ async function main(): Promise<void> {
             }
             scenarios = raw as ScenarioInput[];
         } else {
+            // Try plan.json first (written by plan/suggest command), then plan-report.json (legacy)
+            const planJsonPath = join(reportRoot, '.e2e-ai-agents', 'plan.json');
             const planReportPath = join(reportRoot, '.e2e-ai-agents', 'plan-report.json');
-            if (!existsSync(planReportPath)) {
+            const resolvedPlanPath = existsSync(planJsonPath) ? planJsonPath : existsSync(planReportPath) ? planReportPath : null;
+            if (!resolvedPlanPath) {
                 // eslint-disable-next-line no-console
                 console.error('No plan report found. Run `plan` first or pass --scenarios.');
                 process.exit(1);
             }
-            const planReport = JSON.parse(readFileSync(planReportPath, 'utf-8'));
+            const planReport = JSON.parse(readFileSync(resolvedPlanPath, 'utf-8'));
             scenarios = (planReport.gapDetails || []).map((gap: {id: string; reasons: string[]; missingScenarios: string[]}) => ({
                 id: gap.id,
                 name: gap.id,
