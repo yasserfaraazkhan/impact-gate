@@ -4,6 +4,101 @@
 import {spawnSync} from 'child_process';
 import {normalizePath} from './utils.js';
 
+// Directories that contain CI/tooling/docs — never relevant to impact analysis.
+const IGNORED_DIR_SEGMENTS = [
+    '.github',
+    '.claude',
+    '.vscode',
+    '.idea',
+    'node_modules',
+];
+
+// Exact filenames (basename) that are never relevant.
+const IGNORED_BASENAMES = new Set([
+    'package.json',
+    'package-lock.json',
+    '.gitignore',
+    '.prettierignore',
+    '.prettierrc',
+    '.eslintrc',
+    '.eslintrc.js',
+    '.eslintrc.json',
+    '.editorconfig',
+    '.npmrc',
+    '.mcp.json',
+    'CHANGELOG.md',
+    'README.md',
+    'LICENSE',
+    'LICENSE.txt',
+    'tsconfig.json',
+    'jest.config.js',
+    'jest.config.ts',
+    'babel.config.js',
+]);
+
+// Extensions that are never source code.
+const IGNORED_EXTENSIONS = new Set([
+    '.md',
+    '.txt',
+    '.lock',
+    '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico',
+    '.woff', '.woff2', '.ttf', '.eot',
+]);
+
+// File patterns that indicate test/spec files (not production code).
+const TEST_FILE_PATTERNS = [
+    /\.spec\.[tj]sx?$/,
+    /\.test\.[tj]sx?$/,
+    /_test\.go$/,
+    /\.stories\.[tj]sx?$/,
+];
+
+// Config file patterns that are not production source code.
+const CONFIG_FILE_PATTERNS = [
+    /\.config\.[tj]sx?$/,
+    /\.config\.json$/,
+    /\.config\.js$/,
+];
+
+function isRelevantFile(file: string): boolean {
+    const segments = file.split('/');
+    const basename = segments[segments.length - 1] || file;
+
+    if (IGNORED_BASENAMES.has(basename)) {
+        return false;
+    }
+
+    for (const seg of segments) {
+        if (IGNORED_DIR_SEGMENTS.includes(seg)) {
+            return false;
+        }
+    }
+
+    const dotIdx = basename.lastIndexOf('.');
+    if (dotIdx > 0) {
+        const ext = basename.slice(dotIdx).toLowerCase();
+        if (IGNORED_EXTENSIONS.has(ext)) {
+            return false;
+        }
+    }
+
+    // Filter test/spec files — they don't impact production features
+    for (const pattern of TEST_FILE_PATTERNS) {
+        if (pattern.test(basename)) {
+            return false;
+        }
+    }
+
+    // Filter config files
+    for (const pattern of CONFIG_FILE_PATTERNS) {
+        if (pattern.test(basename)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 export interface GitChangeResult {
     files: string[];
     error?: string;
@@ -98,7 +193,7 @@ export function getChangedFiles(appRoot: string, since: string, options?: GitCha
             }
         }
 
-        return {files: Array.from(files), baseRef, baseStrategy};
+        return {files: Array.from(files).filter(isRelevantFile), baseRef, baseStrategy};
     } catch {
         return {files: [], error: 'git diff failed'};
     }
