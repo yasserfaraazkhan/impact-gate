@@ -400,6 +400,7 @@ export function buildPlanFromImpact(
             coveredFlows: coveredCount,
             partialFlows: partialCount,
             uncoveredP0P1Flows: gaps.length,
+            unboundFiles: impact.unboundFiles.length,
             warnings: impact.warnings.length,
         },
     };
@@ -415,7 +416,7 @@ export function writePlanReport(appRoot: string, plan: PlanReport): string {
 
 export function renderCiSummaryMarkdown(plan: PlanReport): string {
     const lines: string[] = [];
-    const {uncoveredP0P1Flows, changedFiles, impactedFlows, coveredFlows: coveredCount, partialFlows: partialCount} = plan.metrics;
+    const {uncoveredP0P1Flows, changedFiles, impactedFlows, coveredFlows: coveredCount, partialFlows: partialCount, unboundFiles: unboundCount} = plan.metrics;
     const mustAddTests = plan.decision.action === 'must-add-tests';
 
     const flowsWithAdvisory = plan.coveredFlows.filter((f) => f.advisoryScenarios && f.advisoryScenarios.length > 0);
@@ -519,6 +520,12 @@ export function renderCiSummaryMarkdown(plan: PlanReport): string {
         for (const f of plan.policy.riskyFiles) {
             lines.push(`- \`${f}\``);
         }
+    }
+
+    // ── Unbound files warning ────────────────────────────────────────────────
+    if ((unboundCount ?? 0) > 0) {
+        lines.push('');
+        lines.push(`> **${unboundCount}** changed file(s) could not be mapped to any E2E flow. Consider updating \`route-families.json\` to cover these files.`);
     }
 
     if (plan.confidence < 100) {
