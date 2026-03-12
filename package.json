@@ -1,6 +1,6 @@
 {
   "name": "@yasserkhanorg/e2e-agents",
-  "version": "0.3.4",
+  "version": "0.11.0",
   "description": "Pluggable LLM provider library for AI-powered test automation. Use Claude, Ollama, or your own LLM. Integrate with Playwright, Jest, or any test framework. MCP server for test agents, cost tracking, and hybrid provider mode.",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
@@ -22,6 +22,8 @@
     "./schemas/plan": "./schemas/plan.schema.json",
     "./schemas/traceability-input": "./schemas/traceability-input.schema.json",
     "./schemas/subsystem-risk-map": "./schemas/subsystem-risk-map.schema.json",
+    "./schemas/route-families": "./schemas/route-families.schema.json",
+    "./schemas/flow-decision": "./schemas/flow-decision.schema.json",
     "./package.json": "./package.json"
   },
   "bin": {
@@ -35,9 +37,12 @@
   ],
   "scripts": {
     "build": "npm run build:cjs && npm run build:esm",
+    "postbuild": "chmod +x dist/cli.js",
     "build:cjs": "tsc -p tsconfig.json",
     "build:esm": "tsc -p tsconfig.esm.json && node scripts/write-esm-package.js",
     "clean": "rm -rf dist",
+    "impact:checklist": "node scripts/impact-checklist.js",
+    "impact:local": "node scripts/local-impact-workflow.js",
     "prebuild": "npm run clean",
     "pretest": "npm run build",
     "test": "node --test test/*.js",
@@ -48,12 +53,10 @@
     "@anthropic-ai/sdk": "^0.73.0",
     "glob": "^11.0.0",
     "marked": "^15.0.6",
-    "openai": "^4.73.0",
-    "pdf-parse": "^1.1.1"
+    "openai": "^4.73.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "@types/pdf-parse": "^1.1.4",
     "typescript": "^5.6.0"
   },
   "repository": {

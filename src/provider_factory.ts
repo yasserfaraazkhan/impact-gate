@@ -105,14 +105,19 @@ export class LLMProviderFactory {
     static async createFromEnv(): Promise<LLMProvider> {
         const providerType = process.env.LLM_PROVIDER?.toLowerCase();
 
-        if (providerType === 'ollama') {
+        const normalizedProviderType = providerType?.trim().toLowerCase();
+        if (normalizedProviderType && !['ollama', 'openai', 'anthropic', 'auto'].includes(normalizedProviderType)) {
+            throw new Error(`Unknown LLM_PROVIDER value "${providerType}". Expected one of: ollama, openai, anthropic, auto`);
+        }
+
+        if (normalizedProviderType === 'ollama') {
             return new OllamaProvider({
                 baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434/v1',
                 model: process.env.OLLAMA_MODEL || 'deepseek-r1:7b',
             });
         }
 
-        if (providerType === 'openai') {
+        if (normalizedProviderType === 'openai') {
             if (!process.env.OPENAI_API_KEY) {
                 throw new Error('OPENAI_API_KEY environment variable is required for OpenAI provider');
             }
@@ -125,7 +130,7 @@ export class LLMProviderFactory {
             });
         }
 
-        if (providerType === 'anthropic') {
+        if (normalizedProviderType === 'anthropic') {
             if (!process.env.ANTHROPIC_API_KEY) {
                 throw new Error('ANTHROPIC_API_KEY environment variable is required for Anthropic provider');
             }

@@ -148,6 +148,67 @@ test('package-native heal rewrites an invalid existing spec when quality guardra
     }
 });
 
+test('package-native heal rejects brittle system-console patterns and rewrites spec', () => {
+    const root = mkdtempSync(join(tmpdir(), 'pipeline-heal-system-console-'));
+    try {
+        writeFakePlaywrightBinary(root, '#!/bin/sh\nexit 0\n');
+        const specPath = join(
+            root,
+            'specs/functional/ai-assisted/admin_license_management/admin_license_management.spec.ts',
+        );
+        mkdirSync(join(root, 'specs/functional/ai-assisted/admin_license_management'), {recursive: true});
+        writeFileSync(
+            specPath,
+            [
+                "import {expect, test} from '@mattermost/playwright-lib';",
+                '',
+                "test('broken @ai-assisted', async ({pw}) => {",
+                '  const {adminUser} = await pw.initSetup();',
+                '  const {systemConsolePage} = await pw.testBrowser.login(adminUser);',
+                '  await systemConsolePage.goto();',
+                '  await systemConsolePage.toBeVisible();',
+                "  await expect(systemConsolePage.page.locator('.left-panel')).toBeVisible();",
+                '});',
+                '',
+            ].join('\n'),
+            'utf-8',
+        );
+
+        const summary = runPlaywrightPipeline(
+            root,
+            [
+                {
+                    id: 'admin_license_management',
+                    name: 'Admin Console - License Management',
+                    kind: 'flow',
+                    score: 45,
+                    priority: 'P0',
+                    reasons: ['System console flow'],
+                    keywords: ['admin', 'license'],
+                    files: ['channels/src/components/admin_console/license_settings/license_settings.tsx'],
+                },
+            ],
+            {
+                enabled: true,
+                scenarios: 3,
+                outputDir: 'specs/functional/ai-assisted',
+                heal: true,
+                mcp: false,
+            },
+        );
+
+        assert.equal(summary.runner, 'package-native');
+        assert.equal(summary.results[0].generateStatus, 'success');
+        assert.equal(summary.results[0].healStatus, 'success');
+        const healed = readFileSync(specPath, 'utf-8');
+        assert.equal(healed.includes('systemConsolePage.toBeVisible('), false);
+        assert.equal(healed.includes('.left-panel'), false);
+        assert(healed.includes("tag: '@ai-assisted'"));
+    } finally {
+        rmSync(root, {recursive: true, force: true});
+    }
+});
+
 test('package-native heal reports failure and removes new generated file when all validation attempts fail', () => {
     const root = mkdtempSync(join(tmpdir(), 'pipeline-heal-fail-'));
     try {

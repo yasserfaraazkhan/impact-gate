@@ -1,21 +1,23 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {existsSync, readFileSync} from 'fs';
 import {join} from 'path';
 import {resolveConfig, type ConfigOverrides} from './agent/config.js';
-import {runGap, runImpact} from './agent/runner.js';
 import {
     appendPlanMetrics,
-    attachDeveloperActions,
-    buildPlanFromImpactReport,
+    type PlanReport,
+} from './agent/plan.js';
+import {analyzeImpact as analyzeImpactV2, type ImpactResult} from './engine/impact_engine.js';
+import {
+    buildPlanFromImpact,
     renderCiSummaryMarkdown,
     writeCiSummary,
     writePlanReport,
-    type PlanReport,
-} from './agent/plan.js';
-import type {ReportData} from './agent/report.js';
-import {applyOperationalInsights} from './agent/operational_insights.js';
+} from './engine/plan_builder.js';
+import {getChangedFiles} from './agent/git.js';
+import {loadDiffs} from './engine/diff_loader.js';
+import {enrichImpactWithAI, type AIEnrichmentResult} from './engine/ai_enrichment.js';
+import {AnthropicProvider} from './anthropic_provider.js';
 import {finalizeGeneratedTests, type FinalizeGeneratedTestsOptions, type FinalizeGeneratedTestsResult} from './agent/handoff.js';
 import {
     ingestTraceabilityInput,
@@ -33,18 +35,6 @@ export interface AgentApiOptions extends Omit<ConfigOverrides, 'mode'> {
     configPath?: string;
     apply?: boolean;
     allowFallback?: boolean;
-}
-
-export interface AnalyzeResult {
-    report: ReportData;
-    reportPath: string;
-}
-
-export interface RecommendTestsResult extends AnalyzeResult {
-    plan: PlanReport;
-    planPath: string;
-    ciSummaryMarkdown: string;
-    ciSummaryPath: string;
 }
 
 export interface TraceabilityIngestApiOptions {
@@ -68,14 +58,6 @@ export interface TraceabilityCaptureApiOptions {
     changedFilesPath?: string;
 }
 
-function readReportJson(reportPath: string): ReportData {
-    if (!existsSync(reportPath)) {
-        throw new Error(`Expected report not found: ${reportPath}`);
-    }
-    const raw = readFileSync(reportPath, 'utf-8');
-    return JSON.parse(raw) as ReportData;
-}
-
 function resolveAgent(options: AgentApiOptions, mode: 'impact' | 'gap') {
     const cwd = options.cwd || process.cwd();
     const {config} = resolveConfig(cwd, options.configPath, {
@@ -86,55 +68,6 @@ function resolveAgent(options: AgentApiOptions, mode: 'impact' | 'gap') {
         config.impact.allowFallback = true;
     }
     return config;
-}
-
-function reportPathFor(configPath: string, mode: 'impact' | 'gap'): string {
-    return join(configPath, '.e2e-ai-agents', mode === 'impact' ? 'impact.json' : 'gap.json');
-}
-
-export async function analyzeImpact(options: AgentApiOptions = {}): Promise<AnalyzeResult> {
-    const config = resolveAgent(options, 'impact');
-    await runImpact(config, {apply: options.apply ?? false});
-    const reportRoot = config.testsRoot || config.path;
-    const reportPath = reportPathFor(reportRoot, 'impact');
-    const report = readReportJson(reportPath);
-    return {report, reportPath};
-}
-
-export async function findGaps(options: AgentApiOptions = {}): Promise<AnalyzeResult> {
-    const config = resolveAgent(options, 'gap');
-    await runGap(config, {apply: options.apply ?? false});
-    const reportRoot = config.testsRoot || config.path;
-    const reportPath = reportPathFor(reportRoot, 'gap');
-    const report = readReportJson(reportPath);
-    return {report, reportPath};
-}
-
-export async function recommendTests(options: AgentApiOptions = {}): Promise<RecommendTestsResult> {
-    const config = resolveAgent(options, 'impact');
-    await runImpact(config, {apply: options.apply ?? false});
-    const reportRoot = config.testsRoot || config.path;
-    const impactPath = reportPathFor(reportRoot, 'impact');
-    const report = readReportJson(impactPath);
-    const basePlan = buildPlanFromImpactReport(report, config.policy);
-    const withActions = attachDeveloperActions(basePlan, {
-        appPath: config.path,
-        testsRoot: reportRoot,
-        sinceRef: config.git.since,
-    });
-    const plan = applyOperationalInsights(withActions, reportRoot);
-    const planPath = writePlanReport(reportRoot, plan);
-    const ciSummaryMarkdown = renderCiSummaryMarkdown(plan);
-    const ciSummaryPath = writeCiSummary(reportRoot, ciSummaryMarkdown);
-    appendPlanMetrics(reportRoot, plan);
-    return {
-        report,
-        reportPath: impactPath,
-        plan,
-        planPath,
-        ciSummaryMarkdown,
-        ciSummaryPath,
-    };
 }
 
 export function handoffGeneratedTests(options: FinalizeGeneratedTestsOptions): FinalizeGeneratedTestsResult {
@@ -150,6 +83,90 @@ export function ingestTraceability(options: TraceabilityIngestApiOptions): Trace
     });
     const reportRoot = config.testsRoot || config.path;
     return ingestTraceabilityInput(reportRoot, config.impact.traceability, options.payload, options.options);
+}
+
+export interface RecommendTestsV2Result {
+    impact: ImpactResult;
+    plan: PlanReport;
+    planPath: string;
+    ciSummaryMarkdown: string;
+    ciSummaryPath: string;
+}
+
+export function analyzeImpactDeterministic(options: AgentApiOptions = {}): ImpactResult {
+    const config = resolveAgent(options, 'impact');
+    const reportRoot = config.testsRoot || config.path;
+    const gitResult = getChangedFiles(config.path, config.git.since, {includeUncommitted: config.git.includeUncommitted});
+    return analyzeImpactV2(gitResult.files, {
+        testsRoot: reportRoot,
+        routeFamilies: config.routeFamilies,
+    });
+}
+
+export function recommendTestsDeterministic(options: AgentApiOptions = {}): RecommendTestsV2Result {
+    const config = resolveAgent(options, 'impact');
+    const reportRoot = config.testsRoot || config.path;
+    const gitResult = getChangedFiles(config.path, config.git.since, {includeUncommitted: config.git.includeUncommitted});
+    const impact = analyzeImpactV2(gitResult.files, {
+        testsRoot: reportRoot,
+        routeFamilies: config.routeFamilies,
+    });
+    const plan = buildPlanFromImpact(impact, config.policy);
+    const planPath = writePlanReport(reportRoot, plan);
+    const ciSummaryMarkdown = renderCiSummaryMarkdown(plan);
+    const ciSummaryPath = writeCiSummary(reportRoot, ciSummaryMarkdown);
+    appendPlanMetrics(reportRoot, plan);
+    return {impact, plan, planPath, ciSummaryMarkdown, ciSummaryPath};
+}
+
+export async function recommendTestsAI(options: AgentApiOptions = {}): Promise<RecommendTestsV2Result & { aiEnrichment?: AIEnrichmentResult }> {
+    const config = resolveAgent(options, 'impact');
+    const reportRoot = config.testsRoot || config.path;
+    const gitResult = getChangedFiles(config.path, config.git.since, {includeUncommitted: config.git.includeUncommitted});
+    const impact = analyzeImpactV2(gitResult.files, {
+        testsRoot: reportRoot,
+        routeFamilies: config.routeFamilies,
+    });
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    let aiEnrichment: AIEnrichmentResult | undefined;
+
+    if (apiKey) {
+        const diffs = loadDiffs(config.path, config.git.since, gitResult.files);
+        const provider = new AnthropicProvider({apiKey});
+        // Collect all known spec paths and scenario details from impacted features
+        const specSet = new Set<string>();
+        const specDetailsMap = new Map<string, {file: string; scenarios: string[]}>();
+        for (const feature of impact.impactedFeatures) {
+            for (const s of feature.playwrightSpecs) {
+                specSet.add(s);
+            }
+            for (const detail of feature.playwrightSpecDetails) {
+                if (!specDetailsMap.has(detail.file)) {
+                    specDetailsMap.set(detail.file, detail);
+                }
+            }
+            for (const detail of feature.cypressSpecDetails) {
+                if (!specDetailsMap.has(detail.file)) {
+                    specDetailsMap.set(detail.file, detail);
+                }
+            }
+        }
+        aiEnrichment = await enrichImpactWithAI({
+            deterministicImpact: impact,
+            diffs,
+            provider,
+            specList: [...specSet],
+            specDetails: [...specDetailsMap.values()],
+        });
+    }
+
+    const plan = buildPlanFromImpact(impact, config.policy, aiEnrichment);
+    const planPath = writePlanReport(reportRoot, plan);
+    const ciSummaryMarkdown = renderCiSummaryMarkdown(plan);
+    const ciSummaryPath = writeCiSummary(reportRoot, ciSummaryMarkdown);
+    appendPlanMetrics(reportRoot, plan);
+    return {impact, plan, planPath, ciSummaryMarkdown, ciSummaryPath, aiEnrichment};
 }
 
 export function captureTraceability(options: TraceabilityCaptureApiOptions): TraceabilityCaptureResult {

@@ -321,6 +321,25 @@ export class E2EAgentsMCPServer {
                 return JSON.stringify({error: 'Access denied'});
             }
 
+            // SECURITY: Symlink resolution — resolve the real path to prevent symlink escape.
+            // Only check if the parent directory exists (file itself may not exist yet).
+            const parentDir = resolve(filePath, '..');
+            if (existsSync(parentDir)) {
+                const realParent = realpathSync(parentDir);
+                if (!validatePathIsWithinRoot(realParent, this.repoRoot)) {
+                    return JSON.stringify({error: 'Access denied'});
+                }
+            }
+
+            // SECURITY: Restrict writes to test-related paths only.
+            // Allowed: specs/, .e2e-ai-agents/, and files matching *.spec.ts / *.test.ts
+            const relPath = args.path.replace(/\\/g, '/');
+            const isTestSpec = /\.(spec|test)\.(ts|js|tsx|jsx)$/.test(relPath);
+            const isAllowedDir = relPath.startsWith('specs/') || relPath.startsWith('.e2e-ai-agents/');
+            if (!isTestSpec && !isAllowedDir) {
+                return JSON.stringify({error: 'Access denied: writes restricted to test specs and .e2e-ai-agents/'});
+            }
+
             // SECURITY: Size limit to prevent resource exhaustion
             if (args.content.length > 10 * 1024 * 1024) {
                 // 10MB limit

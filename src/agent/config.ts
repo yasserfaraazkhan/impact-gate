@@ -7,6 +7,7 @@ import {dirname, resolve} from 'path';
 export type AnalysisMode = 'impact' | 'gap';
 export type FrameworkType = 'auto' | 'playwright' | 'cypress' | 'selenium' | 'unknown';
 export type ArtifactMode = 'commit' | 'keep-local' | 'none';
+export type AnalysisProfile = 'default' | 'mattermost';
 
 export interface BudgetConfig {
     maxUSD?: number;
@@ -78,6 +79,9 @@ export interface PipelineConfig {
     dryRun?: boolean;
     mcp?: boolean;
     mcpAllowFallback?: boolean;
+    mcpOnly?: boolean;
+    mcpCommandTimeoutMs?: number;
+    mcpRetries?: number;
 }
 
 export interface LLMConfig {
@@ -124,13 +128,49 @@ export interface SubsystemRiskImpactConfig {
     maxRulesPerFile: number;
 }
 
+export type AIMappingProvider = 'anthropic' | 'openai' | 'ollama' | 'auto';
+
+export interface AIMappingImpactConfig {
+    enabled: boolean;
+    provider: AIMappingProvider;
+    contextFiles: string[];
+    maxFlowsPerRequest: number;
+    maxCandidateTests: number;
+    maxTokens: number;
+    temperature: number;
+}
+
+export interface AIFlowImpactConfig {
+    enabled: boolean;
+    strict: boolean;
+    provider: AIMappingProvider;
+    contextFiles: string[];
+    maxFilesPerRequest: number;
+    maxFlowsPerRequest: number;
+    maxTokens: number;
+    temperature: number;
+}
+
 export interface GitConfig {
     since: string;
     includeUncommitted?: boolean;
 }
 
+export interface RouteFamiliesConfig {
+    manifestPath?: string;
+    strict?: boolean;
+}
+
+export interface ApiSurfaceConfig {
+    enabled: boolean;
+    pageObjectsDir?: string;
+    componentsDir?: string;
+    cachePath?: string;
+}
+
 export interface AgentConfig {
     path: string;
+    profile: AnalysisProfile;
     testsRoot?: string;
     flowCatalogPath?: string;
     mode: AnalysisMode;
@@ -147,6 +187,8 @@ export interface AgentConfig {
         dependencyGraph: DependencyGraphImpactConfig;
         traceability: TraceabilityImpactConfig;
         subsystemRisk: SubsystemRiskImpactConfig;
+        aiFlow: AIFlowImpactConfig;
+        aiMapping: AIMappingImpactConfig;
     };
     pipeline: PipelineConfig;
     llm: LLMConfig;
@@ -157,6 +199,8 @@ export interface AgentConfig {
     audience: AudienceConfig;
     blastRadius: BlastRadiusConfig;
     git: GitConfig;
+    routeFamilies: RouteFamiliesConfig;
+    apiSurface: ApiSurfaceConfig;
 }
 
 export interface ResolvedConfig {
@@ -167,6 +211,7 @@ export interface ResolvedConfig {
 
 const DEFAULT_CONFIG: AgentConfig = {
     path: '.',
+    profile: 'default',
     testsRoot: undefined,
     flowCatalogPath: undefined,
     mode: 'impact',
@@ -229,6 +274,31 @@ const DEFAULT_CONFIG: AgentConfig = {
             mapPath: '.e2e-ai-agents/subsystem-risk-map.json',
             maxRulesPerFile: 4,
         },
+        aiFlow: {
+            enabled: false,
+            strict: false,
+            provider: 'auto',
+            contextFiles: [
+                'CLAUDE.OPTIONAL.md',
+                '.claude/CLAUDE.OPTIONAL.md',
+            ],
+            maxFilesPerRequest: 220,
+            maxFlowsPerRequest: 80,
+            maxTokens: 4000,
+            temperature: 0,
+        },
+        aiMapping: {
+            enabled: false,
+            provider: 'auto',
+            contextFiles: [
+                'CLAUDE.OPTIONAL.md',
+                '.claude/CLAUDE.OPTIONAL.md',
+            ],
+            maxFlowsPerRequest: 30,
+            maxCandidateTests: 400,
+            maxTokens: 4000,
+            temperature: 0,
+        },
     },
     pipeline: {
         enabled: false,
@@ -238,9 +308,12 @@ const DEFAULT_CONFIG: AgentConfig = {
         project: 'chrome',
         mcp: false,
         mcpAllowFallback: false,
+        mcpOnly: false,
+        mcpCommandTimeoutMs: 180000,
+        mcpRetries: 1,
     },
     llm: {
-        provider: 'anthropic',
+        provider: 'auto',
         fallback: 'ollama',
     },
     risk: {
@@ -303,10 +376,49 @@ const DEFAULT_CONFIG: AgentConfig = {
         since: 'HEAD~1',
         includeUncommitted: true,
     },
+    routeFamilies: {
+        strict: false,
+    },
+    apiSurface: {
+        enabled: false,
+    },
 };
+
+function normalizeMattermostProvider(
+    rawProvider: unknown,
+    fallback: AIMappingProvider,
+    strict = false,
+): AIMappingProvider {
+    if (typeof rawProvider !== 'string') {
+        return fallback;
+    }
+    const normalized = rawProvider.trim().toLowerCase();
+    if (
+        normalized === 'anthropic'
+        || normalized === 'openai'
+        || normalized === 'ollama'
+        || normalized === 'auto'
+    ) {
+        return normalized;
+    }
+    if (strict) {
+        throw new Error(
+            `Invalid provider "${rawProvider}". Allowed values for Mattermost flows: ollama, anthropic, openai, auto.`,
+        );
+    }
+    return fallback;
+}
+
+function resolveMattermostProvider(config: AgentConfig): AIMappingProvider {
+    const envProvider = process.env.LLM_PROVIDER?.trim().toLowerCase();
+    const envResolved = envProvider ? normalizeMattermostProvider(envProvider, 'auto', true) : 'auto';
+    const llmProvider = normalizeMattermostProvider(config.llm.provider, 'auto', true);
+    return envResolved !== 'auto' ? envResolved : llmProvider;
+}
 
 export interface ConfigOverrides {
     path?: string;
+    profile?: AnalysisProfile;
     testsRoot?: string;
     flowCatalogPath?: string;
     mode?: AnalysisMode;
@@ -320,6 +432,8 @@ export interface ConfigOverrides {
     gitSince?: string;
     pipeline?: Partial<PipelineConfig>;
     policy?: Partial<PolicyConfig>;
+    llmProvider?: string;
+    llmFallback?: string;
 }
 
 function safeReadJson(path: string): Record<string, unknown> | undefined {
@@ -381,6 +495,14 @@ function mergeConfig(base: AgentConfig, patch: Partial<AgentConfig>): AgentConfi
                 ...base.impact.subsystemRisk,
                 ...(patch.impact?.subsystemRisk || {}),
             },
+            aiFlow: {
+                ...base.impact.aiFlow,
+                ...(patch.impact?.aiFlow || {}),
+            },
+            aiMapping: {
+                ...base.impact.aiMapping,
+                ...(patch.impact?.aiMapping || {}),
+            },
         },
         pipeline: {
             ...base.pipeline,
@@ -414,6 +536,14 @@ function mergeConfig(base: AgentConfig, patch: Partial<AgentConfig>): AgentConfi
             ...base.git,
             ...(patch.git || {}),
         },
+        routeFamilies: {
+            ...base.routeFamilies,
+            ...(patch.routeFamilies || {}),
+        },
+        apiSurface: {
+            ...base.apiSurface,
+            ...(patch.apiSurface || {}),
+        },
     };
 }
 
@@ -432,6 +562,13 @@ function coerceNumber(value: unknown): number | undefined {
 
 function normalizeMode(value: unknown): AnalysisMode | undefined {
     if (value === 'impact' || value === 'gap') {
+        return value;
+    }
+    return undefined;
+}
+
+function normalizeProfile(value: unknown): AnalysisProfile | undefined {
+    if (value === 'default' || value === 'mattermost') {
         return value;
     }
     return undefined;
@@ -474,6 +611,10 @@ function extractConfigPatch(raw: Record<string, unknown>): Partial<AgentConfig> 
 
     if (typeof raw.path === 'string') {
         patch.path = raw.path;
+    }
+    const profile = normalizeProfile(raw.profile);
+    if (profile) {
+        patch.profile = profile;
     }
     if (typeof raw.testsRoot === 'string') {
         patch.testsRoot = raw.testsRoot;
@@ -575,6 +716,14 @@ function extractConfigPatch(raw: Record<string, unknown>): Partial<AgentConfig> 
             impact.subsystemRisk && typeof impact.subsystemRisk === 'object'
                 ? impact.subsystemRisk as Record<string, unknown>
                 : undefined;
+        const aiMappingRaw =
+            impact.aiMapping && typeof impact.aiMapping === 'object'
+                ? impact.aiMapping as Record<string, unknown>
+                : undefined;
+        const aiFlowRaw =
+            impact.aiFlow && typeof impact.aiFlow === 'object'
+                ? impact.aiFlow as Record<string, unknown>
+                : undefined;
         const pathAliasesRaw =
             dependencyGraphRaw?.pathAliases && typeof dependencyGraphRaw.pathAliases === 'object'
                 ? dependencyGraphRaw.pathAliases as Record<string, unknown>
@@ -640,6 +789,55 @@ function extractConfigPatch(raw: Record<string, unknown>): Partial<AgentConfig> 
                 maxRulesPerFile:
                     coerceNumber(subsystemRiskRaw?.maxRulesPerFile) ?? DEFAULT_CONFIG.impact.subsystemRisk.maxRulesPerFile,
             },
+            aiFlow: {
+                enabled: aiFlowRaw?.enabled !== undefined
+                    ? Boolean(aiFlowRaw.enabled)
+                    : DEFAULT_CONFIG.impact.aiFlow.enabled,
+                strict: aiFlowRaw?.strict !== undefined
+                    ? Boolean(aiFlowRaw.strict)
+                    : DEFAULT_CONFIG.impact.aiFlow.strict,
+                provider:
+                    aiFlowRaw?.provider === 'anthropic' ||
+                    aiFlowRaw?.provider === 'openai' ||
+                    aiFlowRaw?.provider === 'ollama' ||
+                    aiFlowRaw?.provider === 'auto'
+                        ? aiFlowRaw.provider
+                        : DEFAULT_CONFIG.impact.aiFlow.provider,
+                contextFiles: Array.isArray(aiFlowRaw?.contextFiles)
+                    ? aiFlowRaw.contextFiles.filter((entry) => typeof entry === 'string')
+                    : DEFAULT_CONFIG.impact.aiFlow.contextFiles,
+                maxFilesPerRequest:
+                    coerceNumber(aiFlowRaw?.maxFilesPerRequest) ?? DEFAULT_CONFIG.impact.aiFlow.maxFilesPerRequest,
+                maxFlowsPerRequest:
+                    coerceNumber(aiFlowRaw?.maxFlowsPerRequest) ?? DEFAULT_CONFIG.impact.aiFlow.maxFlowsPerRequest,
+                maxTokens:
+                    coerceNumber(aiFlowRaw?.maxTokens) ?? DEFAULT_CONFIG.impact.aiFlow.maxTokens,
+                temperature:
+                    coerceNumber(aiFlowRaw?.temperature) ?? DEFAULT_CONFIG.impact.aiFlow.temperature,
+            },
+            aiMapping: {
+                enabled: aiMappingRaw?.enabled !== undefined
+                    ? Boolean(aiMappingRaw.enabled)
+                    : DEFAULT_CONFIG.impact.aiMapping.enabled,
+                provider:
+                    aiMappingRaw?.provider === 'anthropic' ||
+                    aiMappingRaw?.provider === 'openai' ||
+                    aiMappingRaw?.provider === 'ollama' ||
+                    aiMappingRaw?.provider === 'auto'
+                        ? aiMappingRaw.provider
+                        : DEFAULT_CONFIG.impact.aiMapping.provider,
+                contextFiles: Array.isArray(aiMappingRaw?.contextFiles)
+                    ? aiMappingRaw.contextFiles.filter((path) => typeof path === 'string')
+                    : DEFAULT_CONFIG.impact.aiMapping.contextFiles,
+                maxFlowsPerRequest:
+                    coerceNumber(aiMappingRaw?.maxFlowsPerRequest) ?? DEFAULT_CONFIG.impact.aiMapping.maxFlowsPerRequest,
+                maxCandidateTests:
+                    coerceNumber(aiMappingRaw?.maxCandidateTests) ?? DEFAULT_CONFIG.impact.aiMapping.maxCandidateTests,
+                maxTokens:
+                    coerceNumber(aiMappingRaw?.maxTokens) ?? DEFAULT_CONFIG.impact.aiMapping.maxTokens,
+                temperature:
+                    coerceNumber(aiMappingRaw?.temperature) ?? DEFAULT_CONFIG.impact.aiMapping.temperature,
+            },
         };
     }
 
@@ -667,6 +865,14 @@ function extractConfigPatch(raw: Record<string, unknown>): Partial<AgentConfig> 
                 pipeline.mcpAllowFallback !== undefined
                     ? Boolean(pipeline.mcpAllowFallback)
                     : DEFAULT_CONFIG.pipeline.mcpAllowFallback,
+            mcpOnly:
+                pipeline.mcpOnly !== undefined
+                    ? Boolean(pipeline.mcpOnly)
+                    : DEFAULT_CONFIG.pipeline.mcpOnly,
+            mcpCommandTimeoutMs:
+                coerceNumber(pipeline.mcpCommandTimeoutMs) ?? DEFAULT_CONFIG.pipeline.mcpCommandTimeoutMs,
+            mcpRetries:
+                coerceNumber(pipeline.mcpRetries) ?? DEFAULT_CONFIG.pipeline.mcpRetries,
         };
     }
 
@@ -758,6 +964,24 @@ function extractConfigPatch(raw: Record<string, unknown>): Partial<AgentConfig> 
         };
     }
 
+    if (raw.routeFamilies && typeof raw.routeFamilies === 'object') {
+        const rf = raw.routeFamilies as Record<string, unknown>;
+        patch.routeFamilies = {
+            manifestPath: typeof rf.manifestPath === 'string' ? rf.manifestPath : undefined,
+            strict: rf.strict !== undefined ? Boolean(rf.strict) : DEFAULT_CONFIG.routeFamilies.strict,
+        };
+    }
+
+    if (raw.apiSurface && typeof raw.apiSurface === 'object') {
+        const api = raw.apiSurface as Record<string, unknown>;
+        patch.apiSurface = {
+            enabled: api.enabled !== undefined ? Boolean(api.enabled) : DEFAULT_CONFIG.apiSurface.enabled,
+            pageObjectsDir: typeof api.pageObjectsDir === 'string' ? api.pageObjectsDir : undefined,
+            componentsDir: typeof api.componentsDir === 'string' ? api.componentsDir : undefined,
+            cachePath: typeof api.cachePath === 'string' ? api.cachePath : undefined,
+        };
+    }
+
     return patch;
 }
 
@@ -768,6 +992,9 @@ export function resolveConfig(cwd: string, configPath?: string, overrides?: Conf
     const configPatch = rawConfig ? extractConfigPatch(rawConfig) : {};
     let config = mergeConfig(DEFAULT_CONFIG, configPatch);
 
+    if (overrides?.profile) {
+        config.profile = overrides.profile;
+    }
     if (overrides?.mode) {
         config.mode = overrides.mode;
     }
@@ -839,6 +1066,15 @@ export function resolveConfig(cwd: string, configPath?: string, overrides?: Conf
         if (overrides.pipeline.mcpAllowFallback !== undefined) {
             pipelinePatch.mcpAllowFallback = overrides.pipeline.mcpAllowFallback;
         }
+        if (overrides.pipeline.mcpOnly !== undefined) {
+            pipelinePatch.mcpOnly = overrides.pipeline.mcpOnly;
+        }
+        if (overrides.pipeline.mcpCommandTimeoutMs !== undefined) {
+            pipelinePatch.mcpCommandTimeoutMs = overrides.pipeline.mcpCommandTimeoutMs;
+        }
+        if (overrides.pipeline.mcpRetries !== undefined) {
+            pipelinePatch.mcpRetries = overrides.pipeline.mcpRetries;
+        }
         config.pipeline = {...config.pipeline, ...pipelinePatch};
     }
     if (overrides?.policy) {
@@ -883,6 +1119,40 @@ export function resolveConfig(cwd: string, configPath?: string, overrides?: Conf
     }
     if (overrides?.flowCatalogPath) {
         config.flowCatalogPath = overrides.flowCatalogPath;
+    }
+    if (overrides?.llmProvider !== undefined) {
+        config.llm.provider = normalizeMattermostProvider(
+            overrides.llmProvider,
+            normalizeMattermostProvider(config.llm.provider, 'auto'),
+            true,
+        );
+    }
+    if (overrides?.llmFallback !== undefined) {
+        config.llm.fallback = overrides.llmFallback;
+    }
+
+    if (config.profile === 'mattermost') {
+        config.impact.allowFallback = false;
+        config.impact.traceability.enabled = true;
+        config.impact.traceability.minSignalsPerTest = Math.max(2, config.impact.traceability.minSignalsPerTest);
+        config.impact.aiFlow.enabled = true;
+        config.impact.aiFlow.strict = true;
+        const provider = resolveMattermostProvider(config);
+        config.impact.aiFlow.provider = provider;
+        config.impact.aiMapping.enabled = true;
+        config.impact.aiMapping.provider = provider;
+        config.pipeline.mcp = true;
+        config.pipeline.mcpOnly = true;
+        config.pipeline.mcpAllowFallback = false;
+        config.pipeline.mcpCommandTimeoutMs = Math.min(240000, Math.max(60000, config.pipeline.mcpCommandTimeoutMs || 180000));
+        config.pipeline.mcpRetries = Math.max(1, Math.min(3, config.pipeline.mcpRetries || 1));
+        config.policy.minConfidenceForTargeted = Math.max(75, config.policy.minConfidenceForTargeted);
+        config.policy.safeMergeMinConfidence = Math.max(90, config.policy.safeMergeMinConfidence);
+        config.policy.forceFullOnWarningsAtOrAbove = 1;
+        config.policy.forceFullOnP0WithGaps = true;
+        config.policy.forceFullOnRiskyFiles = true;
+        config.routeFamilies.strict = true;
+        config.apiSurface.enabled = true;
     }
 
     const resolvedRoot = resolve(configDir, config.path);

@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Flow Decision Report",
+  "description": "Output schema for the impact analysis pipeline. Each decision represents one impacted flow.",
+  "type": "object",
+  "required": ["runId", "timestamp", "gitRef", "summary", "decisions"],
+  "properties": {
+    "runId": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "gitRef": { "type": "string" },
+    "summary": {
+      "type": "object",
+      "required": ["changedFiles", "routeFamiliesImpacted", "flowsIdentified", "actionsRequired", "overallConfidence"],
+      "properties": {
+        "changedFiles": { "type": "integer", "minimum": 0 },
+        "routeFamiliesImpacted": { "type": "array", "items": { "type": "string" } },
+        "flowsIdentified": { "type": "integer", "minimum": 0 },
+        "flowsCovered": { "type": "integer", "minimum": 0 },
+        "flowsPartial": { "type": "integer", "minimum": 0 },
+        "flowsUncovered": { "type": "integer", "minimum": 0 },
+        "actionsRequired": {
+          "type": "object",
+          "properties": {
+            "run_existing": { "type": "integer", "minimum": 0 },
+            "add_scenarios": { "type": "integer", "minimum": 0 },
+            "create_spec": { "type": "integer", "minimum": 0 },
+            "cannot_determine": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "overallConfidence": { "enum": ["high", "medium", "low"] }
+      }
+    },
+    "decisions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/FlowDecision" }
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "model": {
+      "type": "object",
+      "properties": {
+        "impactAgent": { "type": "string" },
+        "coverageAgent": { "type": "string" }
+      }
+    }
+  },
+  "$defs": {
+    "FlowDecision": {
+      "type": "object",
+      "required": ["flowId", "flowName", "routeFamily", "changedFiles", "evidence", "evidenceSource", "confidence", "action", "priority"],
+      "properties": {
+        "flowId": { "type": "string" },
+        "flowName": { "type": "string" },
+        "routeFamily": { "type": "string" },
+        "featureId": { "type": "string" },
+        "specificRoute": { "type": "string" },
+        "changedFiles": { "type": "array", "items": { "type": "string" } },
+        "evidence": { "type": "string" },
+        "evidenceSource": { "enum": ["ai", "catalog", "traceability", "deterministic"] },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 100 },
+        "existingSpecs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "coverageLevel"],
+            "properties": {
+              "path": { "type": "string" },
+              "testTitles": { "type": "array", "items": { "type": "string" } },
+              "coverageLevel": { "enum": ["full", "partial", "none"] },
+              "missingScenarios": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "action": { "enum": ["run_existing", "add_scenarios", "create_spec", "cannot_determine"] },
+        "targetSpec": { "type": "string" },
+        "newSpecPath": { "type": "string" },
+        "scenariosToAdd": { "type": "array", "items": { "type": "string" } },
+        "blockingReason": { "type": "string" },
+        "priority": { "enum": ["P0", "P1", "P2"] },
+        "userActions": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

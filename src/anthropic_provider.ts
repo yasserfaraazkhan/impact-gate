@@ -92,6 +92,7 @@ export class AnthropicProvider extends BaseProvider {
         this.client = new Anthropic({
             apiKey: config.apiKey,
             baseURL: config.baseUrl,
+            maxRetries: 0,
         });
 
         this.model = config.model || 'claude-sonnet-4-5-20250929';
