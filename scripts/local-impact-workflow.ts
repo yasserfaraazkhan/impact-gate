@@ -1,10 +1,24 @@
 #!/usr/bin/env node
-const fs = require('node:fs');
-const path = require('node:path');
-const {spawnSync} = require('node:child_process');
+import fs from 'node:fs';
+import path from 'node:path';
+import {spawnSync} from 'node:child_process';
 
 const DEFAULT_REVIEW_FILE = '.e2e-ai-agents/local-impact-review.md';
 const DEFAULT_APPROVAL_FILE = '.e2e-ai-agents/local-impact-approval.json';
+
+interface ParsedArgs {
+    command: string;
+    extra: string[];
+    testsRoot?: string;
+    configPath?: string;
+    reviewPath?: string;
+    approvalPath?: string;
+    decision?: string;
+    by: string;
+    note?: string;
+    force: boolean;
+    help: boolean;
+}
 
 function usage() {
     console.log([
@@ -42,8 +56,8 @@ function usage() {
     ].join('\n'));
 }
 
-function parseArgs(argv) {
-    const parsed = {
+function parseArgs(argv: string[]): ParsedArgs {
+    const parsed: ParsedArgs = {
         command: argv[0],
         extra: [],
         testsRoot: undefined,
@@ -112,7 +126,7 @@ function parseArgs(argv) {
     return parsed;
 }
 
-function readJson(jsonPath) {
+function readJson(jsonPath: string): any {
     if (!fs.existsSync(jsonPath)) {
         return null;
     }
@@ -124,16 +138,16 @@ function readJson(jsonPath) {
     }
 }
 
-function writeJson(jsonPath, value) {
+function writeJson(jsonPath: string, value: any) {
     ensureParent(jsonPath);
     fs.writeFileSync(jsonPath, JSON.stringify(value, null, 2), 'utf-8');
 }
 
-function ensureParent(filePath) {
+function ensureParent(filePath: string) {
     fs.mkdirSync(path.dirname(filePath), {recursive: true});
 }
 
-function resolveTestsRoot(parsed) {
+function resolveTestsRoot(parsed: ParsedArgs): string {
     if (parsed.testsRoot) {
         return parsed.testsRoot;
     }
@@ -154,7 +168,7 @@ function resolveTestsRoot(parsed) {
     return process.cwd();
 }
 
-function cliPath() {
+function cliPath(): string {
     const p = path.resolve(__dirname, '..', 'dist', 'cli.js');
     if (!fs.existsSync(p)) {
         throw new Error(`CLI build not found at ${p}. Run "npm run build" first.`);
@@ -162,7 +176,7 @@ function cliPath() {
     return p;
 }
 
-function runCli(subcommand, extraArgs) {
+function runCli(subcommand: string, extraArgs: string[]) {
     const result = spawnSync(process.execPath, [cliPath(), subcommand, ...extraArgs], {
         stdio: 'inherit',
     });
@@ -171,16 +185,16 @@ function runCli(subcommand, extraArgs) {
     }
 }
 
-function stripFlagsSuffix(testPath) {
+function stripFlagsSuffix(testPath: string): string {
     return String(testPath || '').replace(/ \(flags:.*\)$/, '');
 }
 
-function resolveSeedSpec(testsRoot) {
+function resolveSeedSpec(testsRoot: string): string | null {
     const preferred = path.join(testsRoot, 'specs', 'seed.spec.ts');
     return fs.existsSync(preferred) ? preferred : null;
 }
 
-function loadArtifacts(testsRoot) {
+function loadArtifacts(testsRoot: string) {
     const artifactRoot = path.join(testsRoot, '.e2e-ai-agents');
     const impactPath = path.join(artifactRoot, 'impact.json');
     const planPath = path.join(artifactRoot, 'plan.json');
@@ -198,7 +212,20 @@ function loadArtifacts(testsRoot) {
     return {artifactRoot, impactPath, planPath, gapPath, impact, plan, gap};
 }
 
-function buildReviewMarkdown(testsRoot, artifact, reviewPath, approvalPath) {
+function priorityRank(priority: string): number {
+    if (priority === 'P0') {
+        return 0;
+    }
+    if (priority === 'P1') {
+        return 1;
+    }
+    if (priority === 'P2') {
+        return 2;
+    }
+    return 3;
+}
+
+function buildReviewMarkdown(testsRoot: string, artifact: any, reviewPath: string, approvalPath: string) {
     const impact = artifact.impact || {};
     const plan = artifact.plan || {};
     const gap = artifact.gap || {};
@@ -220,11 +247,11 @@ function buildReviewMarkdown(testsRoot, artifact, reviewPath, approvalPath) {
     const seedSpec = resolveSeedSpec(testsRoot);
     const suggestedSorted = suggestedNew
         .slice()
-        .sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority));
+        .sort((a: any, b: any) => priorityRank(a.priority) - priorityRank(b.priority));
     const coverageRows = Array.isArray(impact.coverage) ? impact.coverage : [];
     const topCoverage = coverageRows
         .slice()
-        .sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority))
+        .sort((a: any, b: any) => priorityRank(a.priority) - priorityRank(b.priority))
         .slice(0, 15);
     const contextCandidates = [
         path.join(testsRoot, 'CLAUDE.OPTIONAL.md'),
@@ -235,7 +262,7 @@ function buildReviewMarkdown(testsRoot, artifact, reviewPath, approvalPath) {
     const foundContext = Array.from(new Set(contextCandidates.filter((candidate) => fs.existsSync(candidate))));
     const generatedAt = new Date().toISOString();
 
-    const lines = [];
+    const lines: string[] = [];
     lines.push('## E2E Impact Approval (Local)');
     lines.push('');
     lines.push(`- Status: \`${decision === 'must-add-tests' ? 'pending-approval' : 'review-required'}\``);
@@ -331,20 +358,7 @@ function buildReviewMarkdown(testsRoot, artifact, reviewPath, approvalPath) {
     fs.writeFileSync(reviewPath, `${lines.join('\n')}\n`, 'utf-8');
 }
 
-function priorityRank(priority) {
-    if (priority === 'P0') {
-        return 0;
-    }
-    if (priority === 'P1') {
-        return 1;
-    }
-    if (priority === 'P2') {
-        return 2;
-    }
-    return 3;
-}
-
-function normalizeApprovalDecision(value) {
+function normalizeApprovalDecision(value: string): string | null {
     if (value === 'approve' || value === 'approved') {
         return 'approved';
     }
@@ -354,7 +368,7 @@ function normalizeApprovalDecision(value) {
     return null;
 }
 
-function loadOrCreateApproval(approvalPath, sourceRunId) {
+function loadOrCreateApproval(approvalPath: string, sourceRunId: string | null) {
     const existing = readJson(approvalPath);
     if (existing && typeof existing === 'object') {
         return existing;
@@ -367,17 +381,17 @@ function loadOrCreateApproval(approvalPath, sourceRunId) {
     };
 }
 
-function ensureFlag(extraArgs, flag) {
+function ensureFlag(extraArgs: string[], flag: string) {
     if (!extraArgs.includes(flag)) {
         extraArgs.push(flag);
     }
 }
 
-function hasFlag(extraArgs, flag) {
+function hasFlag(extraArgs: string[], flag: string): boolean {
     return extraArgs.includes(flag);
 }
 
-function commandSuggest(parsed, testsRoot, reviewPath, approvalPath) {
+function commandSuggest(parsed: ParsedArgs, testsRoot: string, reviewPath: string, approvalPath: string) {
     runCli('suggest', parsed.extra);
     const artifact = loadArtifacts(testsRoot);
     buildReviewMarkdown(testsRoot, artifact, reviewPath, approvalPath);
@@ -393,12 +407,12 @@ function commandSuggest(parsed, testsRoot, reviewPath, approvalPath) {
     console.log(`Approval file reset to pending: ${approvalPath}`);
 }
 
-function commandApprove(parsed, approvalPath, currentPlanRunId) {
-    const decision = normalizeApprovalDecision(parsed.decision);
+function commandApprove(parsed: ParsedArgs, approvalPath: string, currentPlanRunId: string | undefined) {
+    const decision = normalizeApprovalDecision(parsed.decision!);
     if (!decision) {
         throw new Error('approve command requires --decision approve|reject');
     }
-    const approval = loadOrCreateApproval(approvalPath, currentPlanRunId);
+    const approval = loadOrCreateApproval(approvalPath, currentPlanRunId || null);
     approval.status = decision;
     approval.sourceRunId = currentPlanRunId || approval.sourceRunId || null;
     approval.updatedAt = new Date().toISOString();
@@ -411,7 +425,7 @@ function commandApprove(parsed, approvalPath, currentPlanRunId) {
     console.log(`Approval file: ${approvalPath}`);
 }
 
-function commandGenerate(parsed, approvalPath, currentPlanRunId) {
+function commandGenerate(parsed: ParsedArgs, approvalPath: string, currentPlanRunId: string | undefined) {
     const approval = readJson(approvalPath);
     if (!approval) {
         throw new Error(`Approval file not found: ${approvalPath}. Run suggest first.`);
@@ -435,7 +449,7 @@ function commandGenerate(parsed, approvalPath, currentPlanRunId) {
     runCli('gap', parsed.extra);
 }
 
-function commandStatus(approvalPath, testsRoot) {
+function commandStatus(approvalPath: string, testsRoot: string) {
     const artifact = loadArtifacts(testsRoot);
     const approval = readJson(approvalPath);
     const output = {

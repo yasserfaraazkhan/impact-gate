@@ -4,6 +4,8 @@ yarn.lock
 
 # Build output
 dist/
+scripts-dist/
+test-dist/
 *.tsbuildinfo
 
 # Environment

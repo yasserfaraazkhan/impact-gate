@@ -1,10 +1,32 @@
 #!/usr/bin/env node
-const fs = require('node:fs');
-const path = require('node:path');
+import fs from 'node:fs';
+import path from 'node:path';
 
 const RUN_SETS = new Set(['smoke', 'targeted', 'full']);
 const ACTIONS = new Set(['run-now', 'must-add-tests', 'safe-to-merge']);
 const PRIORITIES = new Set(['P0', 'P1', 'P2']);
+
+interface ParsedArgs {
+    root: string;
+    strict: boolean;
+    help?: boolean;
+    impactPath?: string;
+    planPath?: string;
+    outPath?: string;
+}
+
+interface Check {
+    id: string;
+    area: string;
+    status: 'pass' | 'warn' | 'fail';
+    message: string;
+}
+
+interface ReadJsonResult {
+    ok: boolean;
+    value?: any;
+    error?: string;
+}
 
 function usage() {
     console.log([
@@ -21,8 +43,8 @@ function usage() {
     ].join('\n'));
 }
 
-function parseArgs(argv) {
-    const args = {
+function parseArgs(argv: string[]): ParsedArgs {
+    const args: ParsedArgs = {
         root: process.cwd(),
         strict: false,
     };
@@ -63,7 +85,7 @@ function parseArgs(argv) {
     return args;
 }
 
-function readJson(filePath) {
+function readJson(filePath: string): ReadJsonResult {
     if (!fs.existsSync(filePath)) {
         return {ok: false, error: `File not found: ${filePath}`};
     }
@@ -76,8 +98,8 @@ function readJson(filePath) {
     }
 }
 
-function flowCounts(flows) {
-    const counts = {P0: 0, P1: 0, P2: 0};
+function flowCounts(flows: any[]) {
+    const counts: Record<string, number> = {P0: 0, P1: 0, P2: 0};
     for (const flow of flows || []) {
         if (counts[flow.priority] !== undefined) {
             counts[flow.priority] += 1;
@@ -86,7 +108,7 @@ function flowCounts(flows) {
     return counts;
 }
 
-function validateImpactReport(impact, checks) {
+function validateImpactReport(impact: any, checks: Check[]) {
     if (!impact || typeof impact !== 'object') {
         checks.push({id: 'impact-object', area: 'outputs', status: 'fail', message: 'impact.json must be an object.'});
         return;
@@ -139,7 +161,7 @@ function validateImpactReport(impact, checks) {
         }
     }
 
-    const invalidFlows = (impact.flows || []).filter((flow) => (
+    const invalidFlows = (impact.flows || []).filter((flow: any) => (
         !flow || typeof flow.id !== 'string' || !PRIORITIES.has(flow.priority) || typeof flow.score !== 'number' || !Array.isArray(flow.files)
     ));
     if (invalidFlows.length > 0) {
@@ -208,7 +230,7 @@ function validateImpactReport(impact, checks) {
     }
 }
 
-function evaluateExpectedRunSet(plan) {
+function evaluateExpectedRunSet(plan: any): string {
     const triggers = plan?.policy?.triggeredRules;
     if (Array.isArray(triggers) && triggers.length > 0) {
         return 'full';
@@ -219,7 +241,7 @@ function evaluateExpectedRunSet(plan) {
     return 'smoke';
 }
 
-function validatePlanReport(impact, plan, checks) {
+function validatePlanReport(impact: any, plan: any, checks: Check[]) {
     if (!plan || typeof plan !== 'object') {
         checks.push({id: 'plan-object', area: 'outputs', status: 'fail', message: 'plan.json must be an object.'});
         return;
@@ -362,7 +384,7 @@ function validatePlanReport(impact, plan, checks) {
     }
 }
 
-function summarizeChecks(checks) {
+function summarizeChecks(checks: Check[]) {
     const summary = {pass: 0, warn: 0, fail: 0};
     for (const check of checks) {
         if (check.status === 'pass') {
@@ -376,7 +398,7 @@ function summarizeChecks(checks) {
     return summary;
 }
 
-function overallStatus(summary) {
+function overallStatus(summary: {pass: number; warn: number; fail: number}): string {
     if (summary.fail > 0) {
         return 'fail';
     }
@@ -386,7 +408,7 @@ function overallStatus(summary) {
     return 'pass';
 }
 
-function normalizePathForOutput(filePath) {
+function normalizePathForOutput(filePath: string): string {
     return filePath.replace(/\\/g, '/');
 }
 
@@ -402,18 +424,18 @@ function run() {
     const planPath = args.planPath || path.join(baseDir, 'plan.json');
     const outPath = args.outPath || path.join(baseDir, 'impact-checklist.json');
 
-    const checks = [];
+    const checks: Check[] = [];
 
     const impact = readJson(impactPath);
     if (!impact.ok) {
-        checks.push({id: 'impact-load', area: 'inputs', status: 'fail', message: impact.error});
+        checks.push({id: 'impact-load', area: 'inputs', status: 'fail', message: impact.error!});
     } else {
         checks.push({id: 'impact-load', area: 'inputs', status: 'pass', message: `Loaded impact report: ${normalizePathForOutput(impactPath)}`});
     }
 
     const plan = readJson(planPath);
     if (!plan.ok) {
-        checks.push({id: 'plan-load', area: 'inputs', status: 'fail', message: plan.error});
+        checks.push({id: 'plan-load', area: 'inputs', status: 'fail', message: plan.error!});
     } else {
         checks.push({id: 'plan-load', area: 'inputs', status: 'pass', message: `Loaded plan report: ${normalizePathForOutput(planPath)}`});
     }
