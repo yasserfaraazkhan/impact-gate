@@ -183,6 +183,18 @@ function buildDecision(
         ? ` All ${coveredCount} impacted feature(s) have test coverage.`
         : '';
 
+    // When files changed but no flows were mapped, be transparent about the gap
+    if (impact.impactedFeatures.length === 0 && impact.changedFiles.length > 0) {
+        const unboundNote = impact.unboundFiles.length > 0
+            ? ` ${impact.unboundFiles.length} file(s) could not be mapped to any known flow — consider adding route-families bindings.`
+            : '';
+        return {
+            action: 'run-now',
+            title: 'Run now',
+            summary: `Changed files could not be mapped to E2E flows — manual review recommended.${unboundNote} Verify with the E2E suite before merge.`,
+        };
+    }
+
     return {
         action: 'run-now',
         title: 'Run now',
@@ -497,6 +509,16 @@ export function renderCiSummaryMarkdown(plan: PlanReport): string {
         }
         lines.push('');
         lines.push('</details>');
+    }
+
+    // ── Risky files detected ──────────────────────────────────────────────────
+    if (plan.policy.riskyFiles.length > 0) {
+        lines.push('');
+        lines.push(`### ⚠️ Risky file patterns matched`);
+        lines.push('');
+        for (const f of plan.policy.riskyFiles) {
+            lines.push(`- \`${f}\``);
+        }
     }
 
     if (plan.confidence < 100) {
