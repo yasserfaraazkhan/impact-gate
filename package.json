@@ -45,7 +45,7 @@
     "impact:checklist": "node scripts-dist/impact-checklist.js",
     "impact:local": "node scripts-dist/local-impact-workflow.js",
     "prebuild": "npm run clean",
-    "build:test": "tsc -p tsconfig.test.json",
+    "build:test": "tsc -p tsconfig.test.json --noCheck",
     "pretest": "npm run build && npm run build:scripts && npm run build:test",
     "test": "node --test test-dist/*.test.js",
     "lint": "tsc -p tsconfig.json --noEmit",

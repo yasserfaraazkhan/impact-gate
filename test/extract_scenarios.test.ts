@@ -8,7 +8,7 @@ import {join} from 'path';
 
 import {extractScenarios} from '../dist/engine/impact_engine.js';
 
-const TMP_DIR = join(import.meta.dirname, '__tmp_scenarios__');
+const TMP_DIR = join(__dirname, '__tmp_scenarios__');
 
 function writeSpec(name, content) {
     const path = join(TMP_DIR, name);

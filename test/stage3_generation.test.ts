@@ -1,10 +1,10 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-const {describe, it} = require('node:test');
-const assert = require('node:assert/strict');
+import {describe, it} from 'node:test';
+import assert from 'node:assert/strict';
 
-const {buildGenerationPrompt, parseGenerationResponse, detectHallucinatedMethods} = require('../dist/prompts/generation.js');
+import {buildGenerationPrompt, parseGenerationResponse, detectHallucinatedMethods} from '../dist/prompts/generation.js';
 
 const MOCK_DECISION = {
     flowId: 'scheduled_post_create',

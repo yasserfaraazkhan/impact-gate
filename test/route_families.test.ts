@@ -1,13 +1,13 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-const {describe, it, beforeEach, afterEach} = require('node:test');
-const assert = require('node:assert/strict');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+import {describe, it, beforeEach, afterEach} from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
-const {
+import {
     loadRouteFamilyManifest,
     bindFilesToFamilies,
     getFamilyById,
@@ -15,10 +15,10 @@ const {
     getSpecDirsForBinding,
     getRoutesForBinding,
     clearManifestCache,
-} = require('../dist/knowledge/route_families.js');
+} from '../dist/knowledge/route_families.js';
 
 describe('route_families', () => {
-    let tmpDir;
+    let tmpDir: string;
 
     beforeEach(() => {
         clearManifestCache();
@@ -30,7 +30,7 @@ describe('route_families', () => {
         fs.rmSync(tmpDir, {recursive: true, force: true});
     });
 
-    function writeManifest(data) {
+    function writeManifest(data: any) {
         const filePath = path.join(tmpDir, '.e2e-ai-agents', 'route-families.json');
         fs.writeFileSync(filePath, JSON.stringify(data), 'utf-8');
     }
@@ -59,9 +59,9 @@ describe('route_families', () => {
 
         it('should warn (not throw) in strict mode when manifest is missing', () => {
             // strict mode now warns instead of throwing — manifest is optional AI context
-            const warnMessages = [];
+            const warnMessages: string[] = [];
             const origWarn = console.warn;
-            console.warn = (...args) => { warnMessages.push(args.join(' ')); };
+            console.warn = (...args: any[]) => { warnMessages.push(args.join(' ')); };
             let result;
             try {
                 result = loadRouteFamilyManifest(tmpDir, {strict: true});
@@ -187,7 +187,7 @@ describe('route_families', () => {
             const manifest = loadRouteFamilyManifest(tmpDir);
             const bindings = bindFilesToFamilies(['server/app/limits.go'], manifest);
             assert.equal(bindings[0].bindings.length, 2);
-            const families = bindings[0].bindings.map(b => b.family).sort();
+            const families = bindings[0].bindings.map((b: any) => b.family).sort();
             assert.deepEqual(families, ['channels', 'system_console']);
         });
     });

@@ -1,19 +1,19 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-const {describe, it, beforeEach, afterEach} = require('node:test');
-const assert = require('node:assert/strict');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+import {describe, it, beforeEach, afterEach} from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
-const {preprocess} = require('../dist/pipeline/stage0_preprocess.js');
-const {buildSummary, validateFlowDecision} = require('../dist/validation/output_schema.js');
-const {computeConfidence, shouldForceCannotDetermine, computeCannotDetermineRatio, computeOverallConfidence} = require('../dist/validation/guardrails.js');
-const {clearManifestCache} = require('../dist/knowledge/route_families.js');
+import {preprocess} from '../dist/pipeline/stage0_preprocess.js';
+import {buildSummary, validateFlowDecision} from '../dist/validation/output_schema.js';
+import {computeConfidence, shouldForceCannotDetermine, computeCannotDetermineRatio, computeOverallConfidence} from '../dist/validation/guardrails.js';
+import {clearManifestCache} from '../dist/knowledge/route_families.js';
 
 describe('stage0_preprocess', () => {
-    let tmpDir;
+    let tmpDir: string;
 
     beforeEach(() => {
         clearManifestCache();
@@ -30,7 +30,7 @@ describe('stage0_preprocess', () => {
             appPath: tmpDir,
             testsRoot: tmpDir,
         });
-        assert.ok(result.warnings.some(w => w.includes('Route family manifest not found')));
+        assert.ok(result.warnings.some((w: string) => w.includes('Route family manifest not found')));
         assert.equal(result.manifest, null);
         assert.equal(result.familyGroups.length, 0);
         assert.equal(result.unboundFiles.length, 1);
@@ -52,7 +52,7 @@ describe('stage0_preprocess', () => {
         );
         assert.ok(result.manifest);
         assert.equal(result.familyGroups.length, 2);
-        const channelsGroup = result.familyGroups.find(g => g.familyId === 'channels');
+        const channelsGroup = result.familyGroups.find((g: any) => g.familyId === 'channels');
         assert.ok(channelsGroup);
         assert.equal(channelsGroup.files.length, 2);
         assert.equal(result.unboundFiles.length, 1);
@@ -78,7 +78,7 @@ describe('stage0_preprocess', () => {
             {appPath: tmpDir, testsRoot: tmpDir},
         );
         assert.equal(result.familyGroups.length, 2);
-        const featureGroup = result.familyGroups.find(g => g.featureId === 'sc/perms');
+        const featureGroup = result.familyGroups.find((g: any) => g.featureId === 'sc/perms');
         assert.ok(featureGroup);
         assert.equal(featureGroup.files.length, 1);
     });
@@ -124,7 +124,7 @@ describe('output_schema', () => {
                 priority: 'P2',
             };
             const result = validateFlowDecision(decision);
-            assert.ok(result.errors.some(e => e.includes('blockingReason')));
+            assert.ok(result.errors.some((e: string) => e.includes('blockingReason')));
         });
 
         it('should require scenariosToAdd for add_scenarios', () => {
@@ -140,7 +140,7 @@ describe('output_schema', () => {
                 priority: 'P1',
             };
             const result = validateFlowDecision(decision);
-            assert.ok(result.errors.some(e => e.includes('scenariosToAdd')));
+            assert.ok(result.errors.some((e: string) => e.includes('scenariosToAdd')));
         });
     });
 

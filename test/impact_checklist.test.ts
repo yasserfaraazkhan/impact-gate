@@ -5,7 +5,7 @@ import {join} from 'path';
 import {tmpdir} from 'os';
 import {spawnSync} from 'child_process';
 
-const SCRIPT_PATH = join(process.cwd(), 'scripts', 'impact-checklist.js');
+const SCRIPT_PATH = join(process.cwd(), 'scripts-dist', 'impact-checklist.js');
 
 function writeReportFiles(root, impact, plan) {
     const reportDir = join(root, '.e2e-ai-agents');

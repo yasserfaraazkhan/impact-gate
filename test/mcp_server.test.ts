@@ -1,12 +1,12 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('node:path');
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'node:path';
 
-const {E2EAgentsMCPServer} = require('../dist/mcp-server.js');
+import {E2EAgentsMCPServer} from '../dist/mcp-server.js';
 
 const repoRoot = path.resolve(__dirname, '..');
 
-function parse(result) {
+function parse(result: any) {
     return JSON.parse(result);
 }
 

@@ -1,11 +1,11 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
+import test from 'node:test';
+import assert from 'node:assert/strict';
 
-const {LLMProviderFactory} = require('../dist/index.js');
+import {LLMProviderFactory} from '../dist/index.js';
 
 const TEST_OPENAI_KEY = 'sk-1234567890123456789012345';
 
-function withEnv(key, value, fn) {
+function withEnv(key: string, value: string | undefined, fn: () => any) {
     const previous = process.env[key];
     const restore = () => {
         if (previous === undefined) {

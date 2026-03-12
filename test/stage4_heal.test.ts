@@ -1,14 +1,14 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-const {describe, it, beforeEach, afterEach} = require('node:test');
-const assert = require('node:assert/strict');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+import {describe, it, beforeEach, afterEach} from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
-const {buildHealPrompt, buildQualityFixPrompt} = require('../dist/prompts/heal.js');
-const {resolveHealTargets, renderHealMarkdown} = require('../dist/pipeline/stage4_heal.js');
+import {buildHealPrompt, buildQualityFixPrompt} from '../dist/prompts/heal.js';
+import {resolveHealTargets, renderHealMarkdown} from '../dist/pipeline/stage4_heal.js';
 
 const MOCK_DECISION = {
     flowId: 'search_find_channels',
@@ -97,7 +97,7 @@ describe('heal prompts', () => {
 });
 
 describe('resolveHealTargets', () => {
-    let tmpDir;
+    let tmpDir: string;
 
     beforeEach(() => {
         tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'heal-test-'));
