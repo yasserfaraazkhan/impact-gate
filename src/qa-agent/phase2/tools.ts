@@ -187,8 +187,13 @@ export function executeTool(
     }
 
     case 'fill': {
-        const output = ctx.browser.fill(String(input.ref), String(input.value));
-        return {output: output || `Filled ${input.ref} with "${input.value}"`};
+        const ref = String(input.ref);
+        const value = String(input.value);
+        const output = ctx.browser.fill(ref, value);
+        // Redact value for password-like fields to avoid leaking credentials to LLM
+        const isSensitive = /password|passwd|pwd|secret|token/i.test(ref);
+        const displayValue = isSensitive ? '[REDACTED]' : `"${value}"`;
+        return {output: output || `Filled ${ref} with ${displayValue}`};
     }
 
     case 'press_key': {

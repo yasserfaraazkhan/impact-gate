@@ -60,7 +60,7 @@ function runE2eAgentsCli(config: QAConfig): void {
         args.push('--tests-root', config.testsRoot);
     }
 
-    logger.info('Running e2e-agents', {args: args.slice(1)});
+    logger.info('Running e2e-ai-agents', {args: args.slice(1)});
 
     const result = spawnSync('npx', args, {
         cwd: config.testsRoot || process.cwd(),

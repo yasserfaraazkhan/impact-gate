@@ -73,7 +73,7 @@ export async function runQAAgent(inputConfig: QAConfig): Promise<QAReport> {
 
         // In fix mode, limit Phase 2 to verification only
         const phase2Config = config.mode === 'fix'
-            ? {...config, timeLimitMinutes: Math.min(config.timeLimitMinutes, 5)}
+            ? {...config, timeLimitMinutes: Math.min(config.timeLimitMinutes ?? 15, 5)}
             : config;
 
         phase2 = await runAgentLoop(phase2Config, flows);

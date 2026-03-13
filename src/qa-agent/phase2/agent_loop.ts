@@ -212,6 +212,16 @@ export async function runAgentLoop(
             let removeCount = messages.length - target;
             // Ensure we remove an even number (assistant + user pairs)
             if (removeCount % 2 !== 0) removeCount++;
+            // Advance past any orphaned tool_result at the new front
+            while (removeCount < messages.length) {
+                const front = messages[removeCount];
+                if (front.role === 'user' && Array.isArray(front.content) &&
+                    front.content.some((b: {type?: string}) => b.type === 'tool_result')) {
+                    removeCount += 2;
+                } else {
+                    break;
+                }
+            }
             if (removeCount > 0 && removeCount < messages.length) {
                 messages.splice(0, removeCount);
             }
