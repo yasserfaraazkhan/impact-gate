@@ -5,7 +5,7 @@ Thank you for your interest in contributing! This document provides guidelines a
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+
+- Node.js >= 20
 - npm or yarn
 - TypeScript knowledge
 - Familiarity with LLM APIs (Anthropic Claude, Ollama)
@@ -139,9 +139,9 @@ Only maintainers can release new versions.
 
 1. Update version in `package.json`
 2. Update `CHANGELOG.md`
-3. Commit with message: `chore: release v0.x.x`
-4. Create git tag: `git tag v0.x.x`
-5. Push tag: `git push origin v0.x.x`
+3. Commit with message: `chore(release): v1.x.x`
+4. Create git tag: `git tag v1.x.x`
+5. Push tag: `git push origin v1.x.x`
 6. GitHub Actions automatically publishes to npm
 
 ## Code of Conduct

@@ -1,6 +1,6 @@
 # @yasserkhanorg/e2e-agents
 
-AI-powered E2E test impact analysis, generation, and healing for frontend repositories.
+AI-powered E2E test impact analysis, generation, healing, and autonomous QA for frontend repositories.
 
 [![npm](https://img.shields.io/npm/v/%40yasserkhanorg%2Fe2e-agents)](https://www.npmjs.com/package/@yasserkhanorg/e2e-agents)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
@@ -8,7 +8,7 @@ AI-powered E2E test impact analysis, generation, and healing for frontend reposi
 
 ## What It Does
 
-Given a git diff, `e2e-ai-agents` determines which E2E test flows are impacted, identifies coverage gaps, and can generate or heal Playwright tests — all from the CLI.
+Given a git diff, `e2e-ai-agents` determines which E2E test flows are impacted, identifies coverage gaps, and can generate or heal Playwright tests — all from the CLI. The companion `e2e-qa-agent` goes further: it opens a real browser, explores your app autonomously, and produces a QA report with findings and a release-readiness verdict.
 
 **Pipeline:** `impact` → `plan` → `generate` → `heal` → `finalize`
 
@@ -23,6 +23,9 @@ Requires Node.js >= 20. Ships both CommonJS and ESM builds.
 ## CLI Commands
 
 ```bash
+# All-in-one: impact + plan + optional generate/heal
+npx e2e-ai-agents analyze --path /path/to/webapp [--generate] [--heal]
+
 # Analyze which flows are impacted by code changes
 npx e2e-ai-agents impact --path /path/to/webapp
 
@@ -49,7 +52,7 @@ npx e2e-ai-agents feedback --path /path/to/webapp --feedback-input ./feedback.js
 npx e2e-ai-agents llm-health
 ```
 
-`plan` and `suggest` are aliases. Use `--help` for all available flags.
+`plan` and `suggest` are aliases. `analyze` is a convenience wrapper that runs impact + plan and optionally generation/healing in one invocation. Use `--help` for all available flags.
 
 ## Configuration
 
@@ -114,7 +117,7 @@ The `plan` command writes:
 
 Use `--fail-on-must-add-tests` to exit non-zero when uncovered P0/P1 gaps exist. Use `--github-output` to expose outputs to subsequent workflow steps.
 
-See [examples/github-actions/](examples/github-actions/) for a complete workflow template.
+See [examples/github-actions/pr-impact.yml](examples/github-actions/pr-impact.yml) for a complete workflow template.
 
 ## Pipeline Modes
 
@@ -205,6 +208,46 @@ Schemas: [schemas/traceability-input.schema.json](schemas/traceability-input.sch
 | `agentic-summary.json` | `generate` | Agentic generation results |
 
 All written under `<testsRoot>/.e2e-ai-agents/`.
+
+## Autonomous QA Agent (`e2e-qa-agent`)
+
+An autonomous QA engineer that opens a real browser, navigates to changed features, tries edge cases, and produces a findings report — all unsupervised. Built on top of `agent-browser` and the Anthropic tool-use API.
+
+### Quick Start
+
+```bash
+# PR mode — test features changed since origin/main
+npx e2e-qa-agent pr --since origin/main --base-url http://localhost:8065
+
+# Hunt mode — deep-test a specific area
+npx e2e-qa-agent hunt "channel settings" --base-url http://localhost:8065
+
+# Release mode — systematic exploration of all critical flows
+npx e2e-qa-agent release --base-url http://localhost:8065 --time 30
+
+# Fix mode — verify healed specs
+npx e2e-qa-agent fix --base-url http://localhost:8065
+```
+
+### Architecture
+
+1. **Phase 1 (Script)** — Runs `e2e-ai-agents impact/plan` to determine scope, then executes matched Playwright specs.
+2. **Phase 2 (Explore)** — LLM-driven browser loop: observe (accessibility snapshot) → think → act (click/fill/navigate) → record findings. Includes stuck detection, multi-user testing, console error capture, and vision-based analysis.
+3. **Phase 3 (Report)** — Generates a structured report with findings, per-flow sign-off, and a release-readiness verdict (go/no-go/conditional).
+
+### Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--base-url` | `http://localhost:8065` | Application URL |
+| `--time` | `15` | Time limit in minutes |
+| `--budget` | `2.00` | Max LLM spend in USD |
+| `--phase` | `all` | Run only `1`, `2`, or `3` |
+| `--headed` | off | Keep browser visible |
+| `--since` | — | Git ref for diff-based scoping |
+| `--tests-root` | — | Path to Playwright tests directory |
+
+Requires `agent-browser` CLI (`npm install -g agent-browser`) and `ANTHROPIC_API_KEY`.
 
 ## Production Usage
 
