@@ -9,20 +9,7 @@ import type {RouteFamilyManifest} from '../knowledge/route_families.js';
 
 import type {CommitValidation, ValidationReport} from './types.js';
 
-export function getCommitFiles(projectRoot: string, since: string): Array<{hash: string; message: string; files: string[]}> {
-    const resolved = resolve(projectRoot);
-    let log: string;
-    try {
-        log = execFileSync('git', ['log', '--name-only', '--pretty=format:%H|%s', `${since}..HEAD`], {
-            cwd: resolved,
-            encoding: 'utf-8',
-            stdio: ['pipe', 'pipe', 'pipe'],
-            maxBuffer: 10 * 1024 * 1024,
-        });
-    } catch {
-        return [];
-    }
-
+export function parseGitLog(log: string): Array<{hash: string; message: string; files: string[]}> {
     const commits: Array<{hash: string; message: string; files: string[]}> = [];
     let current: {hash: string; message: string; files: string[]} | null = null;
 
@@ -51,6 +38,24 @@ export function getCommitFiles(projectRoot: string, since: string): Array<{hash:
     }
 
     return commits;
+}
+
+export function getCommitFiles(projectRoot: string, since: string): Array<{hash: string; message: string; files: string[]}> {
+    const resolved = resolve(projectRoot);
+    let log: string;
+    try {
+        log = execFileSync('git', ['log', '--name-only', '--pretty=format:%H|%s', `${since}..HEAD`], {
+            cwd: resolved,
+            encoding: 'utf-8',
+            stdio: ['pipe', 'pipe', 'pipe'],
+            maxBuffer: 10 * 1024 * 1024,
+        });
+    } catch (error) {
+        console.warn(`[train] git log failed: ${error instanceof Error ? error.message : String(error)}`);
+        return [];
+    }
+
+    return parseGitLog(log);
 }
 
 export function validateCommit(

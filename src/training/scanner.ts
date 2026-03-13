@@ -1,20 +1,28 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {readdirSync, readFileSync, statSync, existsSync} from 'fs';
+import {readdirSync, readFileSync, lstatSync, existsSync} from 'fs';
 import {join, relative, basename, resolve} from 'path';
 
 import type {DiscoveredDir, ScannedFamily, ScannedFeature, ScanResult} from './types.js';
 
-const SOURCE_ROOTS = ['src', 'app', 'pages', 'components', 'features', 'modules'];
-const SERVER_ROOTS = ['server', 'api', 'cmd', 'model', 'services'];
+const SOURCE_MAX_DEPTH = 3;
+// One deeper than source to account for test framework wrapper dirs (e2e/, integration/)
+const TEST_MAX_DEPTH = 5;
+const SPEC_FILES_MAX_DEPTH = 10;
+
+const SOURCE_ROOTS = ['src', 'app', 'pages', 'components', 'features', 'modules'] as const;
+const SERVER_ROOTS = ['server', 'api', 'cmd', 'model', 'services'] as const;
 const SKIP_DIRS = new Set([
     'node_modules', '.git', '.next', '.nuxt', 'dist', 'build',
     'coverage', '__pycache__', '.e2e-ai-agents', '.cache',
     'vendor', 'third_party',
 ]);
-const TEST_EXTENSIONS = ['.spec.ts', '.test.ts', '.spec.js', '.test.js', '.spec.tsx', '.test.tsx'];
+const TEST_EXTENSIONS = ['.spec.ts', '.test.ts', '.spec.js', '.test.js', '.spec.tsx', '.test.tsx'] as const;
 const GO_TEST_SUFFIX = '_test.go';
+
+/** Type-safe includes check for readonly arrays */
+const includes = <T>(arr: readonly T[], v: unknown): v is T => (arr as readonly unknown[]).includes(v);
 
 function isSkipped(name: string): boolean {
     return name.startsWith('.') || SKIP_DIRS.has(name);
@@ -57,6 +65,7 @@ function walkDirs(
     try {
         entries = readdirSync(root);
     } catch {
+        // ENOENT or EACCES — skip inaccessible entries
         return;
     }
 
@@ -68,8 +77,11 @@ function walkDirs(
     const subdirs = entries.filter((e) => {
         if (isSkipped(e)) return false;
         try {
-            return statSync(join(root, e)).isDirectory();
+            const stat = lstatSync(join(root, e));
+            if (stat.isSymbolicLink()) return false;
+            return stat.isDirectory();
         } catch {
+            // ENOENT or EACCES — skip inaccessible entries
             return false;
         }
     });
@@ -96,6 +108,7 @@ export function discoverSourceDirs(projectRoot: string): DiscoveredDir[] {
     try {
         entries = readdirSync(resolved);
     } catch {
+        // ENOENT or EACCES — skip inaccessible entries
         return results;
     }
 
@@ -103,15 +116,17 @@ export function discoverSourceDirs(projectRoot: string): DiscoveredDir[] {
         if (isSkipped(entry)) continue;
         const fullPath = join(resolved, entry);
         try {
-            if (!statSync(fullPath).isDirectory()) continue;
+            const stat = lstatSync(fullPath);
+            if (stat.isSymbolicLink() || !stat.isDirectory()) continue;
         } catch {
+            // ENOENT or EACCES — skip inaccessible entries
             continue;
         }
 
-        if (SOURCE_ROOTS.includes(entry)) {
-            walkDirs(fullPath, resolved, 'webapp', 3, results);
-        } else if (SERVER_ROOTS.includes(entry)) {
-            walkDirs(fullPath, resolved, 'server', 3, results);
+        if (includes(SOURCE_ROOTS, entry)) {
+            walkDirs(fullPath, resolved, 'webapp', SOURCE_MAX_DEPTH, results);
+        } else if (includes(SERVER_ROOTS, entry)) {
+            walkDirs(fullPath, resolved, 'server', SOURCE_MAX_DEPTH, results);
         }
     }
 
@@ -123,11 +138,12 @@ export function discoverTestDirs(projectRoot: string): DiscoveredDir[] {
     const resolved = resolve(projectRoot);
 
     function walk(dir: string, category: 'test' | 'cypress', depth: number): void {
-        if (depth > 4 || !existsSync(dir)) return;
+        if (depth > TEST_MAX_DEPTH || !existsSync(dir)) return;
         let entries: string[];
         try {
             entries = readdirSync(dir);
         } catch {
+            // ENOENT or EACCES — skip inaccessible entries
             return;
         }
 
@@ -148,11 +164,13 @@ export function discoverTestDirs(projectRoot: string): DiscoveredDir[] {
             if (isSkipped(entry)) continue;
             const full = join(dir, entry);
             try {
-                if (statSync(full).isDirectory()) {
+                const stat = lstatSync(full);
+                if (stat.isSymbolicLink()) continue;
+                if (stat.isDirectory()) {
                     walk(full, category, depth + 1);
                 }
             } catch {
-                // skip
+                // ENOENT or EACCES — skip inaccessible entries
             }
         }
     }
@@ -192,29 +210,32 @@ function extractTags(specFiles: string[]): string[] {
                 }
             }
         } catch {
-            // skip unreadable files
+            // ENOENT or EACCES — skip unreadable files
         }
     }
     return Array.from(tags);
 }
 
-function getSpecFiles(dir: string): string[] {
+function getSpecFiles(dir: string, depth = 0): string[] {
+    if (depth > SPEC_FILES_MAX_DEPTH) return [];
     const files: string[] = [];
     try {
         for (const entry of readdirSync(dir)) {
             const full = join(dir, entry);
             try {
-                if (statSync(full).isDirectory()) {
-                    files.push(...getSpecFiles(full));
+                const stat = lstatSync(full);
+                if (stat.isSymbolicLink()) continue;
+                if (stat.isDirectory()) {
+                    files.push(...getSpecFiles(full, depth + 1));
                 } else if (TEST_EXTENSIONS.some((ext) => entry.endsWith(ext))) {
                     files.push(full);
                 }
             } catch {
-                // skip
+                // ENOENT or EACCES — skip inaccessible entries
             }
         }
     } catch {
-        // skip
+        // ENOENT or EACCES — skip inaccessible directories
     }
     return files;
 }
@@ -261,7 +282,9 @@ function detectFeatures(
                 if (isSkipped(entry)) continue;
                 const full = join(dir.path, entry);
                 try {
-                    if (statSync(full).isDirectory()) {
+                    const stat = lstatSync(full);
+                    if (stat.isSymbolicLink()) continue;
+                    if (stat.isDirectory()) {
                         const hint = normalizeId(entry);
                         if (!webappSubdirs.has(hint)) webappSubdirs.set(hint, []);
                         webappSubdirs.get(hint)!.push({
@@ -271,9 +294,13 @@ function detectFeatures(
                             familyHint: entry,
                         });
                     }
-                } catch { /* skip */ }
+                } catch {
+                    // ENOENT or EACCES — skip inaccessible entries
+                }
             }
-        } catch { /* skip */ }
+        } catch {
+            // ENOENT or EACCES — skip inaccessible directories
+        }
     }
 
     for (const testDir of group.test) {
@@ -282,8 +309,13 @@ function detectFeatures(
                 if (isSkipped(entry)) continue;
                 const full = join(testDir.path, entry);
                 try {
-                    if (!statSync(full).isDirectory()) continue;
-                } catch { continue; }
+                    const stat = lstatSync(full);
+                    if (stat.isSymbolicLink()) continue;
+                    if (!stat.isDirectory()) continue;
+                } catch {
+                    // ENOENT or EACCES — skip inaccessible entries
+                    continue;
+                }
                 const hint = normalizeId(entry);
                 if (webappSubdirs.has(hint)) {
                     const webDirs = webappSubdirs.get(hint)!;
@@ -295,7 +327,9 @@ function detectFeatures(
                     });
                 }
             }
-        } catch { /* skip */ }
+        } catch {
+            // ENOENT or EACCES — skip inaccessible directories
+        }
     }
 
     return features;
@@ -350,14 +384,24 @@ export function scanProject(projectRoot: string): ScanResult {
     for (const dir of sourceDirs) {
         try {
             totalSourceFiles += readdirSync(dir.path).filter((e) => {
-                try { return !statSync(join(dir.path, e)).isDirectory(); } catch { return false; }
+                try {
+                    const stat = lstatSync(join(dir.path, e));
+                    return !stat.isSymbolicLink() && !stat.isDirectory();
+                } catch {
+                    // ENOENT or EACCES — skip inaccessible entries
+                    return false;
+                }
             }).length;
-        } catch { /* skip */ }
+        } catch {
+            // ENOENT or EACCES — skip inaccessible directories
+        }
     }
     for (const dir of testDirs) {
         try {
             totalTestFiles += getSpecFiles(dir.path).length;
-        } catch { /* skip */ }
+        } catch {
+            // ENOENT or EACCES — skip inaccessible directories
+        }
     }
 
     return {

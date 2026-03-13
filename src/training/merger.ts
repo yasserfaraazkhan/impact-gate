@@ -6,6 +6,7 @@ import {join, resolve} from 'path';
 
 import type {RouteFamily, RouteFamilyManifest} from '../knowledge/route_families.js';
 
+import {isGuessedRoute} from './types.js';
 import type {MergeResult, ScannedFamily} from './types.js';
 
 function unionArrays(existing: string[] | undefined, incoming: string[]): string[] {
@@ -14,11 +15,6 @@ function unionArrays(existing: string[] | undefined, incoming: string[]): string
         set.add(item);
     }
     return Array.from(set);
-}
-
-function isGuessedRoute(routes: string[]): boolean {
-    // Routes that look like bare "/<id>" are likely scanner-generated guesses
-    return routes.every((r) => /^\/[a-z][a-z0-9_]*$/.test(r));
 }
 
 function mergeFamily(existing: RouteFamily, scanned: ScannedFamily): RouteFamily {

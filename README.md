@@ -72,7 +72,7 @@ npx e2e-ai-agents train --path /path/to/project --validate --since HEAD~50
 npx e2e-ai-agents train --path /path/to/project --validate --since HEAD~20
 ```
 
-**Why LLM enrichment is on by default:** The manifest exists to give AI context for impact analysis, scenario suggestion, and bug detection. AI-generated context produces better AI reasoning downstream. Use `--no-enrich` for offline/free operation.
+**Why LLM enrichment is on by default:** The manifest exists to give AI context for impact analysis, scenario suggestion, and bug detection. AI-generated context produces better AI reasoning downstream. Use `--no-enrich` for offline/free operation or to avoid sending code snippets to third-party LLM APIs.
 
 **Training loop:** Run `train` → review the generated `route-families.json` → run `train --validate` to check coverage % → fix gaps → repeat until 95%+.
 

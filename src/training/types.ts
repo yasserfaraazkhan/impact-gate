@@ -116,3 +116,8 @@ export interface TrainOptions {
     /** Max LLM spend in USD */
     budgetUSD: number;
 }
+
+/** Routes that look like bare "/<id>" are scanner-generated guesses */
+export function isGuessedRoute(routes: string[]): boolean {
+    return routes.every((r) => /^\/[a-z][a-z0-9_]*$/.test(r));
+}

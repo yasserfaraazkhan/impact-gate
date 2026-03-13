@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {existsSync, mkdirSync, writeFileSync} from 'fs';
+import {existsSync, mkdirSync, renameSync, writeFileSync} from 'fs';
 import {dirname, join, resolve} from 'path';
 import * as readline from 'readline';
 
@@ -18,6 +18,21 @@ import {enrichFamilies} from '../../training/enricher.js';
 import {getCommitFiles, validateCommit, buildValidationReport, formatValidationReport} from '../../training/validator.js';
 import type {TrainOptions} from '../../training/types.js';
 
+class TrainError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'TrainError';
+    }
+}
+
+const MAX_BUDGET_USD = 10;
+
+/**
+ * Resolves train-specific options from CLI args.
+ * Unlike other commands (analyze, plan, heal) that use the shared resolveConfig()
+ * for full pipeline configuration, train only needs appPath and testsRoot.
+ * We call resolveConfig() solely to extract testsRoot from the config file.
+ */
 function resolveTrainOptions(args: ParsedArgs, autoConfig?: string): TrainOptions {
     const appPath = args.path || '.';
     let testsRoot = args.testsRoot || appPath;
@@ -38,17 +53,55 @@ function resolveTrainOptions(args: ParsedArgs, autoConfig?: string): TrainOption
     const outputPath = args.trainOutput ||
         join(testsRoot, '.e2e-ai-agents', 'route-families.json');
 
+    // Validate --pr is a positive integer
+    if (args.trainPr !== undefined && (!Number.isInteger(args.trainPr) || args.trainPr <= 0)) {
+        throw new TrainError('--pr must be a positive integer');
+    }
+
+    // Validate --pr and --since are mutually exclusive
+    if (args.trainPr && args.gitSince) {
+        throw new TrainError('--pr and --since are mutually exclusive.');
+    }
+
+    // Validate --since format (reject leading '-' to prevent git flag injection)
+    const since = args.gitSince || 'HEAD~20';
+    if (/^-/.test(since) || !/^[a-zA-Z0-9_.~^@\/-]+$/.test(since)) {
+        throw new TrainError(`Invalid git ref: ${since}`);
+    }
+
+    // Validate budget upper bound
+    const budget = args.budgetUSD || 0.50;
+    if (budget > MAX_BUDGET_USD) {
+        throw new TrainError(`Budget exceeds maximum of $${MAX_BUDGET_USD}. Use a lower --budget-usd value.`);
+    }
+
+    const resolvedAppPath = resolve(appPath);
+    const resolvedTestsRoot = resolve(testsRoot);
+    const resolvedOutputPath = resolve(outputPath);
+
+    // Validate --path is a real project
+    if (!existsSync(resolvedAppPath)) {
+        throw new TrainError(`Project root not found: ${resolvedAppPath}`);
+    }
+
+    // Validate --output is within project boundary (append separator to prevent prefix attacks)
+    const inApp = resolvedOutputPath === resolvedAppPath || resolvedOutputPath.startsWith(resolvedAppPath + '/');
+    const inTests = resolvedOutputPath === resolvedTestsRoot || resolvedOutputPath.startsWith(resolvedTestsRoot + '/');
+    if (!inApp && !inTests) {
+        throw new TrainError(`Output path must be within the project root or tests root: ${resolvedOutputPath}`);
+    }
+
     return {
-        appPath: resolve(appPath),
-        testsRoot: resolve(testsRoot),
+        appPath: resolvedAppPath,
+        testsRoot: resolvedTestsRoot,
         enrich: args.trainEnrich !== false,
         validate: args.trainValidate || false,
-        since: args.gitSince || 'HEAD~20',
+        since,
         pr: args.trainPr,
-        outputPath: resolve(outputPath),
+        outputPath: resolvedOutputPath,
         dryRun: args.dryRun || false,
         yes: args.trainYes || false,
-        budgetUSD: args.budgetUSD || 0.50,
+        budgetUSD: budget,
     };
 }
 
@@ -64,18 +117,16 @@ function ask(rl: readline.Interface, question: string, defaultValue?: string): P
 function serializeManifest(manifest: RouteFamilyManifest): string {
     const output = {
         families: manifest.families.map((f) => {
-            const entry: Record<string, unknown> = {id: f.id, routes: f.routes};
-            if (f.priority) entry.priority = f.priority;
-            if (f.pageObjects && f.pageObjects.length > 0) entry.pageObjects = f.pageObjects;
-            if (f.components && f.components.length > 0) entry.components = f.components;
-            if (f.webappPaths && f.webappPaths.length > 0) entry.webappPaths = f.webappPaths;
-            if (f.serverPaths && f.serverPaths.length > 0) entry.serverPaths = f.serverPaths;
-            if (f.specDirs && f.specDirs.length > 0) entry.specDirs = f.specDirs;
-            if (f.cypressSpecDirs && f.cypressSpecDirs.length > 0) entry.cypressSpecDirs = f.cypressSpecDirs;
-            if (f.tags && f.tags.length > 0) entry.tags = f.tags;
-            if (f.userFlows && f.userFlows.length > 0) entry.userFlows = f.userFlows;
-            if (f.features && f.features.length > 0) entry.features = f.features;
-            return entry;
+            // Remove undefined/empty optional fields for clean JSON
+            const cleaned = {...f};
+            const optionalArrays = ['pageObjects', 'components', 'webappPaths', 'serverPaths', 'specDirs', 'cypressSpecDirs', 'tags', 'userFlows', 'features'] as const;
+            for (const key of optionalArrays) {
+                if (!cleaned[key] || (Array.isArray(cleaned[key]) && (cleaned[key] as unknown[]).length === 0)) {
+                    delete cleaned[key];
+                }
+            }
+            if (!cleaned.priority) delete cleaned.priority;
+            return cleaned;
         }),
     };
     return JSON.stringify(output, null, 2) + '\n';
@@ -178,7 +229,9 @@ export async function runTrainCommand(args: ParsedArgs, autoConfig?: string): Pr
         if (!existsSync(dir)) {
             mkdirSync(dir, {recursive: true});
         }
-        writeFileSync(opts.outputPath, json, 'utf-8');
+        const tmpPath = `${opts.outputPath}.tmp`;
+        writeFileSync(tmpPath, json, 'utf-8');
+        renameSync(tmpPath, opts.outputPath);
         console.log(`  Wrote ${opts.outputPath}`);
         console.log(`  ${mergeResult.manifest.families.length} families`);
     }
@@ -200,12 +253,6 @@ export async function runTrainCommand(args: ParsedArgs, autoConfig?: string): Pr
 
     // ---------- Phase 7: Validation (optional) ----------
     if (opts.validate) {
-        // Mutual exclusivity check
-        if (opts.pr && opts.since !== 'HEAD~20') {
-            console.error('  Error: --pr and --since are mutually exclusive.');
-            process.exit(1);
-        }
-
         if (opts.pr) {
             console.log('');
             console.log(`  Validating against PR #${opts.pr}...`);
@@ -215,10 +262,7 @@ export async function runTrainCommand(args: ParsedArgs, autoConfig?: string): Pr
             try {
                 execFileSync('gh', ['--version'], {stdio: 'pipe'});
             } catch {
-                console.error('');
-                console.error('  Error: --pr requires the GitHub CLI (gh).');
-                console.error('  Install: https://cli.github.com/');
-                process.exit(1);
+                throw new TrainError('--pr requires the GitHub CLI (gh). Install: https://cli.github.com/');
             }
 
             // Fetch PR changed files via gh CLI
@@ -231,8 +275,7 @@ export async function runTrainCommand(args: ParsedArgs, autoConfig?: string): Pr
                 });
                 prFiles = output.trim().split('\n').filter(Boolean);
             } catch (error) {
-                console.error(`  Error fetching PR #${opts.pr}: ${error instanceof Error ? error.message : String(error)}`);
-                process.exit(1);
+                throw new TrainError(`Error fetching PR #${opts.pr}: ${error instanceof Error ? error.message : String(error)}`);
             }
 
             if (prFiles.length === 0) {

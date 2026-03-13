@@ -4,7 +4,7 @@
 import {describe, it} from 'node:test';
 import assert from 'node:assert/strict';
 
-import {buildValidationReport, formatValidationReport} from '../dist/training/validator.js';
+import {buildValidationReport, formatValidationReport, parseGitLog} from '../dist/training/validator.js';
 import type {RouteFamilyManifest} from '../dist/knowledge/route_families.js';
 import type {CommitValidation} from '../dist/training/types.js';
 
@@ -44,6 +44,51 @@ describe('validator', () => {
             assert.equal(report.unboundFiles, 1);
             assert.ok(report.coveragePercent > 60);
             assert.ok(report.neverHitFamilies.includes('search'));
+        });
+    });
+
+    describe('parseGitLog', () => {
+        it('should parse standard git log output with two commits', () => {
+            const log = 'abc1234|fix: channels bug\nsrc/channels/index.ts\nsrc/channels/list.tsx\n\ndef5678|feat: add auth\nsrc/auth/login.ts';
+            const result = parseGitLog(log);
+            assert.equal(result.length, 2);
+            assert.equal(result[0].hash, 'abc1234');
+            assert.equal(result[0].message, 'fix: channels bug');
+            assert.deepEqual(result[0].files, ['src/channels/index.ts', 'src/channels/list.tsx']);
+            assert.equal(result[1].hash, 'def5678');
+            assert.equal(result[1].message, 'feat: add auth');
+            assert.deepEqual(result[1].files, ['src/auth/login.ts']);
+        });
+
+        it('should handle commit message containing pipe character', () => {
+            const log = 'abc1234|fix: use a|b pattern\nfile.ts';
+            const result = parseGitLog(log);
+            assert.equal(result.length, 1);
+            assert.equal(result[0].hash, 'abc1234');
+            assert.equal(result[0].message, 'fix: use a|b pattern');
+            assert.deepEqual(result[0].files, ['file.ts']);
+        });
+
+        it('should return empty array for empty log', () => {
+            const result = parseGitLog('');
+            assert.deepEqual(result, []);
+        });
+
+        it('should handle single commit with no trailing newline', () => {
+            const log = 'abc1234|feat: something\nfile.ts';
+            const result = parseGitLog(log);
+            assert.equal(result.length, 1);
+            assert.equal(result[0].hash, 'abc1234');
+            assert.equal(result[0].message, 'feat: something');
+            assert.deepEqual(result[0].files, ['file.ts']);
+        });
+
+        it('should not create empty commits from consecutive blank lines', () => {
+            const log = 'abc1234|fix: first\nfile1.ts\n\n\n\ndef5678|fix: second\nfile2.ts\n\n\n';
+            const result = parseGitLog(log);
+            assert.equal(result.length, 2);
+            assert.equal(result[0].hash, 'abc1234');
+            assert.equal(result[1].hash, 'def5678');
         });
     });
 

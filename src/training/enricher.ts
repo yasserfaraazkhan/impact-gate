@@ -1,31 +1,55 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {readdirSync, readFileSync, statSync} from 'fs';
-import {join, resolve} from 'path';
+import {lstatSync, readdirSync, readFileSync} from 'fs';
+import {join, relative, resolve} from 'path';
 
 import type {LLMProvider} from '../provider_interface.js';
 import type {RouteFamily} from '../knowledge/route_families.js';
 
+import {isGuessedRoute} from './types.js';
 import type {EnrichmentResult, ScannedFamily} from './types.js';
 
 const MAX_FILES_PER_FAMILY = 20;
 const MAX_LINES_PER_FILE = 50;
+const LLM_TIMEOUT_MS = 60_000;
+
+const SENSITIVE_PATTERNS = [
+    /[._]env/, /secret/i, /credential/i, /\.pem$/, /\.key$/, /password/i,
+    /config\/secrets/, /fixtures\/.*auth/i, /\.npmrc/, /\.netrc/,
+    /id_rsa/, /id_ed25519/, /\.p12$/, /\.pfx$/, /tokens?\.json/i,
+];
+
+const SKIP_DIRS = new Set([
+    'node_modules', '.git', 'dist', 'build', '.next', '.nuxt', 'coverage',
+]);
 
 function sampleFiles(dir: string, maxFiles: number): Array<{path: string; content: string}> {
     const files: Array<{path: string; content: string}> = [];
 
-    function walk(d: string): void {
+    function walk(d: string, depth = 0, maxDepth = 10): void {
         if (files.length >= maxFiles) return;
+        if (depth > maxDepth) return;
         try {
             for (const entry of readdirSync(d)) {
                 if (files.length >= maxFiles) return;
+
+                // Skip dot-dirs and known heavy directories
+                if (entry.startsWith('.') || SKIP_DIRS.has(entry)) continue;
+
                 const full = join(d, entry);
                 try {
-                    const stat = statSync(full);
-                    if (stat.isDirectory()) {
-                        walk(full);
-                    } else if (stat.isFile() && stat.size < 50000) {
+                    // Skip symlinks
+                    const lstat = lstatSync(full);
+                    if (lstat.isSymbolicLink()) continue;
+
+                    // Skip sensitive files (test against relative path from scan root)
+                    const relPath = relative(dir, full);
+                    if (SENSITIVE_PATTERNS.some((p) => p.test(relPath) || p.test(entry))) continue;
+
+                    if (lstat.isDirectory()) {
+                        walk(full, depth + 1, maxDepth);
+                    } else if (lstat.isFile() && lstat.size < 50000) {
                         const ext = entry.slice(entry.lastIndexOf('.'));
                         if (['.ts', '.tsx', '.js', '.jsx', '.go', '.py'].includes(ext)) {
                             const content = readFileSync(full, 'utf-8');
@@ -80,7 +104,7 @@ Tags: ${JSON.stringify(family.tags)}
 Features: ${family.features.map((f) => f.id).join(', ') || 'none'}
 
 Sample files (${samples.length}):
-${samples.map((s) => `### ${s.path}\n\`\`\`\n${s.content}\n\`\`\``).join('\n')}
+${samples.map((s) => `### ${relative(projectRoot, s.path)}\n\`\`\`\n${s.content}\n\`\`\``).join('\n')}
 
 Test descriptions:
 ${specSamples.length > 0 ? specSamples.map((d) => `- ${d}`).join('\n') : '(none found)'}
@@ -113,7 +137,7 @@ Respond in JSON format:
 ${sections.join('\n---\n')}`;
 }
 
-interface EnrichedEntry {
+export interface EnrichedEntry {
     id: string;
     priority?: 'P0' | 'P1' | 'P2';
     userFlows?: string[];
@@ -122,14 +146,33 @@ interface EnrichedEntry {
     components?: string[];
 }
 
-function parseEnrichResponse(response: string): EnrichedEntry[] {
+export function validateEntries(parsed: unknown[]): EnrichedEntry[] {
+    const filterStrings = (arr: unknown, maxLen: number): string[] | undefined => {
+        if (!Array.isArray(arr)) return undefined;
+        const filtered = arr.filter((v: unknown) => typeof v === 'string' && v.length < maxLen);
+        return filtered.length > 0 ? filtered : undefined;
+    };
+
+    return parsed
+        .filter((e): e is Record<string, unknown> => !!e && typeof (e as Record<string, unknown>).id === 'string')
+        .map((entry): EnrichedEntry => ({
+            id: entry.id as string,
+            priority: ['P0', 'P1', 'P2'].includes(entry.priority as string) ? entry.priority as 'P0' | 'P1' | 'P2' : undefined,
+            routes: filterStrings(entry.routes, 200),
+            userFlows: filterStrings(entry.userFlows, 500),
+            pageObjects: filterStrings(entry.pageObjects, 200),
+            components: filterStrings(entry.components, 200),
+        }));
+}
+
+export function parseEnrichResponse(response: string): EnrichedEntry[] {
     // Extract JSON from response (may be wrapped in markdown code block)
     const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, response];
     const jsonStr = jsonMatch[1]?.trim() || response.trim();
     try {
         const parsed = JSON.parse(jsonStr);
         if (Array.isArray(parsed)) {
-            return parsed.filter((e) => e && typeof e.id === 'string');
+            return validateEntries(parsed);
         }
     } catch {
         // Try to find any JSON array in the response
@@ -138,7 +181,7 @@ function parseEnrichResponse(response: string): EnrichedEntry[] {
             try {
                 const parsed = JSON.parse(arrayMatch[0]);
                 if (Array.isArray(parsed)) {
-                    return parsed.filter((e) => e && typeof e.id === 'string');
+                    return validateEntries(parsed);
                 }
             } catch {
                 // give up
@@ -159,8 +202,7 @@ function applyEnrichment(family: RouteFamily, enriched: EnrichedEntry): RouteFam
     }
     if (enriched.routes && enriched.routes.length > 0) {
         // Only replace if current routes look like guesses
-        const isGuess = family.routes.every((r) => /^\/[a-z][a-z0-9_]*$/.test(r));
-        if (isGuess) {
+        if (isGuessedRoute(family.routes)) {
             result.routes = enriched.routes;
         }
     }
@@ -211,10 +253,15 @@ export async function enrichFamilies(
         const prompt = buildEnrichPrompt(scannedChunk, projectRoot);
 
         try {
-            const response = await provider.generateText(prompt, {
-                maxTokens: 4096,
-                temperature: 0.3,
+            let timer: ReturnType<typeof setTimeout>;
+            const timeoutPromise = new Promise<never>((_, reject) => {
+                timer = setTimeout(() => reject(new Error('LLM request timed out')), LLM_TIMEOUT_MS);
             });
+            const response = await Promise.race([
+                provider.generateText(prompt, {maxTokens: 4096, temperature: 0.3}),
+                timeoutPromise,
+            ]);
+            clearTimeout(timer!);
 
             totalTokens += (response.usage?.inputTokens || 0) + (response.usage?.outputTokens || 0);
             totalCost += response.cost || 0;
