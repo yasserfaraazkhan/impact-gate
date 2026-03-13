@@ -15,7 +15,8 @@ export type Command =
     | 'traceability-capture'
     | 'traceability-ingest'
     | 'analyze'
-    | 'llm-health';
+    | 'llm-health'
+    | 'train';
 
 export interface ParsedArgs {
     command?: Command;
@@ -83,4 +84,11 @@ export interface ParsedArgs {
     noAi?: boolean;
     maxAttempts?: number;
     generateScenarios?: string;
+
+    // Train command
+    trainEnrich?: boolean;
+    trainValidate?: boolean;
+    trainPr?: number;
+    trainOutput?: string;
+    trainYes?: boolean;
 }

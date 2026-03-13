@@ -88,6 +88,10 @@ const FLAGS: Record<string, FlagDef> = {
     '--generate':                   {key: 'analyzeGenerate', type: 'boolean'},
     '--heal':                       {key: 'analyzeHeal', type: 'boolean'},
     '--no-ai':                      {key: 'noAi', type: 'boolean'},
+    '--enrich':                     {key: 'trainEnrich', type: 'boolean'},
+    '--no-enrich':                  {key: 'trainEnrich', type: 'boolean-false'},
+    '--validate':                   {key: 'trainValidate', type: 'boolean'},
+    '--yes':                        {key: 'trainYes', type: 'boolean', aliases: ['-y']},
     '--mattermost':                 {key: 'profile', type: 'boolean', transform: () => 'mattermost'},
 
     // -- string flags --
@@ -118,6 +122,7 @@ const FLAGS: Record<string, FlagDef> = {
     '--generate-output':               {key: 'analyzeGenerateOutputDir', type: 'string'},
     '--heal-report':                   {key: 'analyzeHealReport', type: 'string'},
     '--flow-catalog':                  {key: 'flowCatalogPath', type: 'string'},
+    '--output':                        {key: 'trainOutput', type: 'string'},
 
     // -- number flags (with isFinite guard) --
     '--pipeline-scenarios':              {key: 'pipelineScenarios', type: 'number'},
@@ -130,6 +135,7 @@ const FLAGS: Record<string, FlagDef> = {
     '--traceability-min-hits':           {key: 'traceabilityMinHits', type: 'number'},
     '--traceability-max-files-per-test': {key: 'traceabilityMaxFilesPerTest', type: 'number'},
     '--traceability-max-age-days':       {key: 'traceabilityMaxAgeDays', type: 'number'},
+    '--pr':                              {key: 'trainPr', type: 'number'},
 
     // -- number-raw flags (no isFinite guard, assigned directly via Number()) --
     '--max-attempts':           {key: 'maxAttempts', type: 'number-raw', transform: (v) => parseInt(v, 10)},
@@ -171,7 +177,7 @@ const COMMANDS = new Set<Command>([
     'init', 'impact', 'plan', 'heal', 'suggest', 'generate',
     'finalize-generated-tests', 'feedback',
     'traceability-capture', 'traceability-ingest',
-    'analyze', 'llm-health',
+    'analyze', 'llm-health', 'train',
 ]);
 
 // ---------------------------------------------------------------------------
