@@ -24,29 +24,29 @@ Requires Node.js >= 20. Ships both CommonJS and ESM builds.
 
 ```bash
 # All-in-one: impact + plan + optional generate/heal
-npx e2e-ai-agents analyze --path /path/to/webapp [--generate] [--heal]
+npx e2e-ai-agents analyze --path /path/to/project [--generate] [--heal]
 
 # Analyze which flows are impacted by code changes
-npx e2e-ai-agents impact --path /path/to/webapp
+npx e2e-ai-agents impact --path /path/to/project
 
 # Generate a coverage plan with gap analysis
-npx e2e-ai-agents plan --path /path/to/webapp
+npx e2e-ai-agents plan --path /path/to/project
 
 # Generate tests for uncovered gaps (requires plan output)
-npx e2e-ai-agents generate --path /path/to/webapp
+npx e2e-ai-agents generate --path /path/to/project
 
 # Heal flaky/failing specs from a Playwright report
-npx e2e-ai-agents heal --path /path/to/webapp --traceability-report ./playwright-report.json
+npx e2e-ai-agents heal --path /path/to/project --traceability-report ./playwright-report.json
 
 # Stage generated tests, commit, and open a PR
-npx e2e-ai-agents finalize-generated-tests --path /path/to/webapp --create-pr
+npx e2e-ai-agents finalize-generated-tests --path /path/to/project --create-pr
 
 # Ingest test execution data for traceability
-npx e2e-ai-agents traceability-capture --path /path/to/webapp --traceability-report ./playwright-report.json
-npx e2e-ai-agents traceability-ingest --path /path/to/webapp --traceability-input ./traceability-input.json
+npx e2e-ai-agents traceability-capture --path /path/to/project --traceability-report ./playwright-report.json
+npx e2e-ai-agents traceability-ingest --path /path/to/project --traceability-input ./traceability-input.json
 
 # Ingest recommendation feedback for calibration
-npx e2e-ai-agents feedback --path /path/to/webapp --feedback-input ./feedback.json
+npx e2e-ai-agents feedback --path /path/to/project --feedback-input ./feedback.json
 
 # Test LLM provider connectivity
 npx e2e-ai-agents llm-health
@@ -60,16 +60,16 @@ Route-families map your source files to features, test directories, and user flo
 
 ```bash
 # Scan your codebase + LLM enrichment (default)
-npx e2e-ai-agents train --path /path/to/webapp
+npx e2e-ai-agents train --path /path/to/project
 
 # Offline mode (no LLM, no API key needed)
-npx e2e-ai-agents train --path /path/to/webapp --no-enrich
+npx e2e-ai-agents train --path /path/to/project --no-enrich
 
 # Validate accuracy against recent git history
-npx e2e-ai-agents train --path /path/to/webapp --validate --since HEAD~50
+npx e2e-ai-agents train --path /path/to/project --validate --since HEAD~50
 
 # Full pipeline: scan + enrich + validate
-npx e2e-ai-agents train --path /path/to/webapp --validate --since HEAD~20
+npx e2e-ai-agents train --path /path/to/project --validate --since HEAD~20
 ```
 
 **Why LLM enrichment is on by default:** The manifest exists to give AI context for impact analysis, scenario suggestion, and bug detection. AI-generated context produces better AI reasoning downstream. Use `--no-enrich` for offline/free operation.
