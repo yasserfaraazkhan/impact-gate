@@ -63,7 +63,7 @@ interface FeedbackStore {
     entries: RecommendationFeedbackEntry[];
 }
 
-interface FlakySummary {
+export interface FlakySummary {
     schemaVersion: '1.1.0';
     generatedAt: string;
     tests: Array<{
@@ -377,4 +377,8 @@ export function appendFeedbackAndRecompute(
 
 export function readCalibration(appRoot: string): CalibrationSummary | null {
     return readJson<CalibrationSummary>(join(appRoot, '.e2e-ai-agents', 'calibration.json'));
+}
+
+export function readFlakyTests(appRoot: string): FlakySummary | null {
+    return readJson<FlakySummary>(join(appRoot, '.e2e-ai-agents', 'flaky-tests.json'));
 }
