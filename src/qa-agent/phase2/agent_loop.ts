@@ -95,6 +95,17 @@ function observe(browser: AgentBrowser): {snapshot: string; url: string} {
     return {snapshot, url};
 }
 
+/** Inject a console.error listener so we can retrieve errors later. */
+function injectConsoleErrorCapture(browser: AgentBrowser): void {
+    try {
+        browser.evaluateInternal(
+            'if(!window.__consoleErrors){window.__consoleErrors=[];const _ce=console.error;console.error=function(){window.__consoleErrors.push([...arguments].join(" "));_ce.apply(console,arguments)}}',
+        );
+    } catch {
+        // Injection not supported — degrade gracefully
+    }
+}
+
 function getConsoleErrors(browser: AgentBrowser): string[] {
     try {
         const raw = browser.evaluateInternal('JSON.stringify(window.__consoleErrors || [])');
@@ -130,11 +141,13 @@ export async function runAgentLoop(
 
     // Navigate to base URL
     browser.open(config.baseUrl);
+    injectConsoleErrorCapture(browser);
 
     // Pick first flow
     const firstFlow = nextFlow(state);
     if (firstFlow?.url) {
         browser.open(firstFlow.url.startsWith('http') ? firstFlow.url : `${config.baseUrl}${firstFlow.url}`);
+        injectConsoleErrorCapture(browser);
     }
     toolCtx.currentFlow = firstFlow?.id || '';
 
@@ -167,6 +180,7 @@ export async function runAgentLoop(
             if (!next) break;
             if (next.url) {
                 browser.open(next.url.startsWith('http') ? next.url : `${config.baseUrl}${next.url}`);
+                injectConsoleErrorCapture(browser);
             }
             toolCtx.currentFlow = next.id;
             // Reset recent actions on flow change
@@ -277,6 +291,7 @@ export async function runAgentLoop(
                 if (next) {
                     if (next.url) {
                         browser.open(next.url.startsWith('http') ? next.url : `${config.baseUrl}${next.url}`);
+                        injectConsoleErrorCapture(browser);
                     }
                     toolCtx.currentFlow = next.id;
                     state.recentActions = [];

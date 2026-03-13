@@ -80,7 +80,7 @@ export function compressActionsLog(state: ExplorationState, summaryText: string)
     if (state.actionsLog.length <= 20) return;
     const recent = state.actionsLog.slice(-10);
     const compressed: BrowserAction = {
-        type: 'snapshot',
+        type: 'compressed',
         value: `[Compressed ${state.actionsLog.length - 10} earlier actions] ${summaryText}`,
         timestamp: Date.now(),
     };

@@ -6,29 +6,9 @@ import {existsSync, readdirSync} from 'fs';
 import {join} from 'path';
 
 import {logger} from '../../logger.js';
+import {safeEnv} from '../safe_env.js';
 import type {Phase1Result, QAConfig, SpecResult} from '../types.js';
 import {resolveScope} from './scope.js';
-
-/** Build a minimal env for child processes — only forward what's needed. */
-function safeEnv(extra?: Record<string, string>): NodeJS.ProcessEnv {
-    const env: NodeJS.ProcessEnv = {
-        PATH: process.env.PATH,
-        HOME: process.env.HOME,
-        NODE_PATH: process.env.NODE_PATH,
-        ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-        OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-        LLM_PROVIDER: process.env.LLM_PROVIDER,
-        LOG_LEVEL: process.env.LOG_LEVEL,
-        // Node needs LANG/LC_ALL for proper string handling
-        LANG: process.env.LANG,
-        // npm/npx need these
-        npm_config_prefix: process.env.npm_config_prefix,
-        NVM_DIR: process.env.NVM_DIR,
-        NVM_BIN: process.env.NVM_BIN,
-    };
-    if (extra) Object.assign(env, extra);
-    return env;
-}
 
 export function runPhase1(config: QAConfig): Phase1Result {
     const {flows, specPaths} = resolveScope(config);

@@ -50,7 +50,7 @@ export function resolveScope(config: QAConfig): {flows: TargetFlow[]; specPaths:
 
         for (const f of allFlows) {
             const family = manifest?.families.find((fam) => fam.id === f.id);
-            const url = resolveUrlForFamily(family, config.baseUrl);
+            const url = resolveUrlForFamily(family);
             flows.push({
                 id: f.id,
                 name: f.name,
@@ -96,7 +96,7 @@ function resolveHuntScope(
                     id: family.id,
                     name: family.id,
                     priority: family.priority || 'P1',
-                    url: resolveUrlForFamily(family, ''),
+                    url: resolveUrlForFamily(family),
                 });
                 for (const dir of family.specDirs || []) {
                     const fullDir = join(testsRoot, dir);
@@ -130,7 +130,7 @@ function resolveReleaseScope(
                     id: family.id,
                     name: family.id,
                     priority: family.priority,
-                    url: resolveUrlForFamily(family, ''),
+                    url: resolveUrlForFamily(family),
                 });
                 for (const dir of family.specDirs || []) {
                     const fullDir = join(testsRoot, dir);
@@ -146,7 +146,7 @@ function resolveReleaseScope(
     return {flows, specPaths};
 }
 
-function resolveUrlForFamily(family: RouteFamily | undefined, _baseUrl: string): string | undefined {
+function resolveUrlForFamily(family: RouteFamily | undefined): string | undefined {
     if (!family || !family.routes || family.routes.length === 0) return undefined;
 
     // Take the first route pattern and substitute common placeholders

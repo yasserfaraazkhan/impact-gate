@@ -2,10 +2,16 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {resolve} from 'path';
+
 import type {QAConfig, RunMode, UserCredentials} from './types.js';
 import {runQAAgent} from './orchestrator.js';
 
 const MODES = new Set<RunMode>(['pr', 'hunt', 'fix', 'release']);
+const KNOWN_FLAGS = new Set([
+    '--base-url', '--since', '--phase', '--time', '--budget',
+    '--headed', '--tests-root', '--project', '--output', '--help', '-h',
+]);
 
 function printUsage(): void {
     console.log(`
@@ -115,7 +121,22 @@ function parseCliArgs(argv: string[]): QAConfig | null {
             outputDir = next;
             i++;
             break;
+        default:
+            if (arg.startsWith('--')) {
+                console.error(`Warning: unknown flag "${arg}" (ignored)`);
+            }
+            break;
         }
+    }
+
+    // Validate --since and hunt target against flag injection (must not start with -)
+    if (since && since.startsWith('-')) {
+        console.error(`Error: --since value "${since}" looks like a flag, not a git ref`);
+        process.exit(1);
+    }
+    if (huntTarget && huntTarget.startsWith('-')) {
+        console.error(`Error: hunt target "${huntTarget}" looks like a flag`);
+        process.exit(1);
     }
 
     if (!baseUrl) {
@@ -135,6 +156,16 @@ function parseCliArgs(argv: string[]): QAConfig | null {
     } catch {
         console.error(`Error: --base-url is not a valid URL ("${baseUrl}")`);
         process.exit(1);
+    }
+
+    // Validate --output stays within project directory
+    if (outputDir) {
+        const resolved = resolve(outputDir);
+        const cwd = process.cwd();
+        if (!resolved.startsWith(cwd)) {
+            console.error(`Error: --output "${outputDir}" resolves outside the project directory`);
+            process.exit(1);
+        }
     }
 
     return {

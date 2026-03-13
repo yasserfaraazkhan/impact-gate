@@ -52,7 +52,8 @@ export type BrowserActionType =
     | 'get_url'
     | 'get_title'
     | 'get_text'
-    | 'eval';
+    | 'eval'
+    | 'compressed';
 
 export interface BrowserAction {
     type: BrowserActionType;

@@ -1,6 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {execFileSync} from 'child_process';
 import {mkdirSync} from 'fs';
 
 import {logger} from '../logger.js';
@@ -34,6 +35,10 @@ export async function runQAAgent(inputConfig: QAConfig): Promise<QAReport> {
         phase1 = runPhase1(config);
     }
 
+    if (phase1.flows.length === 0 && phase1.specResults.length === 0 && !(config.phase && config.phase > 1)) {
+        logger.warn('Phase 1 produced no flows and no spec results — scoping may have failed. Check that route-families.json and plan.json are available.');
+    }
+
     logger.info('Phase 1 complete', {
         flows: phase1.flows.length,
         specResults: phase1.specResults.length,
@@ -51,6 +56,20 @@ export async function runQAAgent(inputConfig: QAConfig): Promise<QAReport> {
     // Phase 2: Autonomous exploration (LLM + agent-browser)
     // -----------------------------------------------------------------------
     logger.info('=== Phase 2: Autonomous Exploration ===');
+
+    // Verify agent-browser is available before starting the exploration loop
+    if (!(config.phase && config.phase > 2)) {
+        try {
+            execFileSync('agent-browser', ['--version'], {encoding: 'utf-8', timeout: 5_000});
+        } catch {
+            logger.error('agent-browser CLI not found. Install it (>= 0.18.0) or skip Phase 2 with --phase 1.');
+            const empty2 = emptyPhase2Result();
+            const verdict = computeVerdict(phase1, empty2);
+            const phase3 = generateReport(config, phase1, empty2, verdict, []);
+            return buildQAReport(config, phase1, empty2, phase3, verdict);
+        }
+    }
+
     let phase2: Phase2Result;
     if (config.phase && config.phase > 2) {
         phase2 = emptyPhase2Result();
