@@ -2,7 +2,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {resolve} from 'path';
+import {resolve, sep} from 'path';
 
 import type {QAConfig, RunMode, UserCredentials} from './types.js';
 import {runQAAgent} from './orchestrator.js';
@@ -98,14 +98,26 @@ function parseCliArgs(argv: string[]): QAConfig | null {
             i++;
             break;
         }
-        case '--time':
-            timeLimitMinutes = parseInt(next || '15', 10);
+        case '--time': {
+            const parsed = parseInt(next || '15', 10);
+            if (!Number.isFinite(parsed) || parsed <= 0) {
+                console.error(`Error: --time must be a positive number (got "${next}")`);
+                process.exit(1);
+            }
+            timeLimitMinutes = parsed;
             i++;
             break;
-        case '--budget':
-            budgetUSD = parseFloat(next || '2.0');
+        }
+        case '--budget': {
+            const parsed = parseFloat(next || '2.0');
+            if (!Number.isFinite(parsed) || parsed <= 0) {
+                console.error(`Error: --budget must be a positive number (got "${next}")`);
+                process.exit(1);
+            }
+            budgetUSD = parsed;
             i++;
             break;
+        }
         case '--headed':
             headed = true;
             break;
@@ -162,7 +174,8 @@ function parseCliArgs(argv: string[]): QAConfig | null {
     if (outputDir) {
         const resolved = resolve(outputDir);
         const cwd = process.cwd();
-        if (!resolved.startsWith(cwd)) {
+        const normalizedCwd = cwd.endsWith(sep) ? cwd : cwd + sep;
+        if (resolved !== cwd && !resolved.startsWith(normalizedCwd)) {
             console.error(`Error: --output "${outputDir}" resolves outside the project directory`);
             process.exit(1);
         }

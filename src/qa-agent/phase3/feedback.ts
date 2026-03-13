@@ -23,7 +23,15 @@ export function submitFeedback(config: QAConfig): void {
         env: safeEnv(),
     });
 
-    if (result.status !== 0) {
+    if (result.error) {
+        logger.warn('Feedback submission spawn failed', {
+            error: result.error.message,
+        });
+    } else if (result.signal) {
+        logger.warn('Feedback submission killed by signal', {
+            signal: result.signal,
+        });
+    } else if (result.status !== 0) {
         logger.warn('Feedback submission failed', {
             status: result.status,
             stderr: (result.stderr || '').slice(0, 200),
