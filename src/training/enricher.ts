@@ -254,8 +254,15 @@ export async function enrichFamilies(
 
         let prompt = buildEnrichPrompt(scannedChunk, projectRoot);
         if (prompt.length > MAX_PROMPT_CHARS) {
-            console.warn(`[train] Prompt truncated from ${prompt.length} to ${MAX_PROMPT_CHARS} chars`);
-            prompt = prompt.slice(0, MAX_PROMPT_CHARS);
+            // Truncate at the last complete section boundary to avoid malformed input
+            const lastSectionEnd = prompt.lastIndexOf('\n---\n', MAX_PROMPT_CHARS);
+            if (lastSectionEnd > 0) {
+                console.warn(`[train] Prompt truncated from ${prompt.length} chars at section boundary`);
+                prompt = prompt.slice(0, lastSectionEnd);
+            } else {
+                console.warn(`[train] Prompt truncated from ${prompt.length} to ${MAX_PROMPT_CHARS} chars`);
+                prompt = prompt.slice(0, MAX_PROMPT_CHARS);
+            }
         }
 
         let timer: ReturnType<typeof setTimeout> | undefined;
