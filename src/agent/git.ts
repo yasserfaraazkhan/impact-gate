@@ -15,6 +15,7 @@ const IGNORED_DIR_SEGMENTS = [
     '__tests__',
     '__mocks__',
     'testlib',
+    'scripts',
 ];
 
 // Exact filenames (basename) that are never relevant.
@@ -38,6 +39,11 @@ const IGNORED_BASENAMES = new Set([
     'jest.config.js',
     'jest.config.ts',
     'babel.config.js',
+    'webpack.config.js',
+    'Makefile',
+    'config.mk',
+    'go.mod',
+    'go.sum',
 ]);
 
 // Extensions that are never source code.
@@ -47,6 +53,8 @@ const IGNORED_EXTENSIONS = new Set([
     '.lock',
     '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico',
     '.woff', '.woff2', '.ttf', '.eot',
+    '.yml', '.yaml',
+    '.sh',
 ]);
 
 // File patterns that indicate test/spec files (not production code).
@@ -55,6 +63,7 @@ const TEST_FILE_PATTERNS = [
     /\.test\.[tj]sx?$/,
     /_test\.go$/,
     /\.stories\.[tj]sx?$/,
+    /\.d\.ts$/,
 ];
 
 // Config file patterns that are not production source code.
