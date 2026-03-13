@@ -4,7 +4,7 @@
 
 import {resolve, sep} from 'path';
 
-import type {QAConfig, RunMode, UserCredentials} from './types.js';
+import type {QAConfig, RunMode} from './types.js';
 import {runQAAgent} from './orchestrator.js';
 
 const MODES = new Set<RunMode>(['pr', 'hunt', 'fix', 'release']);
@@ -134,7 +134,7 @@ function parseCliArgs(argv: string[]): QAConfig | null {
             i++;
             break;
         default:
-            if (arg.startsWith('--')) {
+            if (arg.startsWith('--') && !KNOWN_FLAGS.has(arg)) {
                 console.error(`Warning: unknown flag "${arg}" (ignored)`);
             }
             break;

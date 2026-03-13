@@ -70,6 +70,7 @@ function runE2eAgentsCli(config: QAConfig): void {
         env: safeEnv(),
     });
 
+    // Exit code 2 = "no changes detected" from e2e-agents CLI, not an error
     if (result.status !== 0 && result.status !== 2) {
         logger.warn('e2e-agents exited with non-zero status', {
             status: result.status,

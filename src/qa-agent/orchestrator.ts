@@ -45,11 +45,7 @@ export async function runQAAgent(inputConfig: QAConfig): Promise<QAReport> {
     });
 
     if (config.phase === 1) {
-        // Phase 1 only — generate a minimal report
-        const empty2 = emptyPhase2Result();
-        const verdict = computeVerdict(phase1, empty2);
-        const phase3 = generateReport(config, phase1, empty2, verdict, []);
-        return buildQAReport(config, phase1, empty2, phase3, verdict);
+        return earlyReturn(config, phase1);
     }
 
     // -----------------------------------------------------------------------
@@ -63,10 +59,7 @@ export async function runQAAgent(inputConfig: QAConfig): Promise<QAReport> {
             execFileSync('agent-browser', ['--version'], {encoding: 'utf-8', timeout: 5_000});
         } catch {
             logger.error('agent-browser CLI not found. Install it (>= 0.18.0) or skip Phase 2 with --phase 1.');
-            const empty2 = emptyPhase2Result();
-            const verdict = computeVerdict(phase1, empty2);
-            const phase3 = generateReport(config, phase1, empty2, verdict, []);
-            return buildQAReport(config, phase1, empty2, phase3, verdict);
+            return earlyReturn(config, phase1);
         }
     }
 
@@ -93,9 +86,7 @@ export async function runQAAgent(inputConfig: QAConfig): Promise<QAReport> {
     });
 
     if (config.phase === 2) {
-        const verdict = computeVerdict(phase1, phase2);
-        const phase3 = generateReport(config, phase1, phase2, verdict, []);
-        return buildQAReport(config, phase1, phase2, phase3, verdict);
+        return earlyReturn(config, phase1, phase2);
     }
 
     // -----------------------------------------------------------------------
@@ -123,6 +114,13 @@ export async function runQAAgent(inputConfig: QAConfig): Promise<QAReport> {
     logger.info(verdict.reason);
 
     return buildQAReport(config, phase1, phase2, phase3, verdict);
+}
+
+function earlyReturn(config: QAConfig, phase1: Phase1Result, phase2?: Phase2Result): QAReport {
+    const p2 = phase2 || emptyPhase2Result();
+    const verdict = computeVerdict(phase1, p2);
+    const phase3 = generateReport(config, phase1, p2, verdict, []);
+    return buildQAReport(config, phase1, p2, phase3, verdict);
 }
 
 function buildQAReport(

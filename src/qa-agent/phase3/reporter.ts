@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {mkdirSync, writeFileSync} from 'fs';
-import {dirname, join} from 'path';
+import {join} from 'path';
 
 import type {Phase1Result, Phase2Result, Phase3Result, QAConfig, QAReport, ReleaseVerdict} from '../types.js';
 

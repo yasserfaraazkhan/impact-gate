@@ -62,14 +62,6 @@ export interface BrowserAction {
     timestamp: number;
 }
 
-export interface Observation {
-    url: string;
-    title: string;
-    snapshot: string;
-    consoleErrors: string[];
-    timestamp: number;
-}
-
 // ---------------------------------------------------------------------------
 // Findings
 // ---------------------------------------------------------------------------

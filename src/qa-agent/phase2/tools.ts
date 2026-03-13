@@ -160,6 +160,7 @@ export interface ToolResult {
     output: string;
     finding?: Finding;
     flowDone?: {flowId: string; status: 'verified-ok' | 'has-issues'};
+    navigated?: boolean;
 }
 
 export function executeTool(
@@ -177,7 +178,7 @@ export function executeTool(
         }
         const output = ctx.browser.open(fullUrl);
         ctx.currentUrl = ctx.browser.getUrl();
-        return {output: output || `Navigated to ${ctx.currentUrl}`};
+        return {output: output || `Navigated to ${ctx.currentUrl}`, navigated: true};
     }
 
     case 'click': {
@@ -247,7 +248,7 @@ export function executeTool(
             flow: ctx.currentFlow,
             evidence: {
                 url: ctx.currentUrl,
-                reproSteps: input.repro_steps as string[],
+                reproSteps: (input.repro_steps as unknown[]).map(String),
             },
             timestamp: Date.now(),
         };
@@ -301,11 +302,11 @@ function isAllowedUrl(url: string, baseUrl: string): boolean {
     const scheme = url.split(':')[0]?.toLowerCase();
     if (scheme && !['http', 'https'].includes(scheme)) return false;
 
-    // Parse both URLs and compare origins
+    // Parse both URLs and compare origins (hostname + port)
     try {
         const target = new URL(url);
         const base = new URL(baseUrl);
-        return target.hostname === base.hostname;
+        return target.origin === base.origin;
     } catch {
         // If URL parsing fails, only allow relative paths (already prefixed with baseUrl)
         return url.startsWith(baseUrl);

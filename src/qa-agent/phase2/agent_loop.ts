@@ -279,6 +279,11 @@ export async function runAgentLoop(
             };
             recordAction(state, action);
 
+            // Re-inject console capture after navigation
+            if (result.navigated) {
+                injectConsoleErrorCapture(browser);
+            }
+
             // Handle findings
             if (result.finding) {
                 recordFinding(state, result.finding);
