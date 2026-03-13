@@ -50,7 +50,7 @@ export interface RouteFamilyConfig {
 
 const manifestCache = new Map<string, {mtimeMs: number; manifest: RouteFamilyManifest | null}>();
 
-function matchesGlob(filePath: string, pattern: string): boolean {
+export function matchesGlob(filePath: string, pattern: string): boolean {
     const normalized = filePath.replace(/\\/g, '/');
     const parts = pattern.replace(/\\/g, '/').split('*');
 
@@ -76,7 +76,7 @@ function matchesGlob(filePath: string, pattern: string): boolean {
     return true;
 }
 
-function matchesAnyPattern(filePath: string, patterns: string[]): boolean {
+export function matchesAnyPattern(filePath: string, patterns: string[]): boolean {
     return patterns.some((pattern) => matchesGlob(filePath, pattern));
 }
 
