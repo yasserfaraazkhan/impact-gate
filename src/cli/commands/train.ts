@@ -69,8 +69,11 @@ function resolveTrainOptions(args: ParsedArgs, autoConfig?: string): TrainOption
         throw new TrainError(`Invalid git ref: ${since}`);
     }
 
-    // Validate budget upper bound
+    // Validate budget bounds
     const budget = args.budgetUSD || 0.50;
+    if (budget <= 0) {
+        throw new TrainError('--budget-usd must be a positive number');
+    }
     if (budget > MAX_BUDGET_USD) {
         throw new TrainError(`Budget exceeds maximum of $${MAX_BUDGET_USD}. Use a lower --budget-usd value.`);
     }
@@ -173,7 +176,7 @@ export async function runTrainCommand(args: ParsedArgs, autoConfig?: string): Pr
                 console.log(`    ${id} — paths no longer exist`);
             }
 
-            if (!opts.yes && !opts.dryRun) {
+            if (!opts.yes && !opts.dryRun && process.stdin.isTTY) {
                 const rl = readline.createInterface({input: process.stdin, output: process.stdout});
                 try {
                     const answer = await ask(rl, '  Remove stale families? [y/N]', 'N');

@@ -13,6 +13,7 @@ import type {EnrichmentResult, ScannedFamily} from './types.js';
 const MAX_FILES_PER_FAMILY = 20;
 const MAX_LINES_PER_FILE = 50;
 const LLM_TIMEOUT_MS = 60_000;
+const MAX_PROMPT_CHARS = 100_000;
 
 const SENSITIVE_PATTERNS = [
     /[._]env/, /secret/i, /credential/i, /\.pem$/, /\.key$/, /password/i,
@@ -51,7 +52,7 @@ function sampleFiles(dir: string, maxFiles: number): Array<{path: string; conten
                         walk(full, depth + 1, maxDepth);
                     } else if (lstat.isFile() && lstat.size < 50000) {
                         const ext = entry.slice(entry.lastIndexOf('.'));
-                        if (['.ts', '.tsx', '.js', '.jsx', '.go', '.py'].includes(ext)) {
+                        if (['.ts', '.tsx', '.js', '.jsx', '.go', '.py', '.rs'].includes(ext)) {
                             const content = readFileSync(full, 'utf-8');
                             const lines = content.split('\n').slice(0, MAX_LINES_PER_FILE).join('\n');
                             files.push({path: full, content: lines});
@@ -77,6 +78,7 @@ function buildEnrichPrompt(families: ScannedFamily[], projectRoot: string): stri
 
         const samples: Array<{path: string; content: string}> = [];
         for (const dir of allDirs) {
+            if (!dir) continue;
             const fullDir = join(resolve(projectRoot), dir);
             samples.push(...sampleFiles(fullDir, MAX_FILES_PER_FAMILY - samples.length));
             if (samples.length >= MAX_FILES_PER_FAMILY) break;
@@ -250,10 +252,14 @@ export async function enrichFamilies(
             continue;
         }
 
-        const prompt = buildEnrichPrompt(scannedChunk, projectRoot);
+        let prompt = buildEnrichPrompt(scannedChunk, projectRoot);
+        if (prompt.length > MAX_PROMPT_CHARS) {
+            console.warn(`[train] Prompt truncated from ${prompt.length} to ${MAX_PROMPT_CHARS} chars`);
+            prompt = prompt.slice(0, MAX_PROMPT_CHARS);
+        }
 
+        let timer: ReturnType<typeof setTimeout> | undefined;
         try {
-            let timer: ReturnType<typeof setTimeout>;
             const timeoutPromise = new Promise<never>((_, reject) => {
                 timer = setTimeout(() => reject(new Error('LLM request timed out')), LLM_TIMEOUT_MS);
             });
@@ -261,10 +267,9 @@ export async function enrichFamilies(
                 provider.generateText(prompt, {maxTokens: 4096, temperature: 0.3}),
                 timeoutPromise,
             ]);
-            clearTimeout(timer!);
 
-            totalTokens += (response.usage?.inputTokens || 0) + (response.usage?.outputTokens || 0);
-            totalCost += response.cost || 0;
+            totalTokens += (response.usage?.inputTokens ?? 0) + (response.usage?.outputTokens ?? 0);
+            totalCost += response.cost ?? 0;
 
             const entries = parseEnrichResponse(response.text);
             const entryMap = new Map(entries.map((e) => [e.id, e]));
@@ -281,6 +286,8 @@ export async function enrichFamilies(
             // On LLM failure, keep families unchanged
             console.warn(`[train] LLM enrichment failed for chunk: ${error instanceof Error ? error.message : String(error)}`);
             enriched.push(...chunk);
+        } finally {
+            if (timer) clearTimeout(timer);
         }
     }
 

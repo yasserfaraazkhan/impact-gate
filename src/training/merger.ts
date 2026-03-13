@@ -114,7 +114,7 @@ export function mergeFamilies(
     if (parts.length === 0) parts.push('no changes');
 
     return {
-        manifest: {families: mergedFamilies, source: existing?.source || ''},
+        manifest: {families: mergedFamilies, source: existing?.source || 'train-scan'},
         newFamilies,
         updatedFamilies,
         staleFamilies: [],
