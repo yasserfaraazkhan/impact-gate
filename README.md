@@ -54,6 +54,37 @@ npx e2e-ai-agents llm-health
 
 `plan` and `suggest` are aliases. `analyze` is a convenience wrapper that runs impact + plan and optionally generation/healing in one invocation. Use `--help` for all available flags.
 
+## Route-Families Training
+
+Route-families map your source files to features, test directories, and user flows. They are the context that powers accurate impact analysis. The `train` command bootstraps and maintains this manifest.
+
+```bash
+# Scan your codebase + LLM enrichment (default)
+npx e2e-ai-agents train --path /path/to/webapp
+
+# Offline mode (no LLM, no API key needed)
+npx e2e-ai-agents train --path /path/to/webapp --no-enrich
+
+# Validate accuracy against recent git history
+npx e2e-ai-agents train --path /path/to/webapp --validate --since HEAD~50
+
+# Full pipeline: scan + enrich + validate
+npx e2e-ai-agents train --path /path/to/webapp --validate --since HEAD~20
+```
+
+**Why LLM enrichment is on by default:** The manifest exists to give AI context for impact analysis, scenario suggestion, and bug detection. AI-generated context produces better AI reasoning downstream. Use `--no-enrich` for offline/free operation.
+
+**Training loop:** Run `train` → review the generated `route-families.json` → run `train --validate` to check coverage % → fix gaps → repeat until 95%+.
+
+The `train` command:
+1. **Scans** your project structure (frontend `src/`, backend `server/`, test dirs)
+2. **Matches** source directories to test directories by name
+3. **Enriches** with LLM (priority, user flows, routes, components)
+4. **Merges** intelligently with any existing manifest (preserves human curation)
+5. **Validates** against git history to measure accuracy
+
+Output is written to `<testsRoot>/.e2e-ai-agents/route-families.json`.
+
 ## Configuration
 
 Create `e2e-ai-agents.config.json` in your project (auto-discovered):

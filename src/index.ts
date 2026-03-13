@@ -94,3 +94,13 @@ export type {PlanReport} from './agent/plan.js';
 export {runAgenticGeneration} from './agentic/runner.js';
 export type {ScenarioInput, AgenticRunOptions} from './agentic/runner.js';
 export type {AgenticConfig, AgenticResult, AgenticSummary, PlaywrightRunResult, TestFailure} from './agentic/types.js';
+
+// Training (route-families bootstrap and maintenance)
+export {scanProject} from './training/scanner.js';
+export {mergeFamilies, detectStaleFamilies} from './training/merger.js';
+export {enrichFamilies} from './training/enricher.js';
+export {getCommitFiles, validateCommit, buildValidationReport, formatValidationReport} from './training/validator.js';
+export type {
+    ScanResult, ScannedFamily, ScannedFeature, DiscoveredDir,
+    EnrichmentResult, ValidationReport, CommitValidation, MergeResult, TrainOptions,
+} from './training/types.js';
