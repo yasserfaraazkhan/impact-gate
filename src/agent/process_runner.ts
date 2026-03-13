@@ -28,12 +28,12 @@ export function summarizeCommandOutput(stdout: string, stderr: string): string {
     return lines.join('\n').slice(0, 2000);
 }
 
-export function runCommand(command: string, args: string[], cwd: string, timeoutMs = 60 * 60 * 1000): CommandResult {
+export function runCommand(command: string, args: string[], cwd: string, timeoutMs = 60 * 60 * 1000, envOverride?: NodeJS.ProcessEnv): CommandResult {
     // When spawning `claude`, unset CLAUDECODE so nested invocations are allowed.
     // Claude Code sets this variable to block nested sessions; child processes
     // that spawn their own claude instance must run without it.
-    let env: NodeJS.ProcessEnv | undefined;
-    if (command === 'claude') {
+    let env: NodeJS.ProcessEnv | undefined = envOverride;
+    if (!env && command === 'claude') {
         const {CLAUDECODE: _, ...rest} = process.env;
         env = rest;
     }

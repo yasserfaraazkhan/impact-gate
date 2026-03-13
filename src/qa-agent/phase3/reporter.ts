@@ -113,16 +113,46 @@ function renderMarkdown(report: QAReport): string {
     if (report.phase2.findings.length > 0) {
         lines.push(`## Findings`, '');
         for (const f of report.phase2.findings) {
-            lines.push(`### [${f.severity.toUpperCase()}] ${f.summary}`);
+            const dupNote = f.duplicateCount && f.duplicateCount > 1
+                ? ` (seen ${f.duplicateCount} times)`
+                : '';
+            lines.push(`### [${f.severity.toUpperCase()}] ${f.summary}${dupNote}`);
             lines.push('');
             lines.push(`- **Type:** ${f.type}`);
             lines.push(`- **Flow:** ${f.flow}`);
             lines.push(`- **URL:** ${f.evidence.url}`);
-            if (f.evidence.screenshotPath) {
-                lines.push(`- **Screenshot:** ${f.evidence.screenshotPath}`);
+
+            // Expected vs actual behavior
+            if (f.evidence.expectedBehavior || f.evidence.actualBehavior) {
+                const escapePipe = (s: string) => s.replace(/\|/g, '\\|');
+                lines.push('');
+                lines.push(`| Expected | Actual |`);
+                lines.push(`|----------|--------|`);
+                lines.push(`| ${escapePipe(f.evidence.expectedBehavior || '—')} | ${escapePipe(f.evidence.actualBehavior || '—')} |`);
+                lines.push('');
             }
+
+            // Screenshot evidence (inline images)
+            if (f.evidence.screenshotRefs && f.evidence.screenshotRefs.length > 0) {
+                for (const ref of f.evidence.screenshotRefs) {
+                    lines.push(`![Evidence](${ref})`);
+                }
+            } else if (f.evidence.screenshotPath) {
+                lines.push(`![Evidence](${f.evidence.screenshotPath})`);
+            }
+
+            // Console errors
+            if (f.evidence.consoleErrors && f.evidence.consoleErrors.length > 0) {
+                lines.push('');
+                lines.push('**Console errors:**');
+                for (const err of f.evidence.consoleErrors.slice(0, 5)) {
+                    lines.push(`- \`${err.replace(/`/g, '\\`')}\``);
+                }
+            }
+
             if (f.evidence.reproSteps.length > 0) {
-                lines.push('- **Repro steps:**');
+                lines.push('');
+                lines.push('**Repro steps:**');
                 for (const step of f.evidence.reproSteps) {
                     lines.push(`  1. ${step}`);
                 }

@@ -379,6 +379,90 @@ export function readCalibration(appRoot: string): CalibrationSummary | null {
     return readJson<CalibrationSummary>(join(appRoot, '.e2e-ai-agents', 'calibration.json'));
 }
 
+export interface AdaptiveThresholds {
+    minConfidenceForTargeted: number;
+    safeMergeMinConfidence: number;
+    /** Subsystems that should always be included regardless of confidence */
+    alwaysIncludeSubsystems: string[];
+    /** Human-readable adjustment reasons for logging */
+    adjustmentReasons: string[];
+}
+
+const DEFAULT_MIN_CONFIDENCE = 60;
+const DEFAULT_SAFE_MERGE = 85;
+const MIN_CONFIDENCE_FLOOR = 40;
+const MIN_CONFIDENCE_CEILING = 80;
+
+/**
+ * Compute adaptive thresholds based on calibration data.
+ * - If recent recall < 0.8: lower minConfidence (catch more escapes)
+ * - If recent precision > 0.9: raise minConfidence (fewer unnecessary tests)
+ * - Per-subsystem: if falseNegativeRate > 0.3 in 30d, always include tests
+ * Returns defaults if no calibration data exists.
+ */
+export function getAdaptiveThresholds(appRoot: string): AdaptiveThresholds {
+    const calibration = readCalibration(appRoot);
+    const reasons: string[] = [];
+    const alwaysInclude: string[] = [];
+
+    if (!calibration || calibration.samples === 0) {
+        return {
+            minConfidenceForTargeted: DEFAULT_MIN_CONFIDENCE,
+            safeMergeMinConfidence: DEFAULT_SAFE_MERGE,
+            alwaysIncludeSubsystems: [],
+            adjustmentReasons: ['No calibration data — using defaults'],
+        };
+    }
+
+    let minConfidence = DEFAULT_MIN_CONFIDENCE;
+    let safeMerge = DEFAULT_SAFE_MERGE;
+
+    // Adjust based on 7-day recall
+    if (calibration.recent7d.samples >= 3) {
+        if (calibration.recent7d.recall < 0.8) {
+            const adjustment = 10;
+            minConfidence -= adjustment;
+            safeMerge -= adjustment;
+            reasons.push(
+                `Lowering confidence threshold by ${adjustment} (7d recall: ${calibration.recent7d.recall.toFixed(2)})`,
+            );
+        } else if (calibration.recent7d.precision > 0.9) {
+            const adjustment = 5;
+            minConfidence += adjustment;
+            safeMerge += adjustment;
+            reasons.push(
+                `Raising confidence threshold by ${adjustment} (7d precision: ${calibration.recent7d.precision.toFixed(2)})`,
+            );
+        }
+    }
+
+    // Clamp to safe ranges
+    minConfidence = Math.max(MIN_CONFIDENCE_FLOOR, Math.min(MIN_CONFIDENCE_CEILING, minConfidence));
+    safeMerge = Math.max(70, Math.min(95, safeMerge));
+
+    // Per-subsystem blind spot detection (30-day window)
+    for (const [subsystem, metrics] of Object.entries(calibration.bySubsystem)) {
+        const recent = metrics.recent30d;
+        if (recent.samples >= 3 && recent.falseNegativeRate > 0.3) {
+            alwaysInclude.push(subsystem);
+            reasons.push(
+                `Always including ${subsystem} tests (30d false-negative rate: ${recent.falseNegativeRate.toFixed(2)})`,
+            );
+        }
+    }
+
+    if (reasons.length === 0) {
+        reasons.push('Calibration data within normal range — using defaults');
+    }
+
+    return {
+        minConfidenceForTargeted: minConfidence,
+        safeMergeMinConfidence: safeMerge,
+        alwaysIncludeSubsystems: alwaysInclude,
+        adjustmentReasons: reasons,
+    };
+}
+
 export function readFlakyTests(appRoot: string): FlakySummary | null {
     return readJson<FlakySummary>(join(appRoot, '.e2e-ai-agents', 'flaky-tests.json'));
 }

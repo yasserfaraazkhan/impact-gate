@@ -16,6 +16,7 @@ export function createExplorationState(
         flowsExplored: [],
         currentFlow: null,
         findings: [],
+        findingDedupIndex: {},
         actionsLog: [],
         recentActions: [],
         tokensUsed: 0,
@@ -34,7 +35,28 @@ export function recordAction(state: ExplorationState, action: BrowserAction): vo
     }
 }
 
+/**
+ * Hash a finding on (type + severity + normalizedSummary + urlPattern) for dedup.
+ */
+function findingDedupKey(finding: Finding): string {
+    // Normalize: lowercase, collapse whitespace, strip trailing punctuation
+    const normalizedSummary = finding.summary.toLowerCase().replace(/\s+/g, ' ').replace(/[.!?]+$/, '').trim();
+    // Extract URL pattern: strip query params and hash, replace path segments that look like IDs
+    const urlPattern = finding.evidence.url
+        .replace(/[?#].*$/, '')
+        .replace(/\/[a-z0-9]{20,}/gi, '/{id}')
+        .replace(/\/\d{2,}/g, '/{id}');
+    return `${finding.type}|${finding.severity}|${normalizedSummary}|${urlPattern}`;
+}
+
 export function recordFinding(state: ExplorationState, finding: Finding): void {
+    const key = findingDedupKey(finding);
+    const existingIdx = state.findingDedupIndex[key];
+    if (existingIdx !== undefined && existingIdx < state.findings.length) {
+        state.findings[existingIdx].duplicateCount = (state.findings[existingIdx].duplicateCount || 1) + 1;
+        return;
+    }
+    state.findingDedupIndex[key] = state.findings.length;
     state.findings.push(finding);
 }
 

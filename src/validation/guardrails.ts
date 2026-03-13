@@ -120,3 +120,7 @@ export function computeOverallConfidence(
     const avgConfidence = actionable.reduce((sum, d) => sum + d.confidence, 0) / actionable.length;
     return classifyConfidence(avgConfidence);
 }
+
+// Re-export spec verification from its new home in the pipeline layer
+export type {CompileCheckResult, SmokeRunResult} from '../pipeline/spec_verifier.js';
+export {compileCheckSpec, smokeRunSpec} from '../pipeline/spec_verifier.js';

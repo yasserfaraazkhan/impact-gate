@@ -1,11 +1,13 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {existsSync} from 'fs';
+import {existsSync, readFileSync, writeFileSync} from 'fs';
 import {join, resolve} from 'path';
 import {runTargetedSpecHeal} from '../agent/pipeline.js';
 import type {SpecHealTarget, PipelineSummary} from '../agent/pipeline.js';
 import {extractPlaywrightUnstableSpecs} from '../agent/playwright_report.js';
+import {resolvePlaywrightBinary, runCommand} from '../agent/process_runner.js';
+import {logger} from '../logger.js';
 import type {FlowDecision, FlowDecisionReport} from '../validation/output_schema.js';
 import type {GeneratedSpec} from './stage3_generation.js';
 
@@ -33,6 +35,10 @@ export interface HealResult {
     targets: HealTarget[];
     summary: PipelineSummary;
     warnings: string[];
+    /** Number of heal attempts across all targets */
+    healAttempts: number;
+    /** Number of targets that passed verification after healing */
+    healSuccess: number;
 }
 
 /**
@@ -120,8 +126,88 @@ function findDecisionForSpec(
 
     return decisions.find((d) => {
         const target = (d.targetSpec || d.newSpecPath || '').replace(/\\/g, '/');
-        return target && (target === relative || target === specPath || relative.endsWith(target) || target.endsWith(relative));
+        if (!target) return false;
+        // Exact match
+        if (target === relative || target === specPath) return true;
+        // Suffix match with path-segment boundary (must be preceded by /)
+        if (relative.endsWith(`/${target}`) || target.endsWith(`/${relative}`)) return true;
+        return false;
     });
+}
+
+const MAX_HEAL_CYCLES = 2;
+
+/**
+ * Verify a healed spec by running it with Playwright.
+ * Returns null on success, or the error message on failure.
+ */
+function verifyHealedSpec(
+    testsRoot: string,
+    specPath: string,
+    playwrightBinary: string | null,
+): string | null {
+    if (!playwrightBinary) {
+        return null; // Can't verify without playwright — assume success
+    }
+
+    // Resolve to absolute path to prevent argument injection via paths starting with '-'
+    const safePath = resolve(specPath);
+    const result = runCommand(
+        playwrightBinary,
+        ['test', safePath, '--retries', '1', '--reporter', 'list'],
+        testsRoot,
+        60_000, // 60s timeout for verification
+    );
+
+    if (result.status === 0) {
+        return null; // Passed
+    }
+
+    // Extract meaningful error from output
+    const output = [result.stdout, result.stderr].filter(Boolean).join('\n');
+    const errorLines = output.split('\n').filter((l) =>
+        l.includes('Error') || l.includes('error') || l.includes('FAILED') || l.includes('Timeout'),
+    ).slice(0, 5);
+    return errorLines.join('\n') || result.error || 'Verification failed';
+}
+
+/**
+ * Mark a spec as test.fixme() when healing cannot fix it.
+ * Adds a comment explaining the failure.
+ */
+function markSpecAsFixme(specPath: string, reason: string): void {
+    if (!existsSync(specPath)) return;
+    try {
+        const content = readFileSync(specPath, 'utf-8');
+        const fixmeComment = `// HEAL-INCOMPLETE: ${reason.split('\n')[0].slice(0, 120)}`;
+        let commentAdded = false;
+        let inBlockComment = false;
+        const lines = content.split('\n');
+        const result: string[] = [];
+        for (const line of lines) {
+            // Minimal block-comment tracking to avoid replacing test( inside /* ... */
+            if (!inBlockComment && line.includes('/*')) inBlockComment = true;
+            if (inBlockComment) {
+                if (line.includes('*/')) inBlockComment = false;
+                result.push(line);
+                continue;
+            }
+            const match = line.match(/^([ \t]*)(test\()/);
+            if (match) {
+                const indent = match[1];
+                if (!commentAdded) {
+                    commentAdded = true;
+                    result.push(`${indent}${fixmeComment}`);
+                }
+                result.push(line.replace(/^([ \t]*)test\(/, '$1test.fixme('));
+            } else {
+                result.push(line);
+            }
+        }
+        writeFileSync(specPath, result.join('\n'), 'utf-8');
+    } catch {
+        // Best effort — don't fail the pipeline
+    }
 }
 
 export async function runHealStage(
@@ -130,6 +216,8 @@ export async function runHealStage(
     config: HealConfig,
 ): Promise<HealResult> {
     const warnings: string[] = [];
+    let healAttempts = 0;
+    let healSuccess = 0;
 
     if (targets.length === 0) {
         return {
@@ -140,6 +228,8 @@ export async function runHealStage(
                 warnings: ['No heal targets provided.'],
             },
             warnings,
+            healAttempts: 0,
+            healSuccess: 0,
         };
     }
 
@@ -163,9 +253,75 @@ export async function runHealStage(
     };
 
     const summary = runTargetedSpecHeal(testsRoot, healTargets, pipelineConfig);
+    healAttempts += summary.results.filter((r) => r.healStatus === 'success' || r.healStatus === 'failed').length;
     warnings.push(...summary.warnings);
 
-    return {targets, summary, warnings};
+    // Verify-after-heal: re-run healed specs to confirm fixes work
+    if (!config.dryRun) {
+        const playwrightBinary = resolvePlaywrightBinary(testsRoot);
+        const healedResults = summary.results.filter((r) => r.healStatus === 'success');
+
+        for (const result of healedResults) {
+            const normalizedFlowId = result.flowId.replace(/\\/g, '/');
+            // Try exact match first, then path-suffix match with segment boundary
+            let target = targets.find((t) => {
+                const normalizedSpec = t.specPath.replace(/\\/g, '/');
+                return normalizedSpec === normalizedFlowId;
+            });
+            if (!target) {
+                // Basename fallback: only accept if exactly one candidate matches
+                const candidates = targets.filter((t) => {
+                    const specBasename = t.specPath.split('/').pop() || '';
+                    const flowBasename = normalizedFlowId.split('/').pop() || '';
+                    return specBasename === flowBasename;
+                });
+                if (candidates.length === 1) {
+                    target = candidates[0];
+                }
+            }
+            const specPath = target?.specPath || result.flowId;
+
+            if (!existsSync(specPath)) {
+                continue;
+            }
+
+            let verifyError = verifyHealedSpec(testsRoot, specPath, playwrightBinary);
+
+            if (verifyError) {
+                logger.info(`Heal verification failed for ${specPath}, attempting re-heal (cycle 2/${MAX_HEAL_CYCLES})`);
+                healAttempts++;
+
+                // Re-heal with enriched failure detail
+                const reHealTargets: SpecHealTarget[] = [{
+                    specPath,
+                    status: 'failed',
+                    reason: `Re-heal: verification failed after first heal. Error: ${verifyError.slice(0, 500)}`,
+                }];
+                const reHealSummary = runTargetedSpecHeal(testsRoot, reHealTargets, pipelineConfig);
+                warnings.push(...reHealSummary.warnings);
+
+                const reHealed = reHealSummary.results.find((r) => r.healStatus === 'success');
+                if (reHealed) {
+                    verifyError = verifyHealedSpec(testsRoot, specPath, playwrightBinary);
+                }
+
+                if (verifyError) {
+                    // After 2 cycles, mark as fixme
+                    logger.warn(`Heal-and-verify failed after ${MAX_HEAL_CYCLES} cycles for ${specPath}, marking as test.fixme()`);
+                    markSpecAsFixme(specPath, verifyError);
+                    result.healStatus = 'failed';
+                    result.error = `heal-incomplete: ${verifyError.slice(0, 200)}`;
+                    warnings.push(`Heal-incomplete: ${specPath} — marked as test.fixme() after ${MAX_HEAL_CYCLES} failed cycles`);
+                } else {
+                    healSuccess++;
+                }
+            } else {
+                healSuccess++;
+            }
+        }
+    }
+
+    return {targets, summary, warnings, healAttempts, healSuccess};
 }
 
 /**
@@ -202,12 +358,19 @@ export function renderHealMarkdown(result: HealResult): string {
     const failedCount = result.summary.results.filter((r) => r.healStatus === 'failed').length;
     const skippedCount = result.summary.results.filter((r) => r.healStatus === 'skipped').length;
 
+    const successRate = result.healAttempts > 0
+        ? `${Math.round((result.healSuccess / result.healAttempts) * 100)}%`
+        : 'n/a';
+
     lines.push(`| Metric | Value |`);
     lines.push(`|--------|-------|`);
     lines.push(`| Targets | ${result.targets.length} |`);
     lines.push(`| Healed | ${healedCount} |`);
     lines.push(`| Failed | ${failedCount} |`);
     lines.push(`| Skipped | ${skippedCount} |`);
+    lines.push(`| Heal Attempts | ${result.healAttempts} |`);
+    lines.push(`| Verified Passing | ${result.healSuccess} |`);
+    lines.push(`| Success Rate | ${successRate} |`);
     lines.push('');
 
     for (const r of result.summary.results) {

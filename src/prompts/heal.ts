@@ -8,6 +8,8 @@ export interface HealPromptContext {
     status: 'failed' | 'flaky';
     decision?: FlowDecision;
     failureDetail?: string;
+    /** Last 3 console errors from the test run */
+    consoleErrors?: string[];
 }
 
 /**
@@ -36,12 +38,17 @@ export function buildHealPrompt(ctx: HealPromptContext): string {
         ? `\nFailure detail:\n${ctx.failureDetail}`
         : '';
 
+    const consoleBlock = ctx.consoleErrors && ctx.consoleErrors.length > 0
+        ? `\nRecent console errors from test run:\n${ctx.consoleErrors.slice(-3).map((e) => `  - ${e}`).join('\n')}`
+        : '';
+
     return [
         'Heal this specific Playwright test file and keep edits minimal.',
         '',
         `Target test file: ${ctx.specPath}`,
         `Status: ${ctx.status.toUpperCase()} — ${statusNote}`,
         failureBlock,
+        consoleBlock,
         flowBlock,
         '',
         'Healing constraints (must follow):',

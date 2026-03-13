@@ -4,6 +4,7 @@
 import {existsSync, mkdirSync, writeFileSync} from 'fs';
 import {join} from 'path';
 import {getChangedFiles} from '../agent/git.js';
+import {logger} from '../logger.js';
 import {preprocess, type PreprocessConfig} from './stage0_preprocess.js';
 import {runImpactStage, type ImpactConfig} from './stage1_impact.js';
 import {runCoverageStage, type CoverageConfig} from './stage2_coverage.js';

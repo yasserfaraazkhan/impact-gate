@@ -6,9 +6,11 @@ import {dirname, join} from 'path';
 import {minimatch} from 'minimatch';
 
 import type {PolicyConfig} from '../agent/config.js';
+import {inferSubsystemFromTestPath} from '../agent/test_path.js';
 import type {ImpactResult, ImpactedFeature} from './impact_engine.js';
 import {getGaps, getPartialGaps} from './impact_engine.js';
 import type {AIEnrichmentResult} from './ai_enrichment.js';
+import type {AdaptiveThresholds} from '../agent/feedback.js';
 
 // Re-use existing plan types for backward compatibility
 import type {
@@ -246,27 +248,42 @@ function evaluateEnforcement(decision: DecisionSummary, policy: PolicyConfig): P
 
 /**
  * Build recommended test list from impacted features' Playwright specs.
+ * When alwaysIncludeSubsystems is provided, specs from those subsystems are
+ * included regardless of their coverage status (blind-spot protection).
  */
-function buildRecommendedTests(impact: ImpactResult): string[] {
-    const tests: string[] = [];
+function buildRecommendedTests(impact: ImpactResult, alwaysIncludeSubsystems: string[] = []): string[] {
+    const tests = new Set<string>();
+    const alwaysSet = new Set(alwaysIncludeSubsystems);
     for (const feature of impact.impactedFeatures) {
-        if (feature.coverageStatus !== 'uncovered') {
+        const shouldInclude = feature.coverageStatus !== 'uncovered' ||
+            feature.playwrightSpecs.some((spec) => alwaysSet.has(inferSubsystemFromTestPath(spec)));
+        if (shouldInclude) {
             for (const spec of feature.playwrightSpecs) {
-                if (!tests.includes(spec)) {
-                    tests.push(spec);
-                }
+                tests.add(spec);
             }
         }
     }
-    return tests;
+    return [...tests];
 }
 
 export function buildPlanFromImpact(
     impact: ImpactResult,
     policyOverride?: Partial<PolicyConfig>,
     aiEnrichment?: AIEnrichmentResult,
+    adaptiveThresholds?: AdaptiveThresholds,
 ): PlanReport {
     const policy: PolicyConfig = {...DEFAULT_POLICY, ...(policyOverride || {})};
+
+    // Apply adaptive calibration overrides (if available and not explicitly overridden)
+    if (adaptiveThresholds && policyOverride?.minConfidenceForTargeted === undefined) {
+        policy.minConfidenceForTargeted = adaptiveThresholds.minConfidenceForTargeted;
+    }
+    if (adaptiveThresholds && policyOverride?.safeMergeMinConfidence === undefined) {
+        policy.safeMergeMinConfidence = adaptiveThresholds.safeMergeMinConfidence;
+    }
+    // Apply alwaysIncludeSubsystems: force their tests into the recommended set
+    const alwaysIncludeSubsystems = adaptiveThresholds?.alwaysIncludeSubsystems ?? [];
+
     const confidence = computeConfidence(impact);
     const runSetResult = pickRunSet(impact, confidence, policy);
     const decision = buildDecision(impact, runSetResult.runSet, confidence, policy);
@@ -360,7 +377,7 @@ export function buildPlanFromImpact(
             };
         });
 
-    const recommendedTests = buildRecommendedTests(impact);
+    const recommendedTests = buildRecommendedTests(impact, alwaysIncludeSubsystems);
     const requiredNewTests = gaps.map((f) => `${featureLabel(f)}: Add E2E tests`);
 
     const p0 = impact.impactedFeatures.filter((f) => f.priority === 'P0').length;

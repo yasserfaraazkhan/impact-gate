@@ -15,6 +15,7 @@ import {
     writePlanReport,
 } from './engine/plan_builder.js';
 import {getChangedFiles} from './agent/git.js';
+import {getAdaptiveThresholds} from './agent/feedback.js';
 import {loadDiffs} from './engine/diff_loader.js';
 import {enrichImpactWithAI, type AIEnrichmentResult} from './engine/ai_enrichment.js';
 import {AnthropicProvider} from './anthropic_provider.js';
@@ -111,7 +112,8 @@ export function recommendTestsDeterministic(options: AgentApiOptions = {}): Reco
         testsRoot: reportRoot,
         routeFamilies: config.routeFamilies,
     });
-    const plan = buildPlanFromImpact(impact, config.policy);
+    const adaptive = getAdaptiveThresholds(reportRoot);
+    const plan = buildPlanFromImpact(impact, config.policy, undefined, adaptive);
     const planPath = writePlanReport(reportRoot, plan);
     const ciSummaryMarkdown = renderCiSummaryMarkdown(plan);
     const ciSummaryPath = writeCiSummary(reportRoot, ciSummaryMarkdown);
@@ -161,7 +163,8 @@ export async function recommendTestsAI(options: AgentApiOptions = {}): Promise<R
         });
     }
 
-    const plan = buildPlanFromImpact(impact, config.policy, aiEnrichment);
+    const adaptive = getAdaptiveThresholds(reportRoot);
+    const plan = buildPlanFromImpact(impact, config.policy, aiEnrichment, adaptive);
     const planPath = writePlanReport(reportRoot, plan);
     const ciSummaryMarkdown = renderCiSummaryMarkdown(plan);
     const ciSummaryPath = writeCiSummary(reportRoot, ciSummaryMarkdown);

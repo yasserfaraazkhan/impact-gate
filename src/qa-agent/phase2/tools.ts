@@ -101,7 +101,7 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
     },
     {
         name: 'report_finding',
-        description: 'Report a bug, visual issue, UX problem, or gap you discovered. Always include current URL and repro steps.',
+        description: 'Report a bug, visual issue, UX problem, or gap you discovered. Include expected/actual behavior and repro steps. Take before/after screenshots before calling this.',
         input_schema: {
             type: 'object' as const,
             properties: {
@@ -113,6 +113,13 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
                     items: {type: 'string'},
                     description: 'Steps to reproduce',
                 },
+                screenshot_refs: {
+                    type: 'array',
+                    items: {type: 'string'},
+                    description: 'Paths to before/after screenshots (from take_screenshot)',
+                },
+                expected_behavior: {type: 'string', description: 'What should have happened'},
+                actual_behavior: {type: 'string', description: 'What actually happened'},
             },
             required: ['type', 'severity', 'summary', 'repro_steps'],
         },
@@ -138,6 +145,23 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
                 role: {type: 'string', description: 'Role of the user to switch to (e.g. admin, regular, guest)'},
             },
             required: ['role'],
+        },
+    },
+    {
+        name: 'wait_for',
+        description: 'Wait for an element condition or page state. Use after actions that trigger async changes (navigation, API calls, animations).',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                condition: {
+                    type: 'string',
+                    enum: ['visible', 'hidden', 'stable', 'networkidle'],
+                    description: 'What to wait for: visible/hidden (element state), stable (no DOM changes for 1s), networkidle (no pending requests)',
+                },
+                ref: {type: 'string', description: 'Accessibility ref for element conditions (visible/hidden). Not needed for stable/networkidle.'},
+                timeout_ms: {type: 'number', description: 'Max wait time in ms (default 5000, max 15000)'},
+            },
+            required: ['condition'],
         },
     },
 ];
@@ -245,6 +269,37 @@ export function executeTool(
         if (!Array.isArray(input.repro_steps)) {
             return {output: `Invalid repro_steps: expected an array of strings.`};
         }
+
+        // Auto-capture console errors at time of finding
+        let autoConsoleErrors: string[] | undefined;
+        try {
+            const raw = ctx.browser.evaluateInternal('JSON.stringify(window.__consoleErrors || [])');
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                autoConsoleErrors = parsed.map(String).slice(-10);
+            }
+        } catch {
+            // Console error capture not available
+        }
+
+        // Auto-take screenshot if none provided
+        let autoScreenshot: string | undefined;
+        const screenshotRefs = Array.isArray(input.screenshot_refs)
+            ? (input.screenshot_refs as unknown[]).map(String)
+            : undefined;
+        if (!screenshotRefs || screenshotRefs.length === 0) {
+            try {
+                const nextCount = ctx.screenshotCounter + 1;
+                const filename = `${String(nextCount).padStart(3, '0')}-finding-auto.png`;
+                const screenshotPath = `${ctx.screenshotDir}/${filename}`;
+                ctx.browser.screenshot(screenshotPath);
+                ctx.screenshotCounter = nextCount;
+                autoScreenshot = screenshotPath;
+            } catch {
+                autoScreenshot = undefined;
+            }
+        }
+
         const finding: Finding = {
             id: `f-${crypto.randomUUID()}`,
             type: rawType as FindingType,
@@ -254,6 +309,11 @@ export function executeTool(
             evidence: {
                 url: ctx.currentUrl,
                 reproSteps: (input.repro_steps as unknown[]).map(String),
+                screenshotRefs: screenshotRefs || (autoScreenshot ? [autoScreenshot] : undefined),
+                screenshotPath: autoScreenshot || (screenshotRefs ? screenshotRefs[0] : undefined),
+                consoleErrors: autoConsoleErrors,
+                expectedBehavior: input.expected_behavior ? String(input.expected_behavior) : undefined,
+                actualBehavior: input.actual_behavior ? String(input.actual_behavior) : undefined,
             },
             timestamp: Date.now(),
         };
@@ -270,6 +330,47 @@ export function executeTool(
             output: `Flow "${flowId}" marked as ${rawStatus}`,
             flowDone: {flowId, status: rawStatus},
         };
+    }
+
+    case 'wait_for': {
+        const condition = String(input.condition || '');
+        const VALID_CONDITIONS = new Set(['visible', 'hidden', 'stable', 'networkidle']);
+        if (!VALID_CONDITIONS.has(condition)) {
+            return {output: `Invalid condition "${condition}". Must be one of: ${[...VALID_CONDITIONS].join(', ')}.`};
+        }
+        const timeoutMs = Math.min(Math.max(Number(input.timeout_ms) || 5000, 500), 15000);
+        try {
+            if (condition === 'stable' || condition === 'networkidle') {
+                const waitMs = condition === 'networkidle' ? Math.min(timeoutMs, 3000) : 1000;
+                ctx.browser.evaluateInternal(
+                    `new Promise(r => setTimeout(r, ${waitMs}))`,
+                );
+                return {output: `Waited ${waitMs}ms for ${condition} (heuristic delay)`};
+            }
+            // Element-level wait: poll snapshot for ref presence/absence
+            const ref = input.ref ? String(input.ref) : undefined;
+            if (!ref) {
+                return {output: `Element condition "${condition}" requires a ref parameter.`};
+            }
+            const start = Date.now();
+            const wantVisible = condition === 'visible';
+            // Use word-boundary regex to avoid false positives (@e1 matching @e10)
+            const refPattern = new RegExp(`(?<![\\w@])${ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w])`);
+            const pollIntervalMs = 300;
+            while (Date.now() - start < timeoutMs) {
+                const snap = ctx.browser.snapshot();
+                const found = refPattern.test(snap);
+                if ((wantVisible && found) || (!wantVisible && !found)) {
+                    return {output: `Element ${ref} is now ${condition} (took ${Date.now() - start}ms)`};
+                }
+                // Synchronous in-process sleep via Atomics.wait (available in Node.js 8.10+)
+                const buf = new SharedArrayBuffer(4);
+                Atomics.wait(new Int32Array(buf), 0, 0, pollIntervalMs);
+            }
+            return {output: `Timeout: element ${ref} did not become ${condition} within ${timeoutMs}ms`};
+        } catch (err) {
+            return {output: `wait_for error: ${String(err)}`};
+        }
     }
 
     case 'switch_user': {

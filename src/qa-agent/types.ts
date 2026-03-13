@@ -45,14 +45,21 @@ export type BrowserActionType =
     | 'fill'
     | 'type'
     | 'press'
+    | 'press_key'
     | 'scroll'
     | 'back'
+    | 'go_back'
     | 'screenshot'
+    | 'take_screenshot'
     | 'snapshot'
     | 'get_url'
     | 'get_title'
     | 'get_text'
     | 'eval'
+    | 'report_finding'
+    | 'mark_flow_done'
+    | 'switch_user'
+    | 'wait_for'
     | 'compressed';
 
 export interface BrowserAction {
@@ -77,13 +84,19 @@ export interface Finding {
     flow: string;
     evidence: FindingEvidence;
     timestamp: number;
+    /** Number of duplicate findings collapsed into this one */
+    duplicateCount?: number;
 }
 
 export interface FindingEvidence {
     screenshotPath?: string;
+    /** Multiple screenshot references (e.g. before/after) */
+    screenshotRefs?: string[];
     url: string;
     reproSteps: string[];
     consoleErrors?: string[];
+    expectedBehavior?: string;
+    actualBehavior?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -102,6 +115,8 @@ export interface ExplorationState {
     flowsExplored: string[];
     currentFlow: string | null;
     findings: Finding[];
+    /** Dedup index: maps finding hash key → index in findings array. Runtime-only — not serializable to JSON. */
+    findingDedupIndex: Record<string, number>;
     actionsLog: BrowserAction[];
     recentActions: BrowserAction[];
     tokensUsed: number;
