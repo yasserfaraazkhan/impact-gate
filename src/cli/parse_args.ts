@@ -92,6 +92,8 @@ const FLAGS: Record<string, FlagDef> = {
     '--no-enrich':                  {key: 'trainEnrich', type: 'boolean-false'},
     '--validate':                   {key: 'trainValidate', type: 'boolean'},
     '--yes':                        {key: 'trainYes', type: 'boolean', aliases: ['-y']},
+    '--verbose':                    {key: 'verbose', type: 'boolean', aliases: ['-v']},
+    '--json':                       {key: 'jsonOutput', type: 'boolean'},
     '--mattermost':                 {key: 'profile', type: 'boolean', transform: () => 'mattermost'},
 
     // -- string flags --

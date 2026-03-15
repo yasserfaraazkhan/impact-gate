@@ -288,6 +288,8 @@ export async function enrichFamilies(
     const enriched: RouteFamily[] = [];
     let totalTokens = 0;
     let totalCost = 0;
+    let requestCount = 0;
+    let totalResponseMs = 0;
     const skipped: string[] = [];
 
     // Process in chunks of 4 families
@@ -324,15 +326,18 @@ export async function enrichFamilies(
             }
         }
 
-        let timer: ReturnType<typeof setTimeout> | undefined;
+        let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
         try {
             const timeoutPromise = new Promise<never>((_, reject) => {
-                timer = setTimeout(() => reject(new Error('LLM request timed out')), LLM_TIMEOUT_MS);
+                timeoutTimer = setTimeout(() => reject(new Error('LLM request timed out')), LLM_TIMEOUT_MS);
             });
+            const reqStart = performance.now();
             const response = await Promise.race([
                 provider.generateText(prompt, {maxTokens: 4096, temperature: 0.3}),
                 timeoutPromise,
             ]);
+            totalResponseMs += performance.now() - reqStart;
+            requestCount++;
 
             totalTokens += (response.usage?.inputTokens ?? 0) + (response.usage?.outputTokens ?? 0);
             totalCost += response.cost ?? 0;
@@ -353,7 +358,7 @@ export async function enrichFamilies(
             console.warn(`[train] LLM enrichment failed for chunk: ${error instanceof Error ? error.message : String(error)}`);
             enriched.push(...chunk);
         } finally {
-            if (timer) clearTimeout(timer);
+            if (timeoutTimer) clearTimeout(timeoutTimer);
         }
     }
 
@@ -362,5 +367,7 @@ export async function enrichFamilies(
         tokensUsed: totalTokens,
         costUSD: Math.round(totalCost * 100) / 100,
         skippedFamilies: skipped,
+        requestCount,
+        avgResponseMs: requestCount > 0 ? Math.round(totalResponseMs / requestCount) : 0,
     };
 }

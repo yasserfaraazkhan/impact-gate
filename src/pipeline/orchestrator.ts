@@ -92,19 +92,24 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineResul
         return {report: emptyReport, reportPath, warnings: allWarnings};
     }
 
+    const timings: Record<string, number> = {};
+
     // Step 2: Preprocess — deterministic file classification + route family binding
+    const preprocessTimer = logger.timer('preprocess');
     const preprocessResult = preprocess(changedFiles, {
         appPath: config.appPath,
         testsRoot: config.testsRoot,
         routeFamilies: config.routeFamilies,
         apiSurface: config.apiSurface,
     });
+    timings.preprocess = preprocessTimer.end();
     allWarnings.push(...preprocessResult.warnings);
 
     let decisions: FlowDecision[] = [];
 
     // Step 3: Impact stage — AI-powered flow identification per family
     if (stages.includes('impact')) {
+        const impactTimer = logger.timer('impact');
         const impactResult = await runImpactStage(
             preprocessResult.familyGroups,
             preprocessResult.manifest,
@@ -115,6 +120,8 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineResul
         );
         decisions = impactResult.decisions;
         allWarnings.push(...impactResult.warnings);
+
+        timings.impact = impactTimer.end();
 
         // Check cannot_determine ratio
         const cannotDetermineRatio = computeCannotDetermineRatio(decisions);
@@ -127,6 +134,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineResul
 
     // Step 4: Coverage stage — AI-powered spec coverage evaluation
     if (stages.includes('coverage') && decisions.length > 0) {
+        const coverageTimer = logger.timer('coverage');
         const coverageResult = await runCoverageStage(
             decisions,
             preprocessResult.specIndex,
@@ -135,11 +143,13 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineResul
             config.coverage || {},
         );
         decisions = coverageResult.decisions;
+        timings.coverage = coverageTimer.end();
         allWarnings.push(...coverageResult.warnings);
     }
 
     // Step 5: Generation stage — AI-powered spec generation for create_spec / add_scenarios
     if (stages.includes('generation') && decisions.length > 0) {
+        const generationTimer = logger.timer('generation');
         const generationResult = await runGenerationStage(
             decisions,
             preprocessResult.apiSurface,
@@ -147,11 +157,13 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineResul
             config.generation || {},
         );
         generatedSpecs = generationResult.generated;
+        timings.generation = generationTimer.end();
         allWarnings.push(...generationResult.warnings);
     }
 
     // Step 6: Heal stage — MCP-backed playwright-test-healer for failing/flaky specs
     if (stages.includes('heal')) {
+        const healTimer = logger.timer('heal');
         const healTargets = resolveHealTargets(
             config.testsRoot,
             {
@@ -166,6 +178,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineResul
         } else {
             allWarnings.push('Heal stage: no targets found (no failing specs in report, no generated specs).');
         }
+        timings.heal = healTimer.end();
     }
 
     // Build report
@@ -183,19 +196,21 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineResul
         },
     };
 
-    const reportPath = writeReport(config.testsRoot, report, healResult);
+    const reportPath = writeReport(config.testsRoot, report, healResult, timings);
 
     return {report, reportPath, warnings: allWarnings, generated: generatedSpecs, healResult};
 }
 
-function writeReport(testsRoot: string, report: FlowDecisionReport, healResult?: HealResult): string {
+function writeReport(testsRoot: string, report: FlowDecisionReport, healResult?: HealResult, timings?: Record<string, number>): string {
     const outputDir = join(testsRoot, '.e2e-ai-agents');
     if (!existsSync(outputDir)) {
         mkdirSync(outputDir, {recursive: true});
     }
 
+    // Include timings in the JSON report if available
+    const reportWithTimings = timings ? {...report, timings} : report;
     const jsonPath = join(outputDir, 'pipeline-report.json');
-    writeFileSync(jsonPath, JSON.stringify(report, null, 2), 'utf-8');
+    writeFileSync(jsonPath, JSON.stringify(reportWithTimings, null, 2), 'utf-8');
 
     const mdPath = join(outputDir, 'pipeline-report.md');
     writeFileSync(mdPath, renderMarkdown(report, healResult), 'utf-8');

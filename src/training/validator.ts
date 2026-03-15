@@ -9,6 +9,55 @@ import type {RouteFamilyManifest} from '../knowledge/route_families.js';
 
 import type {CommitValidation, ValidationReport} from './types.js';
 
+/**
+ * Glob-style patterns for infrastructure / cross-cutting files that will never
+ * belong to a single route family.  Excluded from coverage calculations.
+ */
+const INFRA_GLOBS = [
+    'Makefile', 'go.mod', 'go.sum',
+    '*.lock',
+    '**/mocks/*', '**/storetest/*', '**/testlib/*',
+    '**/i18n/*',
+    '**/.github/*', '**/scripts/*',
+    '**/docker-compose*',
+    '**/__fixtures__/*', '**/test_templates/*',
+];
+
+/**
+ * Check if a file path matches any infrastructure glob pattern.
+ * Uses simple string matching — no external glob library needed.
+ */
+export function isInfraFile(filePath: string): boolean {
+    const normalized = filePath.replace(/\\/g, '/');
+    for (const pattern of INFRA_GLOBS) {
+        if (pattern.startsWith('**/')) {
+            // Match anywhere in the path
+            const suffix = pattern.slice(3);
+            if (suffix.endsWith('/*')) {
+                // Directory match: **/mocks/* → any segment named "mocks" with a child
+                const dirName = suffix.slice(0, -2);
+                if (normalized.includes(`/${dirName}/`) || normalized.startsWith(`${dirName}/`)) return true;
+            } else if (suffix.endsWith('*')) {
+                // Prefix match: **/docker-compose* → file starting with docker-compose
+                const prefix = suffix.slice(0, -1);
+                const base = normalized.split('/').pop() || '';
+                if (base.startsWith(prefix)) return true;
+            } else {
+                if (normalized.endsWith(`/${suffix}`) || normalized === suffix) return true;
+            }
+        } else if (pattern.startsWith('*.')) {
+            // Extension match: *.lock
+            const ext = pattern.slice(1);
+            if (normalized.endsWith(ext)) return true;
+        } else {
+            // Exact basename match: Makefile, go.mod, go.sum
+            const base = normalized.split('/').pop() || '';
+            if (base === pattern) return true;
+        }
+    }
+    return false;
+}
+
 export function parseGitLog(log: string): Array<{hash: string; message: string; files: string[]}> {
     const commits: Array<{hash: string; message: string; files: string[]}> = [];
     let current: {hash: string; message: string; files: string[]} | null = null;
@@ -64,10 +113,10 @@ export function validateCommit(
     hash: string,
     message: string,
 ): CommitValidation {
-    // Filter out non-source files
+    // Filter out non-source files and infrastructure files
     const sourceFiles = files.filter((f) => {
         return !f.endsWith('.md') && !f.endsWith('.json') && !f.endsWith('.yml') && !f.endsWith('.yaml') &&
-               !f.startsWith('.') && !f.includes('node_modules/');
+               !f.startsWith('.') && !f.includes('node_modules/') && !isInfraFile(f);
     });
 
     if (sourceFiles.length === 0) {

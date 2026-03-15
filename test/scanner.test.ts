@@ -7,7 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-import {discoverSourceDirs, discoverTestDirs, discoverTestDerivedFamilies, discoverServerDerivedFamilies, scanProject} from '../dist/training/scanner.js';
+import {discoverSourceDirs, discoverTestDirs, discoverTestDerivedFamilies, discoverServerDerivedFamilies, discoverTestLibPaths, discoverNameMatchedPaths, scanProject} from '../dist/training/scanner.js';
 
 describe('scanner', () => {
     let tmpDir: string;
@@ -218,12 +218,12 @@ describe('scanner', () => {
                     fs.writeFileSync(full, 'package main', 'utf-8');
                 }
 
-                const families = discoverServerDerivedFamilies(serverDir);
-                const draft = families.find((f) => f.id === 'draft');
+                const {multiTierFamilies} = discoverServerDerivedFamilies(serverDir);
+                const draft = multiTierFamilies.find((f) => f.id === 'draft');
                 assert.ok(draft, 'should discover draft family');
                 assert.ok(draft.serverPaths.length >= 2, 'draft should span multiple tiers');
 
-                const webhook = families.find((f) => f.id === 'webhook');
+                const webhook = multiTierFamilies.find((f) => f.id === 'webhook');
                 assert.ok(webhook, 'should discover webhook family');
             } finally {
                 fs.rmSync(serverDir, {recursive: true, force: true});
@@ -245,12 +245,12 @@ describe('scanner', () => {
                     fs.writeFileSync(full, 'package main', 'utf-8');
                 }
 
-                const families = discoverServerDerivedFamilies(serverDir);
+                const {multiTierFamilies} = discoverServerDerivedFamilies(serverDir);
                 // channel_bookmark and channel_category should be grouped under "channel"
-                const channel = families.find((f) => f.id === 'channel');
+                const channel = multiTierFamilies.find((f) => f.id === 'channel');
                 assert.ok(channel, 'should group under channel family');
                 assert.ok(channel.serverPaths.length >= 3, 'channel should include all related files');
-                assert.ok(!families.find((f) => f.id === 'channel_bookmark'), 'channel_bookmark should not be separate');
+                assert.ok(!multiTierFamilies.find((f) => f.id === 'channel_bookmark'), 'channel_bookmark should not be separate');
             } finally {
                 fs.rmSync(serverDir, {recursive: true, force: true});
             }
@@ -264,8 +264,9 @@ describe('scanner', () => {
                 fs.mkdirSync(path.dirname(full), {recursive: true});
                 fs.writeFileSync(full, 'package main', 'utf-8');
 
-                const families = discoverServerDerivedFamilies(serverDir);
-                assert.ok(!families.find((f) => f.id === 'trivial'), 'single-tier family should be filtered');
+                const {multiTierFamilies, singleTierFamilies} = discoverServerDerivedFamilies(serverDir);
+                assert.ok(!multiTierFamilies.find((f) => f.id === 'trivial'), 'single-tier family should not be in multi-tier');
+                assert.ok(singleTierFamilies.find((f) => f.id === 'trivial'), 'single-tier family should be in singleTierFamilies');
             } finally {
                 fs.rmSync(serverDir, {recursive: true, force: true});
             }
@@ -295,6 +296,59 @@ describe('scanner', () => {
             } finally {
                 fs.rmSync(serverDir, {recursive: true, force: true});
             }
+        });
+
+        it('should merge single-tier server files into existing families', () => {
+            const serverDir = fs.mkdtempSync(path.join(os.tmpdir(), 'server-single-'));
+            try {
+                // Create channel family in source + tests
+                touch('src/channels/index.ts', 'tests/e2e/channels/channel.spec.ts');
+                // Single-tier server file for channel (only model, no api4/app)
+                const full = path.join(serverDir, 'public/model/channel.go');
+                fs.mkdirSync(path.dirname(full), {recursive: true});
+                fs.writeFileSync(full, 'package model', 'utf-8');
+
+                const result = scanProject(tmpDir, undefined, serverDir);
+                const channels = result.families.find((f) => f.id === 'channels');
+                assert.ok(channels, 'should have channels family');
+                // The single-tier "channel" server family should merge into "channels" (plural match)
+                assert.ok(
+                    channels.serverPaths.some((p) => p.includes('model/channel')),
+                    'channels family should include model/channel server paths',
+                );
+            } finally {
+                fs.rmSync(serverDir, {recursive: true, force: true});
+            }
+        });
+
+        it('should discover test lib paths and merge into families', () => {
+            const testsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tests-lib-'));
+            try {
+                // Create test lib structure
+                const libFiles = [
+                    'lib/src/ui/components/channels/channel_page.ts',
+                    'lib/src/ui/components/system_console/console_page.ts',
+                ];
+                for (const f of libFiles) {
+                    const full = path.join(testsDir, f);
+                    fs.mkdirSync(path.dirname(full), {recursive: true});
+                    fs.writeFileSync(full, '// page object', 'utf-8');
+                }
+
+                const paths = discoverTestLibPaths(testsDir);
+                assert.ok(paths.has('channels'), 'should discover channels lib path');
+                assert.ok(paths.has('system_console'), 'should discover system_console lib path');
+            } finally {
+                fs.rmSync(testsDir, {recursive: true, force: true});
+            }
+        });
+
+        it('should discover name-matched type/util files', () => {
+            touch('src/utils/channels.ts', 'src/utils/drafts.ts', 'src/types/posts.ts');
+            const paths = discoverNameMatchedPaths(tmpDir);
+            assert.ok(paths.has('channels'), 'should discover channels from utils');
+            assert.ok(paths.has('drafts'), 'should discover drafts from utils');
+            assert.ok(paths.has('posts'), 'should discover posts from types');
         });
 
         it('should extract tags from spec files', () => {

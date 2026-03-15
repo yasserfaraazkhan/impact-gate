@@ -92,4 +92,8 @@ export interface ParsedArgs {
     trainOutput?: string;
     trainYes?: boolean;
     serverPath?: string;
+
+    // Observability flags
+    verbose?: boolean;
+    jsonOutput?: boolean;
 }

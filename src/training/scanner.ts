@@ -436,7 +436,7 @@ function findParentDomain(name: string, allDomains: Set<string>): string {
  *
  * Each domain becomes a candidate family with precise serverPaths.
  */
-export function discoverServerDerivedFamilies(serverRoot: string): ScannedFamily[] {
+export function discoverServerDerivedFamilies(serverRoot: string): {multiTierFamilies: ScannedFamily[]; singleTierFamilies: ScannedFamily[]} {
     const resolved = resolve(serverRoot);
 
     // First pass: collect all raw domain names across tiers
@@ -536,15 +536,15 @@ export function discoverServerDerivedFamilies(serverRoot: string): ScannedFamily
     }
 
     // Build families from grouped domains.
-    // Only include server-only families that span ≥ 2 tiers (architecturally significant).
-    const families: ScannedFamily[] = [];
+    // Multi-tier families (≥2 tiers) can be new families.
+    // Single-tier families can only merge into existing families.
+    const multiTierFamilies: ScannedFamily[] = [];
+    const singleTierFamilies: ScannedFamily[] = [];
     for (const [domain, paths] of familyPaths) {
         if (paths.size === 0) continue;
 
         const tierCount = familyTiers.get(domain)?.size ?? 0;
-        if (tierCount < 2) continue; // Skip single-tier domains (likely infrastructure)
-
-        families.push({
+        const family: ScannedFamily = {
             id: domain,
             routes: [`/${domain.replace(/_/g, '-')}`],
             webappPaths: [],
@@ -554,10 +554,16 @@ export function discoverServerDerivedFamilies(serverRoot: string): ScannedFamily
             tags: [],
             features: [],
             routesGuessed: true,
-        });
+        };
+
+        if (tierCount >= 2) {
+            multiTierFamilies.push(family);
+        } else {
+            singleTierFamilies.push(family);
+        }
     }
 
-    return families;
+    return {multiTierFamilies, singleTierFamilies};
 }
 
 export function discoverTestDerivedFamilies(testsRoot: string): ScannedFamily[] {
@@ -659,7 +665,108 @@ export function discoverTestDerivedFamilies(testsRoot: string): ScannedFamily[] 
     return Array.from(familyMap.values());
 }
 
-export function scanProject(projectRoot: string, testsRoot?: string, serverRoot?: string): ScanResult {
+/**
+ * Discover test library paths (page objects, helpers) organized by feature.
+ * Walks well-known test lib directories and maps subdirectories to family IDs.
+ */
+export function discoverTestLibPaths(testsRoot: string): Map<string, string[]> {
+    const resolved = resolve(testsRoot);
+    const result = new Map<string, string[]>();
+
+    const libDirs = [
+        'lib/src/ui/components',
+        'lib/src/ui/pages',
+        'lib/src/server',
+    ];
+
+    for (const libDir of libDirs) {
+        const fullDir = join(resolved, libDir);
+        if (!existsSync(fullDir)) continue;
+
+        let entries: string[];
+        try { entries = readdirSync(fullDir); } catch { continue; }
+
+        for (const entry of entries) {
+            if (isSkipped(entry)) continue;
+            const fullPath = join(fullDir, entry);
+            try {
+                const stat = lstatSync(fullPath);
+                if (stat.isSymbolicLink() || !stat.isDirectory()) continue;
+            } catch { continue; }
+
+            const familyId = normalizeId(entry);
+            const relPath = relative(resolved, fullPath).replace(/\\/g, '/');
+            const pattern = `${relPath}/*`;
+
+            if (!result.has(familyId)) result.set(familyId, []);
+            result.get(familyId)!.push(pattern);
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Discover files in well-known directories (types, utils) whose basename
+ * maps directly to a family ID.
+ */
+export function discoverNameMatchedPaths(
+    appPath: string,
+    gitRepoRoot?: string,
+): Map<string, string[]> {
+    const result = new Map<string, string[]>();
+    const resolvedApp = resolve(appPath);
+
+    const scanRoots: Array<{root: string; base: string}> = [
+        {root: join(resolvedApp, 'src/utils'), base: resolvedApp},
+        {root: join(resolvedApp, 'src/types'), base: resolvedApp},
+    ];
+
+    // Monorepo-aware: scan platform types directory
+    if (gitRepoRoot) {
+        const resolvedGitRoot = resolve(gitRepoRoot);
+        const platformTypes = join(resolvedGitRoot, 'webapp/platform/types/src');
+        if (existsSync(platformTypes)) {
+            scanRoots.push({root: platformTypes, base: resolvedGitRoot});
+        }
+        const platformClient = join(resolvedGitRoot, 'webapp/platform/client/src');
+        if (existsSync(platformClient)) {
+            scanRoots.push({root: platformClient, base: resolvedGitRoot});
+        }
+    }
+
+    for (const {root, base} of scanRoots) {
+        if (!existsSync(root)) continue;
+
+        let entries: string[];
+        try { entries = readdirSync(root); } catch { continue; }
+
+        for (const entry of entries) {
+            if (entry.startsWith('.')) continue;
+            const ext = entry.slice(entry.lastIndexOf('.'));
+            if (!['.ts', '.tsx', '.js', '.jsx'].includes(ext)) continue;
+
+            const fullPath = join(root, entry);
+            try {
+                const stat = lstatSync(fullPath);
+                if (!stat.isFile() || stat.isSymbolicLink()) continue;
+            } catch { continue; }
+
+            // Strip extension and normalize
+            const baseName = entry.slice(0, entry.lastIndexOf('.'));
+            const familyId = normalizeId(baseName);
+            if (familyId.length < 3) continue;
+
+            const relPath = relative(base, fullPath).replace(/\\/g, '/');
+            if (!result.has(familyId)) result.set(familyId, []);
+            result.get(familyId)!.push(relPath);
+        }
+    }
+
+    return result;
+}
+
+export function scanProject(projectRoot: string, testsRoot?: string, serverRoot?: string, gitRepoRoot?: string): ScanResult {
     const resolved = resolve(projectRoot);
     const resolvedTestsRoot = testsRoot ? resolve(testsRoot) : resolved;
     const sourceDirs = discoverSourceDirs(resolved);
@@ -729,10 +836,13 @@ export function scanProject(projectRoot: string, testsRoot?: string, serverRoot?
     // When a separate serverRoot is provided, discover families from Go source
     // filenames across the three-tier backend (api4, app, store).
     if (serverRoot) {
-        const serverFamilies = discoverServerDerivedFamilies(resolve(serverRoot));
+        const {multiTierFamilies: serverMulti, singleTierFamilies: serverSingle} = discoverServerDerivedFamilies(resolve(serverRoot));
         const existingIds = new Set(families.map((f) => f.id));
 
-        for (const sf of serverFamilies) {
+        // Merge ALL server families (multi + single tier) into existing families,
+        // but only add NEW families if they span ≥2 tiers.
+        const allServerFamilies = [...serverMulti, ...serverSingle];
+        for (const sf of allServerFamilies) {
             // Try exact match, then singular/plural variants
             let target = families.find((f) => f.id === sf.id);
             if (!target && !sf.id.endsWith('s')) {
@@ -749,10 +859,52 @@ export function scanProject(projectRoot: string, testsRoot?: string, serverRoot?
                         target.serverPaths.push(sp);
                     }
                 }
-            } else {
-                // New server-only family
+            } else if (serverMulti.includes(sf)) {
+                // Only add new families if they span ≥2 tiers
                 families.push(sf);
                 existingIds.add(sf.id);
+            }
+        }
+    }
+
+    // Merge test library paths (page objects, helpers) into existing families
+    if (testsRoot) {
+        const testLibPaths = discoverTestLibPaths(resolvedTestsRoot);
+        for (const [libFamilyId, patterns] of testLibPaths) {
+            let target = families.find((f) => f.id === libFamilyId);
+            if (!target && !libFamilyId.endsWith('s')) {
+                target = families.find((f) => f.id === libFamilyId + 's');
+            }
+            if (!target && libFamilyId.endsWith('s')) {
+                target = families.find((f) => f.id === libFamilyId.slice(0, -1));
+            }
+            if (target) {
+                for (const p of patterns) {
+                    if (!target.webappPaths.includes(p)) {
+                        target.webappPaths.push(p);
+                    }
+                }
+            }
+        }
+    }
+
+    // Merge name-matched type/util files into existing families
+    {
+        const nameMatchedPaths = discoverNameMatchedPaths(resolved, gitRepoRoot);
+        for (const [nmFamilyId, paths] of nameMatchedPaths) {
+            let target = families.find((f) => f.id === nmFamilyId);
+            if (!target && !nmFamilyId.endsWith('s')) {
+                target = families.find((f) => f.id === nmFamilyId + 's');
+            }
+            if (!target && nmFamilyId.endsWith('s')) {
+                target = families.find((f) => f.id === nmFamilyId.slice(0, -1));
+            }
+            if (target) {
+                for (const p of paths) {
+                    if (!target.webappPaths.includes(p)) {
+                        target.webappPaths.push(p);
+                    }
+                }
             }
         }
     }

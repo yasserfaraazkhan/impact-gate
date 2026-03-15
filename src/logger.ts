@@ -51,9 +51,11 @@ function logLevelToString(level: LogLevel): string {
 
 export class Logger {
     private level: LogLevel;
+    private jsonMode: boolean;
 
     constructor(minLevel?: LogLevel) {
         this.level = minLevel ?? getLogLevelFromEnv();
+        this.jsonMode = process.env.LOG_FORMAT?.toLowerCase() === 'json';
     }
 
     error(message: string, context?: Record<string, unknown>): void {
@@ -84,11 +86,38 @@ export class Logger {
         this.level = level;
     }
 
+    setJsonMode(enabled: boolean): void {
+        this.jsonMode = enabled;
+    }
+
+    /**
+     * Start a timer for measuring duration of an operation.
+     * Returns an object with `end()` that logs at DEBUG level and returns elapsed ms.
+     */
+    timer(label: string): {end: () => number} {
+        const start = performance.now();
+        return {
+            end: (): number => {
+                const elapsed = Math.round(performance.now() - start);
+                this.debug(`${label} completed`, {durationMs: elapsed});
+                return elapsed;
+            },
+        };
+    }
+
     private log(level: LogLevel, message: string, context?: Record<string, unknown>): void {
         const timestamp = new Date().toISOString();
         const levelStr = logLevelToString(level);
-        const contextStr = context ? ` ${JSON.stringify(context)}` : '';
-        const output = `[${timestamp}] [${levelStr}] ${message}${contextStr}`;
+
+        let output: string;
+        if (this.jsonMode) {
+            const entry: Record<string, unknown> = {ts: timestamp, level: levelStr, msg: message};
+            if (context) entry.ctx = context;
+            output = JSON.stringify(entry);
+        } else {
+            const contextStr = context ? ` ${JSON.stringify(context)}` : '';
+            output = `[${timestamp}] [${levelStr}] ${message}${contextStr}`;
+        }
 
         if (level <= LogLevel.WARN) {
             console.error(output);

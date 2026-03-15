@@ -4,7 +4,7 @@
 import {describe, it} from 'node:test';
 import assert from 'node:assert/strict';
 
-import {buildValidationReport, formatValidationReport, parseGitLog} from '../dist/training/validator.js';
+import {buildValidationReport, formatValidationReport, parseGitLog, isInfraFile} from '../dist/training/validator.js';
 import type {RouteFamilyManifest} from '../dist/knowledge/route_families.js';
 import type {CommitValidation} from '../dist/training/types.js';
 
@@ -89,6 +89,31 @@ describe('validator', () => {
             assert.equal(result.length, 2);
             assert.equal(result[0].hash, 'abc1234');
             assert.equal(result[1].hash, 'def5678');
+        });
+    });
+
+    describe('isInfraFile', () => {
+        it('should match infrastructure files', () => {
+            assert.ok(isInfraFile('Makefile'));
+            assert.ok(isInfraFile('go.mod'));
+            assert.ok(isInfraFile('go.sum'));
+            assert.ok(isInfraFile('package-lock.lock'));
+            assert.ok(isInfraFile('server/mocks/store.go'));
+            assert.ok(isInfraFile('server/channels/storetest/helper.go'));
+            assert.ok(isInfraFile('server/testlib/helper.go'));
+            assert.ok(isInfraFile('webapp/i18n/en.json'));
+            assert.ok(isInfraFile('.github/workflows/ci.yml'));
+            assert.ok(isInfraFile('scripts/deploy.sh'));
+            assert.ok(isInfraFile('docker-compose.yml'));
+            assert.ok(isInfraFile('path/to/docker-compose.override.yml'));
+            assert.ok(isInfraFile('test/__fixtures__/sample.ts'));
+            assert.ok(isInfraFile('e2e/test_templates/basic.ts'));
+        });
+
+        it('should not match regular source files', () => {
+            assert.ok(!isInfraFile('src/channels/index.ts'));
+            assert.ok(!isInfraFile('server/channels/api4/channel.go'));
+            assert.ok(!isInfraFile('webapp/src/utils/helpers.ts'));
         });
     });
 

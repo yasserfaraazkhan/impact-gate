@@ -55,6 +55,10 @@ export interface EnrichmentResult {
     tokensUsed: number;
     costUSD: number;
     skippedFamilies: string[];
+    /** Number of LLM requests made */
+    requestCount?: number;
+    /** Average response time per LLM request in ms */
+    avgResponseMs?: number;
 }
 
 /** A single commit's validation result */
