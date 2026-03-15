@@ -1,0 +1,25 @@
+# Example: calling the reusable Playwright template.
+#
+# This file shows how a repo (e.g. mattermost-server) would invoke the
+# sharded template with impact analysis enabled.
+
+name: E2E Tests
+
+on:
+  pull_request:
+    paths:
+      - 'webapp/**'
+      - 'server/**'
+      - 'e2e-tests/**'
+
+jobs:
+  e2e:
+    uses: ./.github/workflows/e2e-tests-playwright-template.yml
+    with:
+      impact_enabled: true
+      llm_provider: anthropic
+      budget_usd: "0.25"
+      shard_count: 4
+      base_ref: origin/main
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

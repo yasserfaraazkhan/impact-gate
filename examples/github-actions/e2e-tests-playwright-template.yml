@@ -1,0 +1,282 @@
+# Reusable Playwright E2E test workflow with AI impact analysis.
+#
+# Architecture:
+#   impact-plan (1x)  →  upload artifact  →  run-tests (Nx shards, parallel)
+#
+# This avoids running plan+generate once per shard (4x LLM calls) and instead
+# runs it once, uploads the result as an artifact, and fans out to shards.
+#
+# API-outage behaviour (fail-open):
+#   If the LLM API is unavailable the deterministic engine still produces
+#   plan.json.  If even that fails, shards fall back to the full test suite
+#   and a warning annotation is posted.
+
+name: E2E Playwright Tests (template)
+
+on:
+  workflow_call:
+    inputs:
+      # -- impact analysis --
+      impact_enabled:
+        description: Run AI impact analysis before tests
+        type: boolean
+        default: true
+      llm_provider:
+        description: "LLM provider for AI enrichment (anthropic | openai | ollama)"
+        type: string
+        default: anthropic
+      budget_usd:
+        description: Max spend per plan invocation
+        type: string
+        default: "0.25"
+      # -- test runner --
+      shard_count:
+        description: Number of parallel shards
+        type: number
+        default: 4
+      playwright_project:
+        description: Playwright project name
+        type: string
+        default: ""
+      base_ref:
+        description: Git ref to diff against
+        type: string
+        default: origin/main
+
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: false
+      OPENAI_API_KEY:
+        required: false
+
+env:
+  NODE_OPTIONS: "--max-old-space-size=4096"
+
+jobs:
+  # ──────────────────────────────────────────────────────────
+  # 1. Impact Plan — runs ONCE, shared via artifact
+  # ──────────────────────────────────────────────────────────
+  impact-plan:
+    name: Impact Plan
+    if: inputs.impact_enabled
+    runs-on: ubuntu-24.04
+    outputs:
+      run_set: ${{ steps.plan.outputs.run_set }}
+      action: ${{ steps.plan.outputs.action }}
+      confidence: ${{ steps.plan.outputs.confidence }}
+      enforcement_should_fail: ${{ steps.plan.outputs.enforcement_should_fail }}
+      required_new_tests_count: ${{ steps.plan.outputs.required_new_tests_count }}
+      spec_count: ${{ steps.derive-specs.outputs.count }}
+      plan_outcome: ${{ steps.plan.outcome }}
+      generate_outcome: ${{ steps.generate.outcome }}
+    steps:
+      - name: ci/checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ci/setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: ci/install-deps
+        working-directory: e2e-tests/playwright
+        run: npm ci --ignore-scripts
+
+      - name: ci/impact-plan
+        id: plan
+        continue-on-error: true
+        working-directory: e2e-tests/playwright
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          mkdir -p .e2e-ai-agents
+          npx e2e-ai-agents plan \
+            --since "${{ inputs.base_ref }}" \
+            --llm-provider "${{ inputs.llm_provider }}" \
+            --budget-usd "${{ inputs.budget_usd }}" \
+            --github-output "$GITHUB_OUTPUT" \
+            --ci-comment-path .e2e-ai-agents/ci-summary.md
+
+      - name: ci/impact-generate
+        id: generate
+        if: steps.plan.outcome == 'success' && steps.plan.outputs.required_new_tests_count != '0'
+        continue-on-error: true
+        working-directory: e2e-tests/playwright
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          npx e2e-ai-agents generate \
+            --llm-provider "${{ inputs.llm_provider }}" \
+            --budget-usd "${{ inputs.budget_usd }}"
+
+      - name: ci/derive-impact-specs
+        id: derive-specs
+        if: steps.plan.outcome == 'success'
+        working-directory: e2e-tests/playwright
+        run: |
+          PLAN=".e2e-ai-agents/plan.json"
+          if [ ! -f "$PLAN" ]; then
+            echo "count=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Extract recommended test files from plan.json
+          node -e "
+            const plan = JSON.parse(require('fs').readFileSync('$PLAN','utf8'));
+            const tests = (plan.recommendedTests || []).map(t => t.replace(/ \(flags:.*\)$/, ''));
+            require('fs').writeFileSync('.e2e-ai-agents/spec-files.txt', tests.join('\n'));
+            console.log('Derived ' + tests.length + ' spec files');
+          "
+          COUNT=$(wc -l < .e2e-ai-agents/spec-files.txt | tr -d ' ')
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: ci/upload-plan-artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-impact-plan
+          path: |
+            e2e-tests/playwright/.e2e-ai-agents/plan.json
+            e2e-tests/playwright/.e2e-ai-agents/spec-files.txt
+            e2e-tests/playwright/.e2e-ai-agents/ci-summary.md
+            e2e-tests/playwright/.e2e-ai-agents/metrics-summary.json
+          retention-days: 1
+          if-no-files-found: ignore
+
+  # ──────────────────────────────────────────────────────────
+  # 2. Run Tests — N shards in parallel, reuse plan artifact
+  # ──────────────────────────────────────────────────────────
+  run-tests:
+    name: "Tests (shard ${{ matrix.shard }})"
+    needs: [impact-plan]
+    # Run even when impact-plan was skipped (impact_enabled=false) or failed
+    if: always() && !cancelled()
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJson(format('[{0}]', join(fromJson(format('[{0}]', '1,2,3,4')), ','))) }}
+    steps:
+      - name: ci/checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ci/setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: ci/install-deps
+        working-directory: e2e-tests/playwright
+        run: npm ci
+
+      - name: ci/install-playwright-browsers
+        working-directory: e2e-tests/playwright
+        run: npx playwright install --with-deps chromium
+
+      # Download the plan artifact produced by the impact-plan job.
+      # continue-on-error: if the plan job failed, the artifact won't exist
+      # and shards fall back to the full suite.
+      - name: ci/download-plan-artifact
+        if: inputs.impact_enabled
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-impact-plan
+          path: e2e-tests/playwright/.e2e-ai-agents/
+        continue-on-error: true
+
+      - name: ci/impact-policy-gate
+        id: policy-gate
+        if: inputs.impact_enabled
+        working-directory: e2e-tests/playwright
+        run: |
+          PLAN_OUTCOME="${{ needs.impact-plan.outputs.plan_outcome }}"
+          SPEC_FILE=".e2e-ai-agents/spec-files.txt"
+
+          # ── Fail-open: if plan failed entirely and produced nothing ──
+          if [ "$PLAN_OUTCOME" != "success" ]; then
+            if [ ! -f ".e2e-ai-agents/plan.json" ]; then
+              echo "::warning::Impact analysis unavailable — running full test suite as fallback."
+              rm -f "$SPEC_FILE"
+              echo "fallback=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "::error::Impact plan produced output but step failed."
+            exit 1
+          fi
+
+          # ── Enforcement check ──
+          SHOULD_FAIL="${{ needs.impact-plan.outputs.enforcement_should_fail }}"
+          if [ "$SHOULD_FAIL" = "true" ]; then
+            echo "::error::Impact policy enforcement failed. Check the plan summary for details."
+            exit 1
+          fi
+
+          echo "fallback=false" >> "$GITHUB_OUTPUT"
+
+      - name: ci/run-tests
+        working-directory: e2e-tests/playwright
+        env:
+          SHARD: ${{ matrix.shard }}
+          SHARD_TOTAL: ${{ inputs.shard_count }}
+        run: |
+          SPEC_FILE=".e2e-ai-agents/spec-files.txt"
+          ARGS=""
+
+          # Use targeted specs if available, otherwise full suite
+          if [ -f "$SPEC_FILE" ] && [ -s "$SPEC_FILE" ]; then
+            SPECS=$(tr '\n' ' ' < "$SPEC_FILE")
+            ARGS="$SPECS"
+            echo "Running targeted tests: $SPECS"
+          else
+            echo "Running full test suite"
+          fi
+
+          PROJECT_ARG=""
+          if [ -n "${{ inputs.playwright_project }}" ]; then
+            PROJECT_ARG="--project ${{ inputs.playwright_project }}"
+          fi
+
+          npx playwright test $ARGS $PROJECT_ARG \
+            --shard="$SHARD/$SHARD_TOTAL" \
+            --reporter=json \
+            2>&1 | tee test-output.log || true
+
+          # Persist report for heal step
+          mkdir -p .e2e-ai-agents
+          if [ -f test-results.json ]; then
+            cp test-results.json .e2e-ai-agents/playwright-report.json
+          fi
+
+      - name: ci/persist-playwright-report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: "playwright-report-shard-${{ matrix.shard }}"
+          path: |
+            e2e-tests/playwright/test-results/
+            e2e-tests/playwright/.e2e-ai-agents/playwright-report.json
+          retention-days: 3
+          if-no-files-found: ignore
+
+      - name: ci/impact-heal
+        if: always() && inputs.impact_enabled
+        continue-on-error: true
+        working-directory: e2e-tests/playwright
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ ! -f ".e2e-ai-agents/playwright-report.json" ]; then
+            echo "No Playwright report found; skipping heal."
+            exit 0
+          fi
+          npx e2e-ai-agents heal \
+            --llm-provider "${{ inputs.llm_provider }}" \
+            --budget-usd "${{ inputs.budget_usd }}"

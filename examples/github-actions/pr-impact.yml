@@ -1,3 +1,12 @@
+# Lightweight PR impact-analysis workflow (single-job, no sharding).
+#
+# For a sharded, reusable template with artifact-based deduplication,
+# see e2e-tests-playwright-template.yml in this directory.
+#
+# API-outage behaviour (fail-open):
+#   If the plan step fails and produces no plan.json the workflow
+#   falls back to the full test suite with a warning annotation.
+
 name: e2e-impact-plan
 
 on:
@@ -27,6 +36,7 @@ jobs:
 
       - name: Build recommendation
         id: plan
+        continue-on-error: true
         run: |
           npx e2e-ai-agents suggest \
             --path ./webapp \
@@ -35,11 +45,28 @@ jobs:
             --github-output "$GITHUB_OUTPUT" \
             --ci-comment-path .e2e-ai-agents/pr-comment.md
 
+      # ── Fail-open gate ──────────────────────────────────────
+      # If the plan step failed AND produced no plan.json, fall
+      # back to the full test suite instead of blocking the PR.
+      - name: Fail-open gate
+        id: gate
+        run: |
+          if [ "${{ steps.plan.outcome }}" != "success" ]; then
+            if [ ! -f ./e2e-tests/playwright/.e2e-ai-agents/plan.json ]; then
+              echo "::warning::Impact analysis unavailable — running full test suite as fallback."
+              echo "run_set=full" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "::error::Impact plan produced output but failed enforcement."
+            exit 1
+          fi
+          echo "run_set=${{ steps.plan.outputs.run_set }}" >> "$GITHUB_OUTPUT"
+
       - name: Run targeted tests
-        if: steps.plan.outputs.run_set == 'targeted'
+        if: steps.gate.outputs.run_set == 'targeted'
         run: |
           mkdir -p ./.e2e-ai-agents
-          node -e "const fs=require('fs'); const plan=JSON.parse(fs.readFileSync('./e2e-tests/playwright/.e2e-ai-agents/plan.json','utf8')); const tests=plan.recommendedTests.map((t)=>t.replace(/ \\(flags:.*\\)$/, '')); fs.writeFileSync('/tmp/recommended-tests.txt', tests.join('\n'));"
+          node -e "const fs=require('fs'); const plan=JSON.parse(fs.readFileSync('./e2e-tests/playwright/.e2e-ai-agents/plan.json','utf8')); const tests=plan.recommendedTests.map((t)=>t.replace(/ \(flags:.*\)$/, '')); fs.writeFileSync('/tmp/recommended-tests.txt', tests.join('\n'));"
           if [ -s /tmp/recommended-tests.txt ]; then
             TEST_ARGS=$(tr '\n' ' ' < /tmp/recommended-tests.txt)
             npx playwright test $TEST_ARGS --reporter=json > ./.e2e-ai-agents/playwright-report.json
@@ -49,13 +76,13 @@ jobs:
           fi
 
       - name: Run smoke tests
-        if: steps.plan.outputs.run_set == 'smoke'
+        if: steps.gate.outputs.run_set == 'smoke'
         run: |
           mkdir -p ./.e2e-ai-agents
           npx playwright test --grep @smoke --reporter=json > ./.e2e-ai-agents/playwright-report.json
 
       - name: Run full tests
-        if: steps.plan.outputs.run_set == 'full'
+        if: steps.gate.outputs.run_set == 'full'
         run: |
           mkdir -p ./.e2e-ai-agents
           npx playwright test --reporter=json > ./.e2e-ai-agents/playwright-report.json
@@ -92,7 +119,12 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const body = fs.readFileSync('./.e2e-ai-agents/pr-comment.md', 'utf8');
+            const path = './.e2e-ai-agents/pr-comment.md';
+            if (!fs.existsSync(path)) {
+              console.log('No PR comment file found; skipping.');
+              return;
+            }
+            const body = fs.readFileSync(path, 'utf8');
             await github.rest.issues.createComment({
               ...context.repo,
               issue_number: context.issue.number,
