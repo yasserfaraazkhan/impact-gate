@@ -231,6 +231,7 @@ export function bindFilesToFamilies(changedFiles: string[], manifest: RouteFamil
                     const featurePatterns = [
                         ...(feature.webappPaths || []),
                         ...(feature.serverPaths || []),
+                        ...(feature.specDirs || []),
                     ];
                     if (featurePatterns.length > 0 && matchesAnyPattern(normalized, featurePatterns)) {
                         featureBindings.push({family: family.id, feature: feature.id});
@@ -247,6 +248,8 @@ export function bindFilesToFamilies(changedFiles: string[], manifest: RouteFamil
             const familyPatterns = [
                 ...(family.webappPaths || []),
                 ...(family.serverPaths || []),
+                ...(family.specDirs || []),
+                ...(family.cypressSpecDirs || []),
             ];
             if (familyPatterns.length > 0 && matchesAnyPattern(normalized, familyPatterns)) {
                 bindings.push({family: family.id});

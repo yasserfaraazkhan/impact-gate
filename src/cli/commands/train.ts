@@ -310,6 +310,22 @@ export async function runTrainCommand(args: ParsedArgs, autoConfig?: string): Pr
     let validationReport;
     if (opts.validate) {
         const validateTimer = logger.timer('validate');
+
+        // Build path prefixes for monorepo-aware path normalization.
+        // Git log returns repo-root-relative paths, but manifest globs are
+        // relative to appPath, testsRoot, or serverRoot.
+        const pathPrefixes: string[] = [];
+        if (opts.gitRepoRoot) {
+            const {relative: relPath} = await import('path');
+            for (const root of [opts.appPath, opts.testsRoot, opts.serverRoot].filter(Boolean) as string[]) {
+                const rel = relPath(opts.gitRepoRoot, root).replace(/\\/g, '/');
+                if (rel && !rel.startsWith('..') && rel !== '.') {
+                    pathPrefixes.push(rel.endsWith('/') ? rel : rel + '/');
+                }
+            }
+        }
+        logger.debug('Validation path prefixes', {prefixes: pathPrefixes});
+
         if (opts.pr) {
             logger.info(`Validating against PR #${opts.pr}...`);
 
@@ -337,7 +353,7 @@ export async function runTrainCommand(args: ParsedArgs, autoConfig?: string): Pr
             if (prFiles.length === 0) {
                 logger.info('No files found in PR.');
             } else {
-                const validation = validateCommit(mergeResult.manifest, prFiles, `PR#${opts.pr}`, `PR #${opts.pr}`);
+                const validation = validateCommit(mergeResult.manifest, prFiles, `PR#${opts.pr}`, `PR #${opts.pr}`, pathPrefixes);
                 validationReport = buildValidationReport([validation], mergeResult.manifest);
                 logger.info(formatValidationReport(validationReport));
             }
@@ -349,7 +365,7 @@ export async function runTrainCommand(args: ParsedArgs, autoConfig?: string): Pr
                 logger.info('No commits found in range.');
             } else {
                 const validations = commits.map((c) =>
-                    validateCommit(mergeResult.manifest, c.files, c.hash, c.message),
+                    validateCommit(mergeResult.manifest, c.files, c.hash, c.message, pathPrefixes),
                 );
                 validationReport = buildValidationReport(validations, mergeResult.manifest);
                 logger.info(formatValidationReport(validationReport));

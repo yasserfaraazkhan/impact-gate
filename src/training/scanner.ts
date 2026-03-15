@@ -667,7 +667,7 @@ export function discoverTestDerivedFamilies(testsRoot: string): ScannedFamily[] 
 
 /**
  * Discover test library paths (page objects, helpers) organized by feature.
- * Walks well-known test lib directories and maps subdirectories to family IDs.
+ * Walks well-known test lib directories and maps subdirectories and files to family IDs.
  */
 export function discoverTestLibPaths(testsRoot: string): Map<string, string[]> {
     const resolved = resolve(testsRoot);
@@ -691,15 +691,26 @@ export function discoverTestLibPaths(testsRoot: string): Map<string, string[]> {
             const fullPath = join(fullDir, entry);
             try {
                 const stat = lstatSync(fullPath);
-                if (stat.isSymbolicLink() || !stat.isDirectory()) continue;
+                if (stat.isSymbolicLink()) continue;
+
+                if (stat.isDirectory()) {
+                    // Subdirectory → family ID from dir name
+                    const familyId = normalizeId(entry);
+                    const relPath = relative(resolved, fullPath).replace(/\\/g, '/');
+                    if (!result.has(familyId)) result.set(familyId, []);
+                    result.get(familyId)!.push(`${relPath}/*`);
+                } else if (stat.isFile()) {
+                    // File → family ID from basename (e.g., channel.ts → channel)
+                    const ext = entry.slice(entry.lastIndexOf('.'));
+                    if (!['.ts', '.tsx', '.js', '.jsx'].includes(ext)) continue;
+                    const baseName = entry.slice(0, entry.lastIndexOf('.'));
+                    const familyId = normalizeId(baseName);
+                    if (familyId.length < 3) continue;
+                    const relPath = relative(resolved, fullPath).replace(/\\/g, '/');
+                    if (!result.has(familyId)) result.set(familyId, []);
+                    result.get(familyId)!.push(relPath);
+                }
             } catch { continue; }
-
-            const familyId = normalizeId(entry);
-            const relPath = relative(resolved, fullPath).replace(/\\/g, '/');
-            const pattern = `${relPath}/*`;
-
-            if (!result.has(familyId)) result.set(familyId, []);
-            result.get(familyId)!.push(pattern);
         }
     }
 
@@ -722,7 +733,7 @@ export function discoverNameMatchedPaths(
         {root: join(resolvedApp, 'src/types'), base: resolvedApp},
     ];
 
-    // Monorepo-aware: scan platform types directory
+    // Monorepo-aware: scan platform types and server model directories
     if (gitRepoRoot) {
         const resolvedGitRoot = resolve(gitRepoRoot);
         const platformTypes = join(resolvedGitRoot, 'webapp/platform/types/src');
@@ -732,6 +743,10 @@ export function discoverNameMatchedPaths(
         const platformClient = join(resolvedGitRoot, 'webapp/platform/client/src');
         if (existsSync(platformClient)) {
             scanRoots.push({root: platformClient, base: resolvedGitRoot});
+        }
+        const serverModel = join(resolvedGitRoot, 'server/public/model');
+        if (existsSync(serverModel)) {
+            scanRoots.push({root: serverModel, base: resolvedGitRoot});
         }
     }
 
@@ -744,7 +759,9 @@ export function discoverNameMatchedPaths(
         for (const entry of entries) {
             if (entry.startsWith('.')) continue;
             const ext = entry.slice(entry.lastIndexOf('.'));
-            if (!['.ts', '.tsx', '.js', '.jsx'].includes(ext)) continue;
+            if (!['.ts', '.tsx', '.js', '.jsx', '.go'].includes(ext)) continue;
+            // Skip Go test files
+            if (entry.endsWith('_test.go')) continue;
 
             const fullPath = join(root, entry);
             try {

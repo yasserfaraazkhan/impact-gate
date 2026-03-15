@@ -18,9 +18,10 @@ const INFRA_GLOBS = [
     '*.lock',
     '**/mocks/*', '**/storetest/*', '**/testlib/*',
     '**/i18n/*',
-    '**/.github/*', '**/scripts/*',
+    '**/.github/*', '**/.ci/*', '**/scripts/*',
     '**/docker-compose*',
     '**/__fixtures__/*', '**/test_templates/*',
+    'playwright.config.ts', 'global-setup.ts',
 ];
 
 /**
@@ -107,11 +108,57 @@ export function getCommitFiles(projectRoot: string, since: string): Array<{hash:
     return parseGitLog(log);
 }
 
+/**
+ * For each file, try matching both the original path and any prefix-stripped
+ * variant against the manifest.  Returns one FileBinding per original file.
+ */
+function bindWithPrefixes(
+    files: string[],
+    manifest: RouteFamilyManifest,
+    prefixes: string[],
+): ReturnType<typeof bindFilesToFamilies> {
+    if (prefixes.length === 0) {
+        return bindFilesToFamilies(files, manifest);
+    }
+
+    // Build candidate variants for each file
+    const variants: string[][] = files.map((f) => {
+        const normalized = f.replace(/\\/g, '/');
+        const candidates = [normalized];
+        for (const prefix of prefixes) {
+            if (normalized.startsWith(prefix)) {
+                candidates.push(normalized.slice(prefix.length));
+                break;
+            }
+        }
+        return candidates;
+    });
+
+    // Bind all variants and merge results per original file
+    return files.map((f, i) => {
+        const normalized = f.replace(/\\/g, '/');
+        const allBindings: Array<{family: string; feature?: string}> = [];
+        const seen = new Set<string>();
+        for (const variant of variants[i]) {
+            const [result] = bindFilesToFamilies([variant], manifest);
+            for (const b of result.bindings) {
+                const key = `${b.family}:${b.feature || ''}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    allBindings.push(b);
+                }
+            }
+        }
+        return {file: normalized, bindings: allBindings};
+    });
+}
+
 export function validateCommit(
     manifest: RouteFamilyManifest,
     files: string[],
     hash: string,
     message: string,
+    pathPrefixes?: string[],
 ): CommitValidation {
     // Filter out non-source files and infrastructure files
     const sourceFiles = files.filter((f) => {
@@ -123,7 +170,9 @@ export function validateCommit(
         return {hash, message, changedFiles: [], boundFiles: 0, unboundFiles: [], familiesHit: []};
     }
 
-    const bindings = bindFilesToFamilies(sourceFiles, manifest);
+    const bindings = pathPrefixes
+        ? bindWithPrefixes(sourceFiles, manifest, pathPrefixes)
+        : bindFilesToFamilies(sourceFiles, manifest);
     const bound = bindings.filter((b) => b.bindings.length > 0);
     const unbound = bindings.filter((b) => b.bindings.length === 0);
     const familiesHit = new Set<string>();
