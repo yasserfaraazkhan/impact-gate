@@ -1,6 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {execFileSync} from 'child_process';
 import {existsSync, mkdirSync, renameSync, writeFileSync} from 'fs';
 import {dirname, join, resolve} from 'path';
 import * as readline from 'readline';
@@ -94,9 +95,33 @@ function resolveTrainOptions(args: ParsedArgs, autoConfig?: string): TrainOption
         throw new TrainError(`Output path must be within the project root or tests root: ${resolvedOutputPath}`);
     }
 
+    // Discover git repo root for monorepo-aware scanning and validation
+    let gitRepoRoot: string | undefined;
+    try {
+        gitRepoRoot = execFileSync('git', ['rev-parse', '--show-toplevel'], {
+            cwd: resolvedAppPath,
+            encoding: 'utf-8',
+            stdio: ['pipe', 'pipe', 'pipe'],
+        }).trim();
+    } catch {
+        // Not a git repo or git not available
+    }
+
+    // Resolve serverRoot: explicit flag, or auto-detect from git repo root
+    let serverRoot = args.serverPath;
+    if (!serverRoot && gitRepoRoot) {
+        const serverDir = join(gitRepoRoot, 'server');
+        if (existsSync(serverDir)) {
+            serverRoot = serverDir;
+        }
+    }
+    const resolvedServerRoot = serverRoot ? resolve(serverRoot) : undefined;
+
     return {
         appPath: resolvedAppPath,
         testsRoot: resolvedTestsRoot,
+        serverRoot: resolvedServerRoot,
+        gitRepoRoot: gitRepoRoot ? resolve(gitRepoRoot) : undefined,
         enrich: args.trainEnrich !== false,
         validate: args.trainValidate || false,
         since,
@@ -145,7 +170,14 @@ export async function runTrainCommand(args: ParsedArgs, autoConfig?: string): Pr
 
     // ---------- Phase 1: Deterministic scan ----------
     console.log('  Scanning project structure...');
-    const scanResult = scanProject(opts.appPath);
+    if (opts.serverRoot) {
+        console.log(`  Server root: ${opts.serverRoot}`);
+    }
+    const scanResult = scanProject(
+        opts.appPath,
+        opts.testsRoot !== opts.appPath ? opts.testsRoot : undefined,
+        opts.serverRoot,
+    );
     console.log(`  Found ${scanResult.stats.totalSourceFiles} source files, ${scanResult.stats.totalTestFiles} test files`);
     console.log(`  Discovered ${scanResult.families.length} candidate families`);
 
@@ -168,7 +200,7 @@ export async function runTrainCommand(args: ParsedArgs, autoConfig?: string): Pr
 
     // ---------- Phase 3: Stale detection ----------
     if (mergeResult.manifest.families.length > 0) {
-        const stale = detectStaleFamilies(mergeResult.manifest, opts.appPath);
+        const stale = detectStaleFamilies(mergeResult.manifest, opts.appPath, opts.testsRoot);
         if (stale.length > 0) {
             console.log('');
             console.log(`  Stale families detected (${stale.length}):`);
@@ -207,6 +239,7 @@ export async function runTrainCommand(args: ParsedArgs, autoConfig?: string): Pr
                 opts.appPath,
                 provider,
                 opts.budgetUSD,
+                opts.testsRoot !== opts.appPath ? opts.testsRoot : undefined,
             );
             mergeResult.manifest.families = enrichResult.enrichedFamilies;
             console.log(`  Enriched ${enrichResult.enrichedFamilies.length} families (${enrichResult.tokensUsed} tokens, ~$${enrichResult.costUSD})`);
@@ -293,7 +326,7 @@ export async function runTrainCommand(args: ParsedArgs, autoConfig?: string): Pr
             console.log('');
             console.log(`  Validating against git history (${opts.since})...`);
 
-            const commits = getCommitFiles(opts.appPath, opts.since);
+            const commits = getCommitFiles(opts.gitRepoRoot || opts.appPath, opts.since);
             if (commits.length === 0) {
                 console.log('  No commits found in range.');
             } else {

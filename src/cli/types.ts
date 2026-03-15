@@ -91,4 +91,5 @@ export interface ParsedArgs {
     trainPr?: number;
     trainOutput?: string;
     trainYes?: boolean;
+    serverPath?: string;
 }

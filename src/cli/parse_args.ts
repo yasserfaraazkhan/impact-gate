@@ -123,6 +123,7 @@ const FLAGS: Record<string, FlagDef> = {
     '--heal-report':                   {key: 'analyzeHealReport', type: 'string'},
     '--flow-catalog':                  {key: 'flowCatalogPath', type: 'string'},
     '--output':                        {key: 'trainOutput', type: 'string'},
+    '--server-path':                   {key: 'serverPath', type: 'string'},
 
     // -- number flags (with isFinite guard) --
     '--pipeline-scenarios':              {key: 'pipelineScenarios', type: 'number'},

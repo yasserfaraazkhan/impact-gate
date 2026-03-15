@@ -7,7 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-import {discoverSourceDirs, discoverTestDirs, scanProject} from '../dist/training/scanner.js';
+import {discoverSourceDirs, discoverTestDirs, discoverTestDerivedFamilies, discoverServerDerivedFamilies, scanProject} from '../dist/training/scanner.js';
 
 describe('scanner', () => {
     let tmpDir: string;
@@ -117,14 +117,14 @@ describe('scanner', () => {
 
         it('should create families with incomplete coverage', () => {
             touch(
-                'src/utils/helpers.ts',
+                'src/analytics/helpers.ts',
                 'tests/e2e/channels/channel.spec.ts',
             );
             const result = scanProject(tmpDir);
-            // utils has source but no tests
-            const utils = result.families.find((f) => f.id === 'utils');
-            assert.ok(utils, 'should discover utils family');
-            assert.equal(utils.specDirs.length, 0, 'utils should have no test dirs');
+            // analytics has source but no tests
+            const analytics = result.families.find((f) => f.id === 'analytics');
+            assert.ok(analytics, 'should discover analytics family');
+            assert.equal(analytics.specDirs.length, 0, 'analytics should have no test dirs');
             // channels has tests but no source
             const channels = result.families.find((f) => f.id === 'channels');
             assert.ok(channels, 'should discover channels family');
@@ -142,6 +142,159 @@ describe('scanner', () => {
             assert.ok(channels.routes.length > 0);
             assert.ok(typeof channels.routes[0] === 'string');
             assert.ok(channels.routes[0].startsWith('/'));
+        });
+
+        it('should discover test-derived families from separate testsRoot', () => {
+            // Create a project with feature-organized tests
+            const testsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tests-root-'));
+            try {
+                // Source dir (code-type organized)
+                touch('src/components/index.ts');
+                // Tests (feature-organized) in separate root
+                const specFiles = [
+                    'specs/functional/channels/drafts/draft.spec.ts',
+                    'specs/functional/channels/search/search.spec.ts',
+                    'specs/functional/system_console/permissions/perm.spec.ts',
+                ];
+                for (const f of specFiles) {
+                    const full = path.join(testsDir, f);
+                    fs.mkdirSync(path.dirname(full), {recursive: true});
+                    fs.writeFileSync(full, '// stub', 'utf-8');
+                }
+
+                const result = scanProject(tmpDir, testsDir);
+                const drafts = result.families.find((f) => f.id === 'drafts');
+                assert.ok(drafts, 'should discover drafts family from test dirs');
+                assert.ok(drafts.specDirs.length > 0, 'drafts should have specDirs');
+                assert.equal(drafts.webappPaths.length, 0, 'drafts should have no webapp paths (test-derived)');
+
+                const search = result.families.find((f) => f.id === 'search');
+                assert.ok(search, 'should discover search family from test dirs');
+            } finally {
+                fs.rmSync(testsDir, {recursive: true, force: true});
+            }
+        });
+
+        it('should handle name collisions in test-derived families', () => {
+            const testsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tests-coll-'));
+            try {
+                const specFiles = [
+                    'specs/functional/channels/settings/notif.spec.ts',
+                    'specs/functional/system_console/settings/notif.spec.ts',
+                ];
+                for (const f of specFiles) {
+                    const full = path.join(testsDir, f);
+                    fs.mkdirSync(path.dirname(full), {recursive: true});
+                    fs.writeFileSync(full, '// stub', 'utf-8');
+                }
+
+                const families = discoverTestDerivedFamilies(testsDir);
+                // "settings" appears under both channels and system_console — should be prefixed
+                assert.ok(families.length >= 2, 'should have at least 2 families');
+                const ids = families.map((f) => f.id);
+                assert.ok(
+                    ids.includes('channels_settings') || ids.includes('system_console_settings'),
+                    'should prefix colliding names with parent',
+                );
+            } finally {
+                fs.rmSync(testsDir, {recursive: true, force: true});
+            }
+        });
+
+        it('should discover server-derived families from Go files', () => {
+            const serverDir = fs.mkdtempSync(path.join(os.tmpdir(), 'server-'));
+            try {
+                // Create a multi-tier server structure
+                const goFiles = [
+                    'channels/api4/draft.go',
+                    'channels/app/draft.go',
+                    'channels/store/sqlstore/draft_store.go',
+                    'channels/api4/webhook.go',
+                    'channels/app/webhook.go',
+                ];
+                for (const f of goFiles) {
+                    const full = path.join(serverDir, f);
+                    fs.mkdirSync(path.dirname(full), {recursive: true});
+                    fs.writeFileSync(full, 'package main', 'utf-8');
+                }
+
+                const families = discoverServerDerivedFamilies(serverDir);
+                const draft = families.find((f) => f.id === 'draft');
+                assert.ok(draft, 'should discover draft family');
+                assert.ok(draft.serverPaths.length >= 2, 'draft should span multiple tiers');
+
+                const webhook = families.find((f) => f.id === 'webhook');
+                assert.ok(webhook, 'should discover webhook family');
+            } finally {
+                fs.rmSync(serverDir, {recursive: true, force: true});
+            }
+        });
+
+        it('should group related server files under parent domain', () => {
+            const serverDir = fs.mkdtempSync(path.join(os.tmpdir(), 'server-grp-'));
+            try {
+                const goFiles = [
+                    'channels/api4/channel.go',
+                    'channels/api4/channel_bookmark.go',
+                    'channels/api4/channel_category.go',
+                    'channels/app/channel.go',
+                ];
+                for (const f of goFiles) {
+                    const full = path.join(serverDir, f);
+                    fs.mkdirSync(path.dirname(full), {recursive: true});
+                    fs.writeFileSync(full, 'package main', 'utf-8');
+                }
+
+                const families = discoverServerDerivedFamilies(serverDir);
+                // channel_bookmark and channel_category should be grouped under "channel"
+                const channel = families.find((f) => f.id === 'channel');
+                assert.ok(channel, 'should group under channel family');
+                assert.ok(channel.serverPaths.length >= 3, 'channel should include all related files');
+                assert.ok(!families.find((f) => f.id === 'channel_bookmark'), 'channel_bookmark should not be separate');
+            } finally {
+                fs.rmSync(serverDir, {recursive: true, force: true});
+            }
+        });
+
+        it('should filter single-tier server families', () => {
+            const serverDir = fs.mkdtempSync(path.join(os.tmpdir(), 'server-filt-'));
+            try {
+                // Only one tier — should be filtered out
+                const full = path.join(serverDir, 'channels/api4/trivial.go');
+                fs.mkdirSync(path.dirname(full), {recursive: true});
+                fs.writeFileSync(full, 'package main', 'utf-8');
+
+                const families = discoverServerDerivedFamilies(serverDir);
+                assert.ok(!families.find((f) => f.id === 'trivial'), 'single-tier family should be filtered');
+            } finally {
+                fs.rmSync(serverDir, {recursive: true, force: true});
+            }
+        });
+
+        it('should merge server families into scan via scanProject', () => {
+            // Create server root
+            const serverDir = fs.mkdtempSync(path.join(os.tmpdir(), 'server-scan-'));
+            try {
+                const goFiles = [
+                    'channels/api4/draft.go',
+                    'channels/app/draft.go',
+                ];
+                for (const f of goFiles) {
+                    const full = path.join(serverDir, f);
+                    fs.mkdirSync(path.dirname(full), {recursive: true});
+                    fs.writeFileSync(full, 'package main', 'utf-8');
+                }
+
+                // Source with matching family
+                touch('src/channels/index.ts', 'tests/e2e/channels/channel.spec.ts');
+
+                const result = scanProject(tmpDir, undefined, serverDir);
+                const draft = result.families.find((f) => f.id === 'draft');
+                assert.ok(draft, 'should have draft family from server');
+                assert.ok(draft.serverPaths.length > 0, 'draft should have server paths');
+            } finally {
+                fs.rmSync(serverDir, {recursive: true, force: true});
+            }
         });
 
         it('should extract tags from spec files', () => {

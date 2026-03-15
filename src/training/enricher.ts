@@ -67,10 +67,39 @@ function sampleFiles(dir: string, maxFiles: number): Array<{path: string; conten
     return files;
 }
 
-function buildEnrichPrompt(families: ScannedFamily[], projectRoot: string): string {
+/**
+ * Build a shallow directory listing of the source tree (depth 2-3) so the LLM
+ * can suggest accurate webappPaths / serverPaths for test-derived families.
+ */
+function getSourceTreeListing(projectRoot: string, maxDepth = 3): string {
+    const lines: string[] = [];
+    function walk(dir: string, depth: number, prefix: string): void {
+        if (depth > maxDepth || lines.length > 200) return;
+        let entries: string[];
+        try { entries = readdirSync(dir).sort(); } catch { return; }
+        const dirs = entries.filter((e) => {
+            if (e.startsWith('.') || SKIP_DIRS.has(e)) return false;
+            try {
+                const stat = lstatSync(join(dir, e));
+                return !stat.isSymbolicLink() && stat.isDirectory();
+            } catch { return false; }
+        });
+        for (const d of dirs) {
+            lines.push(`${prefix}${d}/`);
+            walk(join(dir, d), depth + 1, prefix + '  ');
+        }
+    }
+    walk(resolve(projectRoot), 0, '');
+    return lines.join('\n');
+}
+
+function buildEnrichPrompt(families: ScannedFamily[], projectRoot: string, testsRoot?: string): string {
     const sections: string[] = [];
+    const hasTestOnlyFamilies = families.some((f) => f.webappPaths.length === 0 && f.serverPaths.length === 0);
+    const resolvedTestsRoot = testsRoot ? resolve(testsRoot) : resolve(projectRoot);
 
     for (const family of families) {
+        const isTestOnly = family.webappPaths.length === 0 && family.serverPaths.length === 0;
         const allDirs = [
             ...family.webappPaths.map((p) => p.replace(/\/?\*.*$/, '')),
             ...family.serverPaths.map((p) => p.replace(/\/?\*.*$/, '')),
@@ -84,10 +113,19 @@ function buildEnrichPrompt(families: ScannedFamily[], projectRoot: string): stri
             if (samples.length >= MAX_FILES_PER_FAMILY) break;
         }
 
+        // For test-only families, sample the test files themselves for richer context
+        if (isTestOnly) {
+            for (const specDir of family.specDirs) {
+                if (samples.length >= MAX_FILES_PER_FAMILY) break;
+                const fullDir = join(resolvedTestsRoot, specDir);
+                samples.push(...sampleFiles(fullDir, MAX_FILES_PER_FAMILY - samples.length));
+            }
+        }
+
         // Sample spec descriptions
         const specSamples: string[] = [];
         for (const specDir of family.specDirs) {
-            const fullDir = join(resolve(projectRoot), specDir);
+            const fullDir = join(resolvedTestsRoot, specDir);
             const specFiles = sampleFiles(fullDir, 5);
             for (const sf of specFiles) {
                 const matches = sf.content.match(/(?:test|it|describe)\s*\(\s*['"`]([^'"`]+)/g);
@@ -97,7 +135,7 @@ function buildEnrichPrompt(families: ScannedFamily[], projectRoot: string): stri
             }
         }
 
-        sections.push(`## Family: ${family.id}
+        sections.push(`## Family: ${family.id}${isTestOnly ? ' [TEST-ONLY — needs webappPaths/serverPaths]' : ''}
 Routes (guessed): ${JSON.stringify(family.routes)}
 Webapp paths: ${JSON.stringify(family.webappPaths)}
 Server paths: ${JSON.stringify(family.serverPaths)}
@@ -113,6 +151,11 @@ ${specSamples.length > 0 ? specSamples.map((d) => `- ${d}`).join('\n') : '(none 
 `);
     }
 
+    // Include source tree listing when we have test-only families
+    const sourceTreeSection = hasTestOnlyFamilies
+        ? `\n## Source Directory Structure\nUse this to suggest accurate webappPaths and serverPaths for test-only families:\n\`\`\`\n${getSourceTreeListing(projectRoot)}\n\`\`\`\n`
+        : '';
+
     return `You are analyzing a codebase to enrich route-family definitions for an E2E test impact analysis tool.
 
 For each family below, provide:
@@ -121,6 +164,8 @@ For each family below, provide:
 3. **routes**: Improved URL patterns (e.g., "/{team}/channels/{channel}" instead of "/channels")
 4. **pageObjects**: Array of page object class names found in the code
 5. **components**: Array of UI component names relevant to this family
+6. **webappPaths**: Array of glob patterns for frontend source directories (e.g., "src/components/drafts/**"). REQUIRED for families marked [TEST-ONLY].
+7. **serverPaths**: Array of glob patterns for backend source directories. REQUIRED for families marked [TEST-ONLY].
 
 Respond in JSON format:
 \`\`\`json
@@ -131,11 +176,13 @@ Respond in JSON format:
     "userFlows": ["Flow name 1", "Flow name 2"],
     "routes": ["/improved/route/{param}"],
     "pageObjects": ["PageName"],
-    "components": ["ComponentName"]
+    "components": ["ComponentName"],
+    "webappPaths": ["src/components/feature_name/**"],
+    "serverPaths": ["server/channels/api4/feature.go"]
   }
 ]
 \`\`\`
-
+${sourceTreeSection}
 ${sections.join('\n---\n')}`;
 }
 
@@ -146,6 +193,8 @@ export interface EnrichedEntry {
     routes?: string[];
     pageObjects?: string[];
     components?: string[];
+    webappPaths?: string[];
+    serverPaths?: string[];
 }
 
 export function validateEntries(parsed: unknown[]): EnrichedEntry[] {
@@ -164,6 +213,8 @@ export function validateEntries(parsed: unknown[]): EnrichedEntry[] {
             userFlows: filterStrings(entry.userFlows, 500),
             pageObjects: filterStrings(entry.pageObjects, 200),
             components: filterStrings(entry.components, 200),
+            webappPaths: filterStrings(entry.webappPaths, 300),
+            serverPaths: filterStrings(entry.serverPaths, 300),
         }));
 }
 
@@ -214,6 +265,13 @@ function applyEnrichment(family: RouteFamily, enriched: EnrichedEntry): RouteFam
     if (enriched.components && (!family.components || family.components.length === 0)) {
         result.components = enriched.components;
     }
+    // Only fill source paths when the family has none (test-derived families)
+    if (enriched.webappPaths && (!family.webappPaths || family.webappPaths.length === 0)) {
+        result.webappPaths = enriched.webappPaths;
+    }
+    if (enriched.serverPaths && (!family.serverPaths || family.serverPaths.length === 0)) {
+        result.serverPaths = enriched.serverPaths;
+    }
 
     return result;
 }
@@ -224,6 +282,7 @@ export async function enrichFamilies(
     projectRoot: string,
     provider: LLMProvider,
     budgetUSD: number,
+    testsRoot?: string,
 ): Promise<EnrichmentResult> {
     const scannedMap = new Map(scanned.map((s) => [s.id, s]));
     const enriched: RouteFamily[] = [];
@@ -252,7 +311,7 @@ export async function enrichFamilies(
             continue;
         }
 
-        let prompt = buildEnrichPrompt(scannedChunk, projectRoot);
+        let prompt = buildEnrichPrompt(scannedChunk, projectRoot, testsRoot);
         if (prompt.length > MAX_PROMPT_CHARS) {
             // Truncate at the last complete section boundary to avoid malformed input
             const lastSectionEnd = prompt.lastIndexOf('\n---\n', MAX_PROMPT_CHARS);

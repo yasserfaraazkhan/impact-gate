@@ -1,6 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {execFileSync} from 'child_process';
 import {existsSync} from 'fs';
 import {join, resolve} from 'path';
 
@@ -76,6 +77,19 @@ function scannedToRouteFamily(scanned: ScannedFamily): RouteFamily {
     return family;
 }
 
+/**
+ * Try to find a matching family ID with singular/plural normalization.
+ * "team" matches "teams", "emoji" matches "emoji", etc.
+ */
+function findFuzzyMatch(id: string, idMap: Map<string, unknown>): string | undefined {
+    if (idMap.has(id)) return id;
+    // Try adding 's'
+    if (!id.endsWith('s') && idMap.has(id + 's')) return id + 's';
+    // Try removing 's'
+    if (id.endsWith('s') && idMap.has(id.slice(0, -1))) return id.slice(0, -1);
+    return undefined;
+}
+
 export function mergeFamilies(
     existing: RouteFamilyManifest | null,
     scanned: ScannedFamily[],
@@ -88,9 +102,14 @@ export function mergeFamilies(
     const updatedFamilies: string[] = [];
     const mergedFamilies: RouteFamily[] = [];
 
-    // Process existing families
+    // Process existing families — match scanned by exact or fuzzy ID
     for (const ef of existingFamilies) {
-        const sf = scannedMap.get(ef.id);
+        let sf = scannedMap.get(ef.id);
+        // Try singular/plural match if exact match failed
+        if (!sf) {
+            const fuzzyId = findFuzzyMatch(ef.id, scannedMap);
+            if (fuzzyId) sf = scannedMap.get(fuzzyId);
+        }
         if (sf) {
             mergedFamilies.push(mergeFamily(ef, sf));
             updatedFamilies.push(ef.id);
@@ -100,9 +119,10 @@ export function mergeFamilies(
         }
     }
 
-    // Add new families from scanner
+    // Add new families from scanner (if no existing family matched)
     for (const sf of scanned) {
-        if (!existingMap.has(sf.id)) {
+        const matchedExisting = findFuzzyMatch(sf.id, existingMap);
+        if (!matchedExisting) {
             mergedFamilies.push(scannedToRouteFamily(sf));
             newFamilies.push(sf.id);
         }
@@ -122,11 +142,36 @@ export function mergeFamilies(
     };
 }
 
+/**
+ * Detect families whose paths no longer exist on disk.
+ *
+ * Paths in the manifest may be relative to different roots:
+ * - webappPaths / serverPaths are typically relative to the repo root
+ * - specDirs may be relative to the tests root
+ *
+ * We try each pattern against all provided roots (and the git repo root
+ * if discoverable) to avoid false positives from path-prefix mismatches.
+ */
 export function detectStaleFamilies(
     manifest: RouteFamilyManifest,
     projectRoot: string,
+    testsRoot?: string,
 ): string[] {
-    const resolved = resolve(projectRoot);
+    const roots = new Set([resolve(projectRoot)]);
+    if (testsRoot) roots.add(resolve(testsRoot));
+
+    // Also try to discover the git repo root — manifest paths may be repo-relative
+    try {
+        const gitRoot = execFileSync('git', ['rev-parse', '--show-toplevel'], {
+            cwd: projectRoot,
+            encoding: 'utf-8',
+            stdio: ['pipe', 'pipe', 'pipe'],
+        }).trim();
+        if (gitRoot) roots.add(resolve(gitRoot));
+    } catch {
+        // Not a git repo or git not available — that's fine
+    }
+
     const stale: string[] = [];
 
     for (const family of manifest.families) {
@@ -138,15 +183,32 @@ export function detectStaleFamilies(
 
         if (allPatterns.length === 0) continue;
 
-        // Check if any pattern resolves to existing files/dirs
+        // Check if any pattern resolves to existing files/dirs in any root
         let hasAny = false;
         for (const pattern of allPatterns) {
             // Strip trailing glob (* or **) to get the directory
             const dirPart = pattern.replace(/\/?\*.*$/, '');
-            if (dirPart && existsSync(join(resolved, dirPart))) {
-                hasAny = true;
-                break;
+            if (!dirPart) continue;
+
+            // For file-level patterns like "server/channels/api4/draft*.go",
+            // dirPart is "server/channels/api4/draft" — check the parent dir instead
+            const isFileGlob = /\.\w+$/.test(pattern);
+            const pathsToCheck = [dirPart];
+            if (isFileGlob) {
+                const parentDir = dirPart.split('/').slice(0, -1).join('/');
+                if (parentDir) pathsToCheck.push(parentDir);
             }
+
+            for (const checkPath of pathsToCheck) {
+                for (const root of roots) {
+                    if (existsSync(join(root, checkPath))) {
+                        hasAny = true;
+                        break;
+                    }
+                }
+                if (hasAny) break;
+            }
+            if (hasAny) break;
         }
 
         if (!hasAny) {

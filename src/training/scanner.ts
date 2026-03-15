@@ -21,6 +21,54 @@ const SKIP_DIRS = new Set([
 const TEST_EXTENSIONS = ['.spec.ts', '.test.ts', '.spec.js', '.test.js', '.spec.tsx', '.test.tsx'] as const;
 const GO_TEST_SUFFIX = '_test.go';
 
+/**
+ * Test category directories that organize tests but aren't feature families.
+ * Test-only families matching these names are excluded.
+ */
+const TEST_CATEGORY_DIRS = new Set([
+    'specs', 'spec', 'accessibility', 'visual', 'smoke', 'regression',
+    'integration', 'functional', 'unit', 'e2e', 'performance', 'load',
+]);
+
+/**
+ * Structural directories that are code-organization concerns, not feature families.
+ * Discovered source dirs matching these names are excluded from family creation.
+ */
+const STRUCTURAL_DIRS = new Set([
+    'actions', 'client', 'components', 'hooks', 'i18n', 'packages',
+    'reducers', 'selectors', 'store', 'stores', 'tests', 'types',
+    'utils', 'helpers', 'lib', 'common', 'shared', 'constants',
+    'config', 'styles', 'sass', 'css', 'assets', 'images', 'fonts',
+    'middleware', 'contexts', 'providers', 'layouts', 'templates',
+]);
+
+/**
+ * Server Go files that are infrastructure / cross-cutting concerns,
+ * not feature-specific domains.  Matched after stripping _local/_store suffixes.
+ */
+const SERVER_INFRA_FILES = new Set([
+    'api', 'apitestlib', 'context', 'helpers', 'params', 'swagger',
+    'app', 'server', 'enterprise', 'product_service', 'security_update_check',
+    'store', 'adapters', 'errors', 'integrity', 'migrate', 'doc',
+    'main', 'init', 'cluster_discovery', 'web_conn', 'web_broadcast_hooks',
+    'manualtesting', 'testlib', 'router', 'handler', 'opentracing',
+    'platform', 'focalboard', 'playbooks', 'client4', 'model',
+    'manifest', 'permission', 'log', 'utils',
+]);
+
+/**
+ * Server tier directories to scan for Go domain files.
+ * Each tier represents a layer of the backend architecture.
+ */
+const SERVER_TIERS = [
+    'channels/api4',
+    'channels/app',
+    'channels/store/sqlstore',
+    'channels/web',
+    'channels/wsapi',
+    'public/model',
+] as const;
+
 /** Type-safe includes check for readonly arrays */
 const includes = <T>(arr: readonly T[], v: unknown): v is T => (arr as readonly unknown[]).includes(v);
 
@@ -335,10 +383,287 @@ function detectFeatures(
     return features;
 }
 
-export function scanProject(projectRoot: string): ScanResult {
+/**
+ * Discover families by walking the test directory tree at depth ≥ 2.
+ *
+ * This is the primary family discovery mechanism for projects where source
+ * code is organized by code type (components/, actions/) but tests are
+ * organized by feature (channels/drafts/, channels/search/).
+ *
+ * Each leaf test directory (containing spec files) at meaningful depth ≥ 2
+ * becomes a candidate family.  Top-level feature dirs (depth 1) are already
+ * discovered by the standard `discoverTestDirs` + `groupByFamily` pipeline.
+ */
+/**
+ * Normalize a Go filename into a family domain identifier.
+ * Strips _local, _store, trailing 's' (plurals), and normalizes casing.
+ */
+function normalizeServerDomain(baseName: string): string | null {
+    let name = baseName;
+    // Strip common suffixes
+    name = name.replace(/_local$/, '');
+    name = name.replace(/_store$/, '');
+    // Skip very short names (e.g., single-letter files)
+    if (name.length < 3) return null;
+    return normalizeId(name);
+}
+
+/**
+ * Given a domain name like "channel_bookmark", find its parent domain
+ * if a shorter prefix exists in the set (e.g., "channel").
+ * This groups related server files under a single family.
+ */
+function findParentDomain(name: string, allDomains: Set<string>): string {
+    const parts = name.split('_');
+    // Try progressively shorter prefixes
+    for (let i = parts.length - 1; i >= 1; i--) {
+        const candidate = parts.slice(0, i).join('_');
+        if (allDomains.has(candidate) && candidate !== name) {
+            return candidate;
+        }
+    }
+    return name;
+}
+
+/**
+ * Discover families by scanning server Go source files.
+ *
+ * The backend follows a three-tier pattern:
+ *   api4/draft.go + app/draft.go + store/sqlstore/draft_store.go
+ *
+ * Related files are grouped under parent domains:
+ *   channel.go, channel_bookmark.go, channel_category.go → "channel" family
+ *
+ * Each domain becomes a candidate family with precise serverPaths.
+ */
+export function discoverServerDerivedFamilies(serverRoot: string): ScannedFamily[] {
+    const resolved = resolve(serverRoot);
+
+    // First pass: collect all raw domain names across tiers
+    const allRawDomains = new Set<string>();
+    // domain → tier → Set<file basenames>
+    const domainTierFiles = new Map<string, Map<string, Set<string>>>();
+
+    function collectGoFile(entry: string, tierRelPath: string): void {
+        if (!entry.endsWith('.go') || entry.endsWith('_test.go') || entry.startsWith('.')) return;
+
+        const baseName = entry.replace('.go', '');
+        const domain = normalizeServerDomain(baseName);
+        if (!domain || SERVER_INFRA_FILES.has(domain)) return;
+
+        allRawDomains.add(domain);
+        if (!domainTierFiles.has(domain)) domainTierFiles.set(domain, new Map());
+        const tierMap = domainTierFiles.get(domain)!;
+        if (!tierMap.has(tierRelPath)) tierMap.set(tierRelPath, new Set());
+        tierMap.get(tierRelPath)!.add(baseName);
+    }
+
+    for (const tier of SERVER_TIERS) {
+        const tierPath = join(resolved, tier);
+        if (!existsSync(tierPath)) continue;
+
+        let entries: string[];
+        try { entries = readdirSync(tierPath); } catch { continue; }
+
+        for (const entry of entries) {
+            collectGoFile(entry, tier);
+
+            // Also check subdirectories (e.g., app/slashcommands/, app/users/)
+            const subPath = join(tierPath, entry);
+            try {
+                const stat = lstatSync(subPath);
+                if (stat.isDirectory() && !isSkipped(entry)) {
+                    const subEntries = readdirSync(subPath);
+                    for (const subEntry of subEntries) {
+                        collectGoFile(subEntry, `${tier}/${entry}`);
+                    }
+                }
+            } catch { /* skip */ }
+        }
+    }
+
+    // Scan job directories — each subdirectory is a job type
+    const jobsPath = join(resolved, 'channels/jobs');
+    if (existsSync(jobsPath)) {
+        try {
+            for (const entry of readdirSync(jobsPath)) {
+                const jobPath = join(jobsPath, entry);
+                try {
+                    if (!lstatSync(jobPath).isDirectory() || isSkipped(entry)) continue;
+                    const domain = normalizeId(entry);
+                    if (SERVER_INFRA_FILES.has(domain)) continue;
+
+                    allRawDomains.add(domain);
+                    const jobFiles = readdirSync(jobPath);
+                    for (const jf of jobFiles) {
+                        if (jf.endsWith('.go') && !jf.endsWith('_test.go')) {
+                            if (!domainTierFiles.has(domain)) domainTierFiles.set(domain, new Map());
+                            const tierMap = domainTierFiles.get(domain)!;
+                            const tierKey = `channels/jobs/${entry}`;
+                            if (!tierMap.has(tierKey)) tierMap.set(tierKey, new Set());
+                            tierMap.get(tierKey)!.add(jf.replace('.go', ''));
+                        }
+                    }
+                } catch { /* skip */ }
+            }
+        } catch { /* skip */ }
+    }
+
+    // Second pass: group child domains under parents
+    // e.g., channel_bookmark → channel, post_priority → post
+    // Track which top-level tiers each family touches for significance filtering.
+    const familyPaths = new Map<string, Set<string>>();
+    const familyTiers = new Map<string, Set<string>>();
+
+    for (const [domain, tierMap] of domainTierFiles) {
+        const parentDomain = findParentDomain(domain, allRawDomains);
+
+        if (!familyPaths.has(parentDomain)) familyPaths.set(parentDomain, new Set());
+        if (!familyTiers.has(parentDomain)) familyTiers.set(parentDomain, new Set());
+        const paths = familyPaths.get(parentDomain)!;
+        const tiers = familyTiers.get(parentDomain)!;
+
+        for (const [tierRelPath, fileNames] of tierMap) {
+            // Track the top-level tier (e.g., "channels/api4" from "channels/api4/slashcommands")
+            const topTier = tierRelPath.split('/').slice(0, 2).join('/');
+            tiers.add(topTier);
+
+            for (const baseName of fileNames) {
+                // Use directory-level glob to capture the file and related variants
+                paths.add(`server/${tierRelPath}/${baseName}*.go`);
+            }
+        }
+    }
+
+    // Build families from grouped domains.
+    // Only include server-only families that span ≥ 2 tiers (architecturally significant).
+    const families: ScannedFamily[] = [];
+    for (const [domain, paths] of familyPaths) {
+        if (paths.size === 0) continue;
+
+        const tierCount = familyTiers.get(domain)?.size ?? 0;
+        if (tierCount < 2) continue; // Skip single-tier domains (likely infrastructure)
+
+        families.push({
+            id: domain,
+            routes: [`/${domain.replace(/_/g, '-')}`],
+            webappPaths: [],
+            serverPaths: Array.from(paths),
+            specDirs: [],
+            cypressSpecDirs: [],
+            tags: [],
+            features: [],
+            routesGuessed: true,
+        });
+    }
+
+    return families;
+}
+
+export function discoverTestDerivedFamilies(testsRoot: string): ScannedFamily[] {
+    const resolved = resolve(testsRoot);
+
+    interface Candidate {
+        dir: string;
+        relPath: string;
+        leafId: string;
+        parentId: string | null;
+    }
+    const candidates: Candidate[] = [];
+
+    function walk(dir: string, depth: number): void {
+        if (depth > 8) return;
+
+        let entries: string[];
+        try { entries = readdirSync(dir); } catch { return; }
+
+        const hasSpecs = entries.some((e) =>
+            TEST_EXTENSIONS.some((ext) => e.endsWith(ext)) || e.endsWith(GO_TEST_SUFFIX),
+        );
+
+        const subdirs = entries.filter((e) => {
+            if (isSkipped(e)) return false;
+            try {
+                const stat = lstatSync(join(dir, e));
+                return !stat.isSymbolicLink() && stat.isDirectory();
+            } catch { return false; }
+        });
+
+        const relPath = relative(resolved, dir).replace(/\\/g, '/');
+        const parts = relPath.split('/').filter(Boolean);
+        const meaningful = parts.filter(
+            (p) => !TEST_CATEGORY_DIRS.has(normalizeId(p)) && !isSkipped(p),
+        );
+
+        // Depth-2+ meaningful dirs with spec files → candidate families
+        if (meaningful.length >= 2 && hasSpecs) {
+            const leafId = normalizeId(meaningful[meaningful.length - 1]);
+            const parentId = normalizeId(meaningful[meaningful.length - 2]);
+
+            if (!STRUCTURAL_DIRS.has(leafId) && !TEST_CATEGORY_DIRS.has(leafId)) {
+                candidates.push({dir, relPath, leafId, parentId});
+            }
+        }
+
+        for (const sub of subdirs) {
+            walk(join(dir, sub), depth + 1);
+        }
+    }
+
+    // Walk from standard test roots
+    const testRoots = ['tests', 'test', 'e2e-tests', 'e2e', 'specs', 'spec'];
+    for (const root of testRoots) {
+        const rootPath = join(resolved, root);
+        if (existsSync(rootPath)) {
+            walk(rootPath, 0);
+        }
+    }
+
+    // Detect leaf-name collisions across parents
+    const idCount = new Map<string, number>();
+    for (const c of candidates) {
+        idCount.set(c.leafId, (idCount.get(c.leafId) || 0) + 1);
+    }
+
+    // Build families — prefix with parent when names collide
+    const familyMap = new Map<string, ScannedFamily>();
+    for (const c of candidates) {
+        let familyId = c.leafId;
+        if ((idCount.get(c.leafId) || 0) > 1 && c.parentId) {
+            familyId = `${c.parentId}_${c.leafId}`;
+        }
+
+        if (!familyMap.has(familyId)) {
+            const specFiles = getSpecFiles(c.dir);
+            familyMap.set(familyId, {
+                id: familyId,
+                routes: [`/${familyId.replace(/_/g, '-')}`],
+                webappPaths: [],
+                serverPaths: [],
+                specDirs: [c.relPath + '/'],
+                cypressSpecDirs: [],
+                tags: extractTags(specFiles),
+                features: [],
+                routesGuessed: true,
+            });
+        } else {
+            const existing = familyMap.get(familyId)!;
+            const specDir = c.relPath + '/';
+            if (!existing.specDirs.includes(specDir)) {
+                existing.specDirs.push(specDir);
+                existing.tags = [...new Set([...existing.tags, ...extractTags(getSpecFiles(c.dir))])];
+            }
+        }
+    }
+
+    return Array.from(familyMap.values());
+}
+
+export function scanProject(projectRoot: string, testsRoot?: string, serverRoot?: string): ScanResult {
     const resolved = resolve(projectRoot);
+    const resolvedTestsRoot = testsRoot ? resolve(testsRoot) : resolved;
     const sourceDirs = discoverSourceDirs(resolved);
-    const testDirs = discoverTestDirs(resolved);
+    const testDirs = discoverTestDirs(resolvedTestsRoot);
 
     const allDirs = [...sourceDirs, ...testDirs];
     const groups = groupByFamily(allDirs);
@@ -350,6 +675,13 @@ export function scanProject(projectRoot: string): ScanResult {
         const hasTests = group.test.length > 0 || group.cypress.length > 0;
 
         if (!hasSrc && !hasTests) continue;
+
+        // Skip structural directories that are code-organization, not features.
+        // Only skip if they have source dirs but no corresponding test dirs.
+        if (STRUCTURAL_DIRS.has(familyId) && !hasTests) continue;
+
+        // Skip test-only families that match broad test categories (not feature families).
+        if (!hasSrc && hasTests && TEST_CATEGORY_DIRS.has(familyId)) continue;
 
         const allSpecFiles: string[] = [];
         for (const td of [...group.test, ...group.cypress]) {
@@ -369,6 +701,60 @@ export function scanProject(projectRoot: string): ScanResult {
             features,
             routesGuessed: true,
         });
+    }
+
+    // When a separate testsRoot is provided, discover families from test
+    // directory structure.  Projects with feature-organized tests but
+    // code-type-organized source benefit from this.
+    if (testsRoot) {
+        const testFamilies = discoverTestDerivedFamilies(resolvedTestsRoot);
+        const existingIds = new Set(families.map((f) => f.id));
+        for (const tf of testFamilies) {
+            if (existingIds.has(tf.id)) {
+                // Merge specDirs into existing family
+                const existing = families.find((f) => f.id === tf.id)!;
+                for (const sd of tf.specDirs) {
+                    if (!existing.specDirs.includes(sd)) {
+                        existing.specDirs.push(sd);
+                    }
+                }
+                existing.tags = [...new Set([...existing.tags, ...tf.tags])];
+            } else {
+                families.push(tf);
+                existingIds.add(tf.id);
+            }
+        }
+    }
+
+    // When a separate serverRoot is provided, discover families from Go source
+    // filenames across the three-tier backend (api4, app, store).
+    if (serverRoot) {
+        const serverFamilies = discoverServerDerivedFamilies(resolve(serverRoot));
+        const existingIds = new Set(families.map((f) => f.id));
+
+        for (const sf of serverFamilies) {
+            // Try exact match, then singular/plural variants
+            let target = families.find((f) => f.id === sf.id);
+            if (!target && !sf.id.endsWith('s')) {
+                target = families.find((f) => f.id === sf.id + 's');
+            }
+            if (!target && sf.id.endsWith('s')) {
+                target = families.find((f) => f.id === sf.id.slice(0, -1));
+            }
+
+            if (target) {
+                // Merge serverPaths into existing family
+                for (const sp of sf.serverPaths) {
+                    if (!target.serverPaths.includes(sp)) {
+                        target.serverPaths.push(sp);
+                    }
+                }
+            } else {
+                // New server-only family
+                families.push(sf);
+                existingIds.add(sf.id);
+            }
+        }
     }
 
     const familyIds = new Set(families.map((f) => f.id));

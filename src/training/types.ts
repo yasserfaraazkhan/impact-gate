@@ -99,6 +99,10 @@ export interface TrainOptions {
     appPath: string;
     /** Path to tests root (may differ from appPath) */
     testsRoot: string;
+    /** Path to server/backend root (may differ from appPath) */
+    serverRoot?: string;
+    /** Git repo root for monorepo-aware validation */
+    gitRepoRoot?: string;
     /** Enable LLM enrichment (default: true) */
     enrich: boolean;
     /** Run validation against git history */
