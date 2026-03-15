@@ -21,6 +21,9 @@ const INFRA_GLOBS = [
     '**/.github/*', '**/.ci/*', '**/scripts/*',
     '**/docker-compose*',
     '**/__fixtures__/*', '**/test_templates/*',
+    '**/__snapshots__/*', '**/retrylayer/*', '**/timerlayer/*',
+    '**/cmd/mmctl/*',
+    '**/mattermost-redux/src/reducers/*',
     'playwright.config.ts', 'global-setup.ts',
 ];
 

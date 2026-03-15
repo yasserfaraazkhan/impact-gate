@@ -1,6 +1,6 @@
 {
   "name": "@yasserkhanorg/e2e-agents",
-  "version": "1.7.1",
+  "version": "1.7.2",
   "description": "AI-powered E2E test impact analysis, generation, and healing. Analyzes code changes to identify affected Playwright tests, detects coverage gaps, and generates or repairs specs using pluggable LLM providers (Claude, OpenAI, Ollama). Includes MCP server, traceability, and CI/CD integration.",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
