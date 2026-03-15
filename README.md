@@ -74,16 +74,26 @@ npx e2e-ai-agents train --path /path/to/project --validate --since HEAD~20
 
 **Why LLM enrichment is on by default:** The manifest exists to give AI context for impact analysis, scenario suggestion, and bug detection. AI-generated context produces better AI reasoning downstream. Use `--no-enrich` for offline/free operation or to avoid sending code snippets to third-party LLM APIs.
 
-**Training loop:** Run `train` → review the generated `route-families.json` → run `train --validate` to check coverage % → fix gaps → repeat until 95%+.
+**Training loop:** Run `train` → review the generated `route-families.json` → run `train --validate` to check coverage % → fix gaps → repeat.
 
 The `train` command:
-1. **Scans** your project structure (frontend `src/`, backend `server/`, test dirs)
-2. **Matches** source directories to test directories by name
-3. **Enriches** with LLM (priority, user flows, routes, components)
-4. **Merges** intelligently with any existing manifest (preserves human curation)
-5. **Validates** against git history to measure accuracy
+1. **Scans** your project structure (frontend `src/`, backend `server/`, test dirs, test library page objects, types/utils)
+2. **Matches** source directories to test directories by name, including fuzzy singular/plural matching
+3. **Discovers** server-derived families from Go three-tier architecture (api4, app, store)
+4. **Discovers** test-derived families from feature-organized test directories
+5. **Enriches** with LLM (priority, user flows, routes, components)
+6. **Merges** intelligently with any existing manifest (preserves human curation)
+7. **Validates** against git history to measure accuracy with monorepo-aware path normalization
 
-Output is written to `<testsRoot>/.e2e-ai-agents/route-families.json`.
+**Additional flags:**
+- `--verbose` / `-v` — DEBUG-level output with timing for each phase
+- `--json` — structured JSON log output (for CI pipelines)
+- `--server-path` — explicit path to backend server root
+- `--budget-usd` — max LLM spend (default: $0.50, max: $10)
+
+**Output:**
+- `<testsRoot>/.e2e-ai-agents/route-families.json` — the manifest
+- `<testsRoot>/.e2e-ai-agents/train-report.json` — timing data, family counts, coverage stats, LLM metrics
 
 ## Configuration
 
@@ -227,6 +237,8 @@ Schemas: [schemas/traceability-input.schema.json](schemas/traceability-input.sch
 
 | File | Written by | Purpose |
 |------|-----------|---------|
+| `route-families.json` | `train` | Route family manifest |
+| `train-report.json` | `train` | Training timings, coverage, LLM metrics |
 | `plan.json` | `plan` | Coverage plan with gaps, decisions, metrics |
 | `ci-summary.md` | `plan` | Markdown for PR comments |
 | `metrics.jsonl` | `plan` | Append-only run metrics |

@@ -2,6 +2,42 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.2] - 2026-03-15
+
+### 1.7 — Coverage Gap Closure + Observability
+
+Validated against 835 commits (6 months) of Mattermost history. 63% coverage (3223/5105 files), 118/119 families hit.
+
+### Coverage Improvements
+
+- **Infrastructure file exclusion** — Makefile, go.mod, mocks, i18n, snapshots, mmctl, retrylayer, redux reducers excluded from coverage calculation
+- **Test library scanning** — page objects at `lib/src/ui/components/` and server helpers at `lib/src/server/` mapped to families
+- **Server tier relaxation** — single-tier server files (e.g., `server/public/model/channel.go`) merge into existing families
+- **Types/utils scanning** — files in `src/utils/`, `src/types/`, and monorepo `webapp/platform/types/src/` matched by basename
+- **Monorepo path normalization** — validator strips repo-root prefixes for correct matching in monorepos
+- **specDir binding** — test spec changes now bind to route families, not just source changes
+
+### Observability
+
+- **Enhanced Logger** — JSON mode (`LOG_FORMAT=json` / `--json`), `timer()` for operation timing
+- **CLI flags** — `--verbose` / `-v` for DEBUG output, `--json` for structured logging
+- **Train report** — `train-report.json` with phase timings, family counts, coverage stats, LLM metrics
+- **LLM metrics** — `requestCount` and `avgResponseMs` surfaced from enricher
+- **Pipeline timing** — stage-level timing in `pipeline-report.json`
+
+### Training Pipeline
+
+- `discoverTestLibPaths()` — walks test lib dirs, maps subdirs and files to families
+- `discoverNameMatchedPaths()` — scans types/utils/model dirs, matches basenames to families
+- `discoverServerDerivedFamilies()` returns `{multiTierFamilies, singleTierFamilies}` for selective merging
+- `scanProject()` accepts optional `gitRepoRoot` for monorepo-aware scanning
+- `bindWithPrefixes()` in validator for monorepo path normalization
+
+### Stats
+
+- 240 tests across 47 suites (up from 185 in v1.0.0)
+- 92 source files, ~124K lines of code
+
 ## [1.0.0] - 2026-03-12
 
 ### 1.0 — Production-Ready Release
