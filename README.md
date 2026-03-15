@@ -56,7 +56,67 @@ npx e2e-ai-agents llm-health
 
 ## Route-Families Training
 
-Route-families map your source files to features, test directories, and user flows. They are the context that powers accurate impact analysis. The `train` command bootstraps and maintains this manifest.
+### What it produces
+
+The `train` command builds a **knowledge map** of your codebase — a single JSON file (`route-families.json`) that maps source files to features, test directories, and user flows. This is not ML training; no model is trained. It's building a structured manifest like:
+
+```json
+{
+  "id": "channels",
+  "routes": ["/{team}/channels/{channel}"],
+  "priority": "P0",
+  "webappPaths": ["src/components/channel_header/**"],
+  "serverPaths": ["server/channels/api4/channel*.go", "server/channels/app/channel*.go"],
+  "specDirs": ["specs/functional/channels/"],
+  "userFlows": ["Create channel", "Archive channel", "Search in channel"],
+  "components": ["ChannelHeader", "ChannelSidebar"]
+}
+```
+
+### Why the tool needs this
+
+When a PR changes `server/channels/app/channel.go`, the tool needs to answer: **"which E2E tests should I run?"** Without the manifest, it has no idea. With it:
+
+```
+channel.go changed
+  → belongs to "channels" family
+    → specs are in specs/functional/channels/
+      → run those tests
+      → flag if coverage is missing for the affected user flows
+```
+
+Every downstream command (`impact`, `plan`, `generate`, `heal`, `e2e-qa-agent`) reads this manifest to understand the codebase.
+
+### How scanning works
+
+The scanner uses 4 strategies to build the `file → family` mapping:
+
+1. **Directory matching** — `src/channels/` + `tests/channels/` share a name → channels family
+2. **Test-derived** — `specs/functional/channels/drafts/` exists with spec files → drafts family (even if source code is scattered across components/actions/reducers)
+3. **Server-derived** — `api4/channel.go` + `app/channel.go` + `store/channel_store.go` span 3 backend tiers → channel family (related files like `channel_bookmark.go` are grouped under the parent)
+4. **Name-matched** — `src/utils/channels.ts` or `server/public/model/channel.go` basename matches → add to channels family's paths
+
+### What LLM enrichment adds
+
+The scanner finds files. The LLM reads code samples and adds **semantic metadata** the scanner can't determine:
+- Accurate URL routes (`/{team}/channels/{channel}` instead of guessed `/channels`)
+- Priority classification (P0 critical user flow vs P2 nice-to-have)
+- Human-readable user flows ("Create channel", "Search messages")
+- React component and page object names
+
+This metadata makes impact analysis smarter — it can prioritize P0 flows and suggest specific test scenarios.
+
+### What validation does
+
+The `--validate` flag measures manifest accuracy against **real git history**. It's not training data — it's a quality check:
+
+```
+835 commits → 5105 changed files → 3223 bound to a family = 63% coverage
+```
+
+This tells you the manifest is complete enough. If coverage were 30%, impact analysis would be blind to most code changes.
+
+### Usage
 
 ```bash
 # Scan your codebase + LLM enrichment (default)
@@ -72,18 +132,9 @@ npx e2e-ai-agents train --path /path/to/project --validate --since HEAD~50
 npx e2e-ai-agents train --path /path/to/project --validate --since HEAD~20
 ```
 
-**Why LLM enrichment is on by default:** The manifest exists to give AI context for impact analysis, scenario suggestion, and bug detection. AI-generated context produces better AI reasoning downstream. Use `--no-enrich` for offline/free operation or to avoid sending code snippets to third-party LLM APIs.
+**Why LLM enrichment is on by default:** The manifest gives AI context for impact analysis, scenario suggestion, and bug detection. AI-generated context produces better AI reasoning downstream. Use `--no-enrich` for offline/free operation or to avoid sending code snippets to third-party LLM APIs.
 
-**Training loop:** Run `train` → review the generated `route-families.json` → run `train --validate` to check coverage % → fix gaps → repeat.
-
-The `train` command:
-1. **Scans** your project structure (frontend `src/`, backend `server/`, test dirs, test library page objects, types/utils)
-2. **Matches** source directories to test directories by name, including fuzzy singular/plural matching
-3. **Discovers** server-derived families from Go three-tier architecture (api4, app, store)
-4. **Discovers** test-derived families from feature-organized test directories
-5. **Enriches** with LLM (priority, user flows, routes, components)
-6. **Merges** intelligently with any existing manifest (preserves human curation)
-7. **Validates** against git history to measure accuracy with monorepo-aware path normalization
+**Training loop:** Run `train` → review `route-families.json` → run `train --validate` to check coverage % → fix gaps → repeat.
 
 **Additional flags:**
 - `--verbose` / `-v` — DEBUG-level output with timing for each phase
