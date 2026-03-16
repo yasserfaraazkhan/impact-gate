@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.3] - 2026-03-16
+
+### Bug Fixes
+
+- **Gap description fallback** — when the LLM returns missing test scenarios but empty `reasons` for a gap, the PR comment now synthesizes a description from changed file names instead of showing a blank line after the `✦ AI-enriched` label
+
+### CI Workflow Examples
+
+- **Shard-deduplicated template** — new `e2e-tests-playwright-template.yml` example that extracts plan/generate into a single job and shares results via artifacts (75% LLM cost reduction)
+- **Fail-open API fallback** — coverage gate and template workflows now fall back to the full test suite with a warning annotation when the LLM API is unavailable, instead of blocking PRs
+- **Caller example** — `e2e-tests-caller.yml` shows how to invoke the reusable template
+
 ## [1.7.2] - 2026-03-15
 
 ### 1.7 — Coverage Gap Closure + Observability
