@@ -204,6 +204,19 @@ function isCommentOnlyDiff(file: string, repoRoot: string, baseRef: string): boo
     });
 }
 
+/**
+ * Check if a file path is a test file (spec, test, or in test directories).
+ * Shared across pipeline and crew orchestrators.
+ */
+export function isTestFile(file: string): boolean {
+    const normalized = file.replace(/\\/g, '/');
+    return /\.(spec|test)\.(ts|tsx|js|jsx)$/.test(normalized) ||
+           /_test\.go$/.test(normalized) ||
+           normalized.includes('__tests__/') ||
+           normalized.includes('/tests/') ||
+           normalized.includes('/test/');
+}
+
 export function getChangedFiles(appRoot: string, since: string, options?: GitChangeOptions): GitChangeResult {
     try {
         const files = new Set<string>();

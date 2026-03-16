@@ -25,7 +25,7 @@ export interface CrewContext {
     specIndex: SpecIndex;
     context: LoadedContext;
     familyGroups: FamilyGroup[];
-    preprocessResult: PreprocessResult;
+    preprocessResult: PreprocessResult | null;
 
     // Configuration
     appPath: string;
@@ -64,16 +64,16 @@ export function createEmptyUsageStats(): ProviderUsageStats {
 }
 
 export function mergeUsageStats(target: ProviderUsageStats, source: ProviderUsageStats): void {
+    const prevRequestCount = target.requestCount;
     target.requestCount += source.requestCount;
     target.totalInputTokens += source.totalInputTokens;
     target.totalOutputTokens += source.totalOutputTokens;
     target.totalTokens += source.totalTokens;
     target.totalCost += source.totalCost;
     target.failedRequests += source.failedRequests;
-    if (source.requestCount > 0) {
-        const totalRequests = target.requestCount;
-        const prevWeight = (totalRequests - source.requestCount) / totalRequests;
-        const newWeight = source.requestCount / totalRequests;
+    if (source.requestCount > 0 && target.requestCount > 0) {
+        const prevWeight = prevRequestCount / target.requestCount;
+        const newWeight = source.requestCount / target.requestCount;
         target.averageResponseTimeMs =
             target.averageResponseTimeMs * prevWeight + source.averageResponseTimeMs * newWeight;
     }

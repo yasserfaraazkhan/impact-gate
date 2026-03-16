@@ -7,15 +7,10 @@
 
 import type {AgentRole} from './types.js';
 
-export interface WorkflowPhase {
-    name: string;
-    /** Built-in handler (e.g. preprocess) — no agent dispatch */
-    handler?: 'built-in';
-    /** Agents to run in parallel */
-    parallel?: AgentRole[];
-    /** Agents to run sequentially */
-    sequential?: AgentRole[];
-}
+export type WorkflowPhase =
+    | {name: string; handler: 'built-in'; parallel?: never; sequential?: never}
+    | {name: string; handler?: never; parallel: AgentRole[]; sequential?: never}
+    | {name: string; handler?: never; parallel?: never; sequential: AgentRole[]};
 
 export interface WorkflowDef {
     name: string;
@@ -33,7 +28,7 @@ export const WORKFLOWS: Record<WorkflowName, WorkflowDef> = {
             {name: 'preprocess', handler: 'built-in'},
             {name: 'understand', parallel: ['impact-analyst', 'cross-impact', 'regression-advisor']},
             {name: 'strategize', sequential: ['strategist', 'test-designer']},
-            {name: 'execute', parallel: ['generator', 'explorer']},
+            {name: 'execute', parallel: ['generator']},
             {name: 'validate', sequential: ['executor', 'healer']},
         ],
     },

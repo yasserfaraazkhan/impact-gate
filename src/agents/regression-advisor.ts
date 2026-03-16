@@ -12,6 +12,14 @@ import type {Agent, AgentTask, AgentResult} from '../crew/protocol.js';
 import type {CrewContext} from '../crew/context.js';
 import type {AgentRole, RegressionRisk} from '../crew/types.js';
 
+const FLAKY_RISK_MULTIPLIER = 15;
+const LOW_PRECISION_RISK_MULTIPLIER = 30;
+const PATTERN_RISK_SCORE = 30;
+const PATTERN_RISK_ADDITIVE = 20;
+const MAX_RISK_SCORE = 100;
+const MIN_PRECISION_THRESHOLD = 0.5;
+const MIN_CALIBRATION_SAMPLES = 3;
+
 export class RegressionAdvisorAgent implements Agent {
     readonly role: AgentRole = 'regression-advisor';
 
@@ -39,7 +47,7 @@ export class RegressionAdvisorAgent implements Agent {
                     risks.push({
                         familyId,
                         filePattern: '*',
-                        riskScore: Math.min(100, count * 15),
+                        riskScore: Math.min(MAX_RISK_SCORE, count * FLAKY_RISK_MULTIPLIER),
                         reason: `${count} flaky test(s) historically in this family`,
                         historicalFailures: count,
                     });
@@ -54,11 +62,11 @@ export class RegressionAdvisorAgent implements Agent {
                 if (!isImpacted) continue;
 
                 // Low precision means many false positives — the subsystem is noisy
-                if (metrics.precision < 0.5 && metrics.samples >= 3) {
+                if (metrics.precision < MIN_PRECISION_THRESHOLD && metrics.samples >= MIN_CALIBRATION_SAMPLES) {
                     const existing = risks.find((r) => r.familyId === subsystem);
-                    const lowPrecisionScore = Math.round((1 - metrics.precision) * 30);
+                    const lowPrecisionScore = Math.round((1 - metrics.precision) * LOW_PRECISION_RISK_MULTIPLIER);
                     if (existing) {
-                        existing.riskScore = Math.min(100, existing.riskScore + lowPrecisionScore);
+                        existing.riskScore = Math.min(MAX_RISK_SCORE, existing.riskScore + lowPrecisionScore);
                         existing.reason += `; low calibration precision (${(metrics.precision * 100).toFixed(0)}%)`;
                     } else {
                         risks.push({
@@ -94,13 +102,13 @@ export class RegressionAdvisorAgent implements Agent {
                 ].filter(Boolean).join(', ');
 
                 if (existing) {
-                    existing.riskScore = Math.min(100, existing.riskScore + 20);
+                    existing.riskScore = Math.min(MAX_RISK_SCORE, existing.riskScore + PATTERN_RISK_ADDITIVE);
                     existing.reason += `; regression-prone patterns: ${patterns}`;
                 } else {
                     risks.push({
                         familyId: group.familyId,
                         filePattern: group.files.map((f) => f.path).join(', '),
-                        riskScore: 30,
+                        riskScore: PATTERN_RISK_SCORE,
                         reason: `Regression-prone file patterns detected: ${patterns}`,
                         historicalFailures: 0,
                     });
@@ -120,16 +128,5 @@ export class RegressionAdvisorAgent implements Agent {
             output: risks,
             warnings,
         };
-    }
-
-    private extractFamilyFromPath(specPath: string, ctx: CrewContext): string | null {
-        const normalized = specPath.replace(/\\/g, '/');
-        for (const family of ctx.routeFamilies) {
-            const specDirs = [...(family.specDirs || []), ...(family.cypressSpecDirs || [])];
-            if (specDirs.some((dir) => normalized.includes(dir))) {
-                return family.id;
-            }
-        }
-        return null;
     }
 }

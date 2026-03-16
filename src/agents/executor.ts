@@ -6,11 +6,14 @@
  * Runs generated specs through Playwright and collects results.
  */
 
-import {LLMProviderFactory} from '../provider_factory.js';
+import {getCrewProvider} from '../crew/provider.js';
 import {runAgenticGeneration, type ScenarioInput} from '../agentic/runner.js';
 import type {Agent, AgentTask, AgentResult} from '../crew/protocol.js';
 import type {CrewContext} from '../crew/context.js';
 import type {AgentRole} from '../crew/types.js';
+
+const MAX_FIX_ATTEMPTS = 2;
+const TEST_TIMEOUT_MS = 120000;
 
 export class ExecutorAgent implements Agent {
     readonly role: AgentRole = 'executor';
@@ -41,16 +44,14 @@ export class ExecutorAgent implements Agent {
         });
 
         try {
-            const provider = ctx.providerOverride
-                ? LLMProviderFactory.createFromString(ctx.providerOverride)
-                : await LLMProviderFactory.createFromEnv();
+            const provider = await getCrewProvider(ctx.providerOverride);
 
             const summary = await runAgenticGeneration({
                 scenarios,
                 config: {
-                    maxAttempts: 2,
+                    maxAttempts: MAX_FIX_ATTEMPTS,
                     project: 'chrome',
-                    testTimeoutMs: 120000,
+                    testTimeoutMs: TEST_TIMEOUT_MS,
                     provider: ctx.providerOverride,
                     testsRoot: ctx.testsRoot,
                 },

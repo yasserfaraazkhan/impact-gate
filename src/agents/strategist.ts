@@ -6,17 +6,17 @@
  * cross-impact data, and regression risk.
  */
 
-import {LLMProviderFactory} from '../provider_factory.js';
+import {getCrewProvider} from '../crew/provider.js';
 import {buildStrategistPrompt, parseStrategistResponse} from '../prompts/strategist.js';
 import type {Agent, AgentTask, AgentResult} from '../crew/protocol.js';
 import type {CrewContext} from '../crew/context.js';
 import type {AgentRole, StrategyEntry, TestCaseType} from '../crew/types.js';
 
 const VALID_APPROACHES = new Set(['full-test', 'smoke-test', 'skip', 'manual-review']);
-const VALID_CATEGORIES: TestCaseType[] = [
+const VALID_CATEGORIES = new Set<TestCaseType>([
     'happy-path', 'edge-case', 'boundary', 'negative',
     'state-transition', 'race-condition', 'permission', 'accessibility', 'performance',
-];
+]);
 const VALID_RISK = new Set(['high', 'medium', 'low', 'none']);
 
 export class StrategistAgent implements Agent {
@@ -37,9 +37,7 @@ export class StrategistAgent implements Agent {
         });
 
         try {
-            const provider = ctx.providerOverride
-                ? LLMProviderFactory.createFromString(ctx.providerOverride)
-                : await LLMProviderFactory.createFromEnv();
+            const provider = await getCrewProvider(ctx.providerOverride);
 
             const response = await provider.generateText(prompt, {
                 maxTokens: 4000,
@@ -63,7 +61,7 @@ export class StrategistAgent implements Agent {
                 approach: VALID_APPROACHES.has(s.approach) ? s.approach as StrategyEntry['approach'] : 'full-test',
                 rationale: s.rationale || '',
                 testCategories: (s.testCategories || []).filter(
-                    (c): c is TestCaseType => VALID_CATEGORIES.includes(c as TestCaseType),
+                    (c): c is TestCaseType => VALID_CATEGORIES.has(c as TestCaseType),
                 ),
                 crossImpactRisk: VALID_RISK.has(s.crossImpactRisk) ? s.crossImpactRisk as StrategyEntry['crossImpactRisk'] : 'none',
             }));

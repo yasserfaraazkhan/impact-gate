@@ -5,7 +5,7 @@
  * Crew Orchestrator — executes workflow definitions by dispatching to agents.
  */
 
-import {getChangedFiles} from '../agent/git.js';
+import {getChangedFiles, isTestFile} from '../agent/git.js';
 import {preprocess} from '../pipeline/stage0_preprocess.js';
 import {logger} from '../logger.js';
 import type {RouteFamilyConfig} from '../knowledge/route_families.js';
@@ -34,15 +34,6 @@ export interface CrewResult {
     context: CrewContext;
     warnings: string[];
     timings: Record<string, number>;
-}
-
-function isTestFile(file: string): boolean {
-    const normalized = file.replace(/\\/g, '/');
-    return /\.(spec|test)\.(ts|tsx|js|jsx)$/.test(normalized) ||
-           /_test\.go$/.test(normalized) ||
-           normalized.includes('__tests__/') ||
-           normalized.includes('/tests/') ||
-           normalized.includes('/test/');
 }
 
 export class CrewOrchestrator {
@@ -81,7 +72,7 @@ export class CrewOrchestrator {
             specIndex: {specs: [], indexedAt: ''},
             context: {documents: [], warnings: []},
             familyGroups: [],
-            preprocessResult: null as any,
+            preprocessResult: null,
             appPath: config.appPath,
             testsRoot: config.testsRoot,
             gitSince: config.gitSince,
@@ -103,7 +94,7 @@ export class CrewOrchestrator {
             const timer = logger.timer(`crew:${phase.name}`);
 
             if (phase.handler === 'built-in') {
-                this.runBuiltInPhase(phase.name, ctx, config);
+                await this.runBuiltInPhase(phase.name, ctx, config);
             } else if (phase.parallel && phase.parallel.length > 0) {
                 await this.runParallel(phase.parallel, phase.name, ctx);
             } else if (phase.sequential && phase.sequential.length > 0) {
@@ -154,18 +145,22 @@ export class CrewOrchestrator {
         return Promise.all(promises);
     }
 
-    broadcast(msg: AgentMessage, ctx: CrewContext): void {
+    async broadcast(msg: AgentMessage, ctx: CrewContext): Promise<void> {
         ctx.messages.push(msg);
+        const promises: Promise<void>[] = [];
         for (const agent of this.agents.values()) {
             if (agent.onMessage && agent.role !== msg.from) {
-                agent.onMessage(msg).catch((err) => {
-                    ctx.warnings.push(`Broadcast to ${agent.role} failed: ${err instanceof Error ? err.message : String(err)}`);
-                });
+                promises.push(
+                    agent.onMessage(msg).catch((err) => {
+                        ctx.warnings.push(`Broadcast to ${agent.role} failed: ${err instanceof Error ? err.message : String(err)}`);
+                    }),
+                );
             }
         }
+        await Promise.all(promises);
     }
 
-    private runBuiltInPhase(name: string, ctx: CrewContext, config: CrewConfig): void {
+    private async runBuiltInPhase(name: string, ctx: CrewContext, config: CrewConfig): Promise<void> {
         if (name === 'preprocess') {
             if (ctx.changedFiles.length === 0) {
                 return;
@@ -191,13 +186,23 @@ export class CrewOrchestrator {
 
     private async runParallel(roles: AgentRole[], phaseName: string, ctx: CrewContext): Promise<void> {
         logger.info(`Crew phase '${phaseName}': running ${roles.join(', ')} in parallel`);
-        await this.parallel(roles, phaseName, ctx);
+        const results = await this.parallel(roles, phaseName, ctx);
+        this.checkPhaseResults(phaseName, results, ctx);
     }
 
     private async runSequential(roles: AgentRole[], phaseName: string, ctx: CrewContext): Promise<void> {
         logger.info(`Crew phase '${phaseName}': running ${roles.join(' → ')} sequentially`);
+        const results: AgentResult[] = [];
         for (const role of roles) {
-            await this.dispatch(role, phaseName, ctx);
+            results.push(await this.dispatch(role, phaseName, ctx));
+        }
+        this.checkPhaseResults(phaseName, results, ctx);
+    }
+
+    private checkPhaseResults(phaseName: string, results: AgentResult[], ctx: CrewContext): void {
+        const allFailed = results.length > 0 && results.every((r) => r.status === 'failed');
+        if (allFailed) {
+            ctx.warnings.push(`Phase '${phaseName}': all ${results.length} agent(s) failed. Downstream phases may produce empty results.`);
         }
     }
 }

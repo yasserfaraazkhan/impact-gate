@@ -6,17 +6,19 @@
  * Takes strategist output + API surface + existing specs and produces TestDesign[].
  */
 
-import {LLMProviderFactory} from '../provider_factory.js';
+import {getCrewProvider} from '../crew/provider.js';
 import {getSpecsForFamily} from '../knowledge/spec_index.js';
 import {buildTestDesignerPrompt, parseTestDesignerResponse} from '../prompts/test-designer.js';
 import type {Agent, AgentTask, AgentResult} from '../crew/protocol.js';
 import type {CrewContext} from '../crew/context.js';
 import type {AgentRole, TestDesign, TestCase, TestCaseType, StrategyEntry} from '../crew/types.js';
 
-const VALID_TYPES: TestCaseType[] = [
+const MAX_TEST_CASES_PER_FLOW = 15;
+
+const VALID_TYPES = new Set<TestCaseType>([
     'happy-path', 'edge-case', 'boundary', 'negative',
     'state-transition', 'race-condition', 'permission', 'accessibility', 'performance',
-];
+]);
 
 export class TestDesignerAgent implements Agent {
     readonly role: AgentRole = 'test-designer';
@@ -41,9 +43,7 @@ export class TestDesignerAgent implements Agent {
 
         let provider;
         try {
-            provider = ctx.providerOverride
-                ? LLMProviderFactory.createFromString(ctx.providerOverride)
-                : await LLMProviderFactory.createFromEnv();
+            provider = await getCrewProvider(ctx.providerOverride);
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             warnings.push(`Test designer provider unavailable: ${message}`);
@@ -90,14 +90,14 @@ export class TestDesignerAgent implements Agent {
                     .filter((tc) => tc.name && tc.steps && tc.steps.length > 0)
                     .map((tc) => ({
                         name: tc.name,
-                        type: VALID_TYPES.includes(tc.type as TestCaseType) ? tc.type as TestCaseType : 'happy-path',
+                        type: VALID_TYPES.has(tc.type as TestCaseType) ? tc.type as TestCaseType : 'happy-path',
                         preconditions: Array.isArray(tc.preconditions) ? tc.preconditions : [],
                         steps: Array.isArray(tc.steps) ? tc.steps : [],
                         expectedOutcome: tc.expectedOutcome || '',
                         priority: (['P0', 'P1', 'P2'].includes(tc.priority) ? tc.priority : 'P2') as 'P0' | 'P1' | 'P2',
                         rationale: tc.rationale || '',
                     }))
-                    .slice(0, 15); // Max 15 per flow
+                    .slice(0, MAX_TEST_CASES_PER_FLOW);
 
                 if (validatedCases.length > 0) {
                     designs.push({

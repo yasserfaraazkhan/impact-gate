@@ -6,13 +6,14 @@
  * by analyzing shared dependencies between changed families and all other families.
  */
 
-import {LLMProviderFactory} from '../provider_factory.js';
+import {getCrewProvider} from '../crew/provider.js';
 import {buildCrossImpactPrompt, parseCrossImpactResponse} from '../prompts/cross-impact.js';
 import type {Agent, AgentTask, AgentResult} from '../crew/protocol.js';
 import type {CrewContext} from '../crew/context.js';
 import type {AgentRole, CrossImpact} from '../crew/types.js';
 
 const VALID_RISK = new Set(['high', 'medium', 'low']);
+const MAX_CROSS_IMPACTS = 50;
 
 export class CrossImpactAgent implements Agent {
     readonly role: AgentRole = 'cross-impact';
@@ -33,14 +34,13 @@ export class CrossImpactAgent implements Agent {
         }
 
         // First: deterministic cross-impact detection via shared paths
-        const deterministicCrossImpacts = this.detectDeterministic(ctx, directlyImpacted);
+        const deterministicCrossImpacts = this.detectDeterministic(ctx, directlyImpacted)
+            .slice(0, MAX_CROSS_IMPACTS);
         ctx.crossImpacts.push(...deterministicCrossImpacts);
 
         // Then: LLM-enriched analysis for semantic cross-impacts
         try {
-            const provider = ctx.providerOverride
-                ? LLMProviderFactory.createFromString(ctx.providerOverride)
-                : await LLMProviderFactory.createFromEnv();
+            const provider = await getCrewProvider(ctx.providerOverride);
 
             const prompt = buildCrossImpactPrompt({
                 changedFiles: ctx.changedFiles,
@@ -77,6 +77,7 @@ export class CrossImpactAgent implements Agent {
                     ctx.crossImpacts.map((ci) => `${ci.sourceFamily}->${ci.affectedFamily}`),
                 );
                 for (const ci of llmCrossImpacts) {
+                    if (ctx.crossImpacts.length >= MAX_CROSS_IMPACTS) break;
                     const key = `${ci.sourceFamily}->${ci.affectedFamily}`;
                     if (!existing.has(key)) {
                         ctx.crossImpacts.push(ci);

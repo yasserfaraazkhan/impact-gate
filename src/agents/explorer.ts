@@ -8,7 +8,7 @@
 
 import type {Agent, AgentTask, AgentResult} from '../crew/protocol.js';
 import type {CrewContext} from '../crew/context.js';
-import type {AgentRole, Finding} from '../crew/types.js';
+import type {AgentRole} from '../crew/types.js';
 
 export class ExplorerAgent implements Agent {
     readonly role: AgentRole = 'explorer';

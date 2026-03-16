@@ -9,11 +9,9 @@ import {resolveConfig} from '../../agent/config.js';
 import {CrewOrchestrator, type CrewConfig} from '../../crew/orchestrator.js';
 import type {WorkflowName} from '../../crew/workflows.js';
 import {ImpactAnalystAgent} from '../../agents/impact-analyst.js';
-import {CoverageEvaluatorAgent} from '../../agents/coverage-evaluator.js';
 import {GeneratorAgent} from '../../agents/generator.js';
 import {ExecutorAgent} from '../../agents/executor.js';
 import {HealerAgent} from '../../agents/healer.js';
-import {ExplorerAgent} from '../../agents/explorer.js';
 import {StrategistAgent} from '../../agents/strategist.js';
 import {TestDesignerAgent} from '../../agents/test-designer.js';
 import {CrossImpactAgent} from '../../agents/cross-impact.js';
@@ -38,11 +36,12 @@ export async function runCrewCommand(args: ParsedArgs, autoConfig: string | unde
     });
     const testsRoot = config.testsRoot || config.path;
 
-    const workflowName = (args.crewWorkflow || 'full-qa') as WorkflowName;
-    if (!VALID_WORKFLOWS.includes(workflowName)) {
-        console.error(`Error: invalid workflow '${workflowName}'. Valid: ${VALID_WORKFLOWS.join(', ')}`);
+    const rawWorkflow = args.crewWorkflow || 'full-qa';
+    if (!VALID_WORKFLOWS.includes(rawWorkflow as WorkflowName)) {
+        console.error(`Error: invalid workflow '${rawWorkflow}'. Valid: ${VALID_WORKFLOWS.join(', ')}`);
         process.exit(1);
     }
+    const workflowName = rawWorkflow as WorkflowName;
 
     const crewConfig: CrewConfig = {
         appPath: config.path,
@@ -59,11 +58,9 @@ export async function runCrewCommand(args: ParsedArgs, autoConfig: string | unde
     // Create orchestrator and register all agents
     const orchestrator = new CrewOrchestrator();
     orchestrator.registerAgent(new ImpactAnalystAgent());
-    orchestrator.registerAgent(new CoverageEvaluatorAgent());
     orchestrator.registerAgent(new GeneratorAgent());
     orchestrator.registerAgent(new ExecutorAgent());
     orchestrator.registerAgent(new HealerAgent());
-    orchestrator.registerAgent(new ExplorerAgent());
     orchestrator.registerAgent(new StrategistAgent());
     orchestrator.registerAgent(new TestDesignerAgent());
     orchestrator.registerAgent(new CrossImpactAgent());
