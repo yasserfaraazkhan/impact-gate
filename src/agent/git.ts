@@ -114,6 +114,8 @@ function isRelevantFile(file: string): boolean {
 
 export interface GitChangeResult {
     files: string[];
+    /** All files from the diff before relevance filtering (includes test files, config, etc.). */
+    allFiles?: string[];
     error?: string;
     baseRef?: string;
     baseStrategy?: 'merge-base' | 'direct';
@@ -206,7 +208,8 @@ export function getChangedFiles(appRoot: string, since: string, options?: GitCha
             }
         }
 
-        return {files: Array.from(files).filter(isRelevantFile), baseRef, baseStrategy};
+        const allFiles = Array.from(files);
+        return {files: allFiles.filter(isRelevantFile), allFiles, baseRef, baseStrategy};
     } catch {
         return {files: [], error: 'git diff failed'};
     }

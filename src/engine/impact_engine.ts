@@ -61,6 +61,8 @@ export interface ImpactEngineOptions {
     cypressRoot?: string;
     routeFamilies?: RouteFamiliesConfig;
     expandedFiles?: string[];
+    /** Full unfiltered file list from git diff (includes test files). Used to detect PR-included E2E specs. */
+    allFiles?: string[];
 }
 
 function scanDirForSpecs(baseDir: string, specDir: string, extension: string): string[] {
@@ -241,8 +243,12 @@ export function analyzeImpact(
     const {testsRoot, routeFamilies} = options;
     const warnings: string[] = [];
 
-    // Partition into source files and test files
-    const allOriginalFiles = [...changedFiles];
+    // Partition into source files and test files.
+    // When allFiles is provided (from git.ts before relevance filtering), use it
+    // to capture test files that were pre-filtered by the caller.
+    const allOriginalFiles = options.allFiles && options.allFiles.length > 0
+        ? [...new Set([...options.allFiles, ...changedFiles])]
+        : [...changedFiles];
     changedFiles = changedFiles.filter((f) => !isTestFile(f));
     const prIncludedTestFiles = classifyPrTestFiles(allOriginalFiles, changedFiles);
 
