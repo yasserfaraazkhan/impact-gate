@@ -95,6 +95,30 @@ export {runAgenticGeneration} from './agentic/runner.js';
 export type {ScenarioInput, AgenticRunOptions} from './agentic/runner.js';
 export type {AgenticConfig, AgenticResult, AgenticSummary, PlaywrightRunResult, TestFailure} from './agentic/types.js';
 
+// Crew (multi-agent QA workflows)
+export {CrewOrchestrator} from './crew/orchestrator.js';
+export type {CrewConfig, CrewResult} from './crew/orchestrator.js';
+export type {CrewContext} from './crew/context.js';
+export type {Agent, AgentTask, AgentResult, AgentMessage} from './crew/protocol.js';
+export type {
+    AgentRole, TestCaseType, TestCase, TestDesign,
+    CrossImpact, Finding, RegressionRisk, StrategyEntry,
+} from './crew/types.js';
+export type {WorkflowDef, WorkflowName} from './crew/workflows.js';
+export {WORKFLOWS} from './crew/workflows.js';
+
+// Crew agents
+export {ImpactAnalystAgent} from './agents/impact-analyst.js';
+export {CoverageEvaluatorAgent} from './agents/coverage-evaluator.js';
+export {GeneratorAgent} from './agents/generator.js';
+export {ExecutorAgent} from './agents/executor.js';
+export {HealerAgent} from './agents/healer.js';
+export {ExplorerAgent} from './agents/explorer.js';
+export {StrategistAgent} from './agents/strategist.js';
+export {TestDesignerAgent} from './agents/test-designer.js';
+export {CrossImpactAgent} from './agents/cross-impact.js';
+export {RegressionAdvisorAgent} from './agents/regression-advisor.js';
+
 // Training (route-families bootstrap and maintenance)
 export {scanProject} from './training/scanner.js';
 export {mergeFamilies, detectStaleFamilies} from './training/merger.js';

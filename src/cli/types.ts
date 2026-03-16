@@ -16,7 +16,8 @@ export type Command =
     | 'traceability-ingest'
     | 'analyze'
     | 'llm-health'
-    | 'train';
+    | 'train'
+    | 'crew';
 
 export interface ParsedArgs {
     command?: Command;
@@ -92,6 +93,9 @@ export interface ParsedArgs {
     trainOutput?: string;
     trainYes?: boolean;
     serverPath?: string;
+
+    // Crew command
+    crewWorkflow?: string;
 
     // Observability flags
     verbose?: boolean;

@@ -16,6 +16,7 @@ import {runPlanCommand} from './cli/commands/plan.js';
 import {runGenerateCommand} from './cli/commands/generate.js';
 import {runInitCommand} from './cli/commands/init.js';
 import {runTrainCommand} from './cli/commands/train.js';
+import {runCrewCommand} from './cli/commands/crew.js';
 
 async function main(): Promise<void> {
     const args = parseArgs(process.argv.slice(2));
@@ -69,6 +70,11 @@ async function main(): Promise<void> {
 
     if (args.command === 'heal') {
         runHealCommand(args, autoConfig);
+        return;
+    }
+
+    if (args.command === 'crew') {
+        await runCrewCommand(args, autoConfig);
         return;
     }
 

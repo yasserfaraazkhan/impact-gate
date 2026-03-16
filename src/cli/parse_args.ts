@@ -126,6 +126,7 @@ const FLAGS: Record<string, FlagDef> = {
     '--flow-catalog':                  {key: 'flowCatalogPath', type: 'string'},
     '--output':                        {key: 'trainOutput', type: 'string'},
     '--server-path':                   {key: 'serverPath', type: 'string'},
+    '--workflow':                       {key: 'crewWorkflow', type: 'string'},
 
     // -- number flags (with isFinite guard) --
     '--pipeline-scenarios':              {key: 'pipelineScenarios', type: 'number'},
@@ -180,7 +181,7 @@ const COMMANDS = new Set<Command>([
     'init', 'impact', 'plan', 'heal', 'suggest', 'generate',
     'finalize-generated-tests', 'feedback',
     'traceability-capture', 'traceability-ingest',
-    'analyze', 'llm-health', 'train',
+    'analyze', 'llm-health', 'train', 'crew',
 ]);
 
 // ---------------------------------------------------------------------------
