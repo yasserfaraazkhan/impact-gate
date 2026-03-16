@@ -67,9 +67,29 @@ export async function runCrewCommand(args: ParsedArgs, autoConfig: string | unde
     orchestrator.registerAgent(new RegressionAdvisorAgent());
 
     const result = await orchestrator.run(crewConfig);
-
-    // Output results
     const ctx = result.context;
+
+    // JSON output mode
+    if (args.jsonOutput) {
+        const jsonReport = {
+            workflow: workflowName,
+            changedFiles: ctx.changedFiles.length,
+            impactedFlows: ctx.impactedFlows,
+            strategyEntries: ctx.strategyEntries,
+            testDesigns: ctx.testDesigns,
+            crossImpacts: ctx.crossImpacts,
+            regressionRisks: ctx.regressionRisks,
+            findings: ctx.findings,
+            generatedSpecs: ctx.generatedSpecs.map((s) => ({flowId: s.flowId, specPath: s.specPath, mode: s.mode, written: s.written})),
+            usage: {cost: ctx.usage.totalCost, requests: ctx.usage.requestCount, tokens: ctx.usage.totalTokens},
+            timings: result.timings,
+            warnings: result.warnings,
+        };
+        console.log(JSON.stringify(jsonReport, null, 2));
+        return;
+    }
+
+    // Human-readable output
     console.log(`Crew workflow: ${workflowName}`);
     console.log(`Changed files: ${ctx.changedFiles.length}`);
     console.log(`Impacted flows: ${ctx.impactedFlows.length}`);
@@ -105,7 +125,6 @@ export async function runCrewCommand(args: ParsedArgs, autoConfig: string | unde
         }
     }
 
-    // Timings
     if (result.timings && Object.keys(result.timings).length > 0) {
         console.log('\nPhase timings:');
         for (const [phase, ms] of Object.entries(result.timings)) {

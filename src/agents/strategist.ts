@@ -50,7 +50,7 @@ export class StrategistAgent implements Agent {
             if (!parsed || parsed.strategy.length === 0) {
                 warnings.push('Strategist: LLM returned no strategy.');
                 // Fall back to default strategy
-                ctx.strategyEntries = this.buildDefaultStrategy(ctx);
+                ctx.strategyEntries.push(...this.buildDefaultStrategy(ctx));
                 return {role: this.role, status: 'partial', output: ctx.strategyEntries, warnings};
             }
 
@@ -66,7 +66,7 @@ export class StrategistAgent implements Agent {
                 crossImpactRisk: VALID_RISK.has(s.crossImpactRisk) ? s.crossImpactRisk as StrategyEntry['crossImpactRisk'] : 'none',
             }));
 
-            ctx.strategyEntries = entries;
+            ctx.strategyEntries.push(...entries);
 
             return {
                 role: this.role,
@@ -78,7 +78,7 @@ export class StrategistAgent implements Agent {
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             warnings.push(`Strategist LLM failed: ${message}. Using default strategy.`);
-            ctx.strategyEntries = this.buildDefaultStrategy(ctx);
+            ctx.strategyEntries.push(...this.buildDefaultStrategy(ctx));
             return {role: this.role, status: 'partial', output: ctx.strategyEntries, warnings};
         }
     }

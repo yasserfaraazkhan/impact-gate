@@ -29,7 +29,9 @@ export class CoverageEvaluatorAgent implements Agent {
             {provider: ctx.providerOverride},
         );
 
-        // Replace impacted flows with coverage-enriched versions
+        // Replace impacted flows with coverage-enriched versions.
+        // This is intentionally a full replace (not push) because coverage evaluation
+        // returns the same flow IDs with updated coverage fields.
         ctx.impactedFlows = result.decisions;
         warnings.push(...result.warnings);
 

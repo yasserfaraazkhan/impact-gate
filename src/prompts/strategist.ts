@@ -8,6 +8,7 @@
 
 import type {FlowDecision} from '../validation/output_schema.js';
 import type {CrossImpact, RegressionRisk, StrategyEntry} from '../crew/types.js';
+import {sanitizeForPrompt} from '../crew/sanitize.js';
 
 export interface StrategistPromptContext {
     impactedFlows: FlowDecision[];
@@ -25,7 +26,7 @@ export function buildStrategistPrompt(ctx: StrategistPromptContext): string {
                 `  Action: ${f.action}`,
                 `  Confidence: ${f.confidence}%`,
                 `  Existing Coverage: ${specs}`,
-                `  User Actions: ${f.userActions.join('; ') || 'unknown'}`,
+                `  User Actions: ${sanitizeForPrompt(f.userActions.join('; ') || 'unknown')}`,
                 `  Changed Files: ${f.changedFiles.join(', ')}`,
             ].join('\n');
         })
@@ -81,11 +82,11 @@ export interface StrategistAgentResponse {
     strategy: Array<{
         flowId: string;
         flowName: string;
-        priority: string;
-        approach: string;
+        priority: 'P0' | 'P1' | 'P2' | string;
+        approach: 'full-test' | 'smoke-test' | 'skip' | 'manual-review' | string;
         rationale: string;
         testCategories: string[];
-        crossImpactRisk: string;
+        crossImpactRisk: 'high' | 'medium' | 'low' | 'none' | string;
     }>;
 }
 

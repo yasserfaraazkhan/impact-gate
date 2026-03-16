@@ -112,7 +112,7 @@ export class TestDesignerAgent implements Agent {
             }
         }
 
-        ctx.testDesigns = designs;
+        ctx.testDesigns.push(...designs);
 
         return {
             role: this.role,

@@ -3,6 +3,30 @@
 
 /**
  * Predefined workflow definitions — playbooks that compose agents into phases.
+ *
+ * Data flow through full-qa workflow:
+ *
+ *   preprocess (built-in)
+ *     → populates: familyGroups, routeFamilies, manifest, apiSurface, specIndex, context
+ *
+ *   understand (parallel):
+ *     impact-analyst      → writes: impactedFlows
+ *     cross-impact        → writes: crossImpacts
+ *     regression-advisor  → writes: regressionRisks
+ *
+ *   strategize (sequential):
+ *     strategist           → reads: impactedFlows, crossImpacts, regressionRisks
+ *                          → writes: strategyEntries
+ *     test-designer        → reads: strategyEntries, impactedFlows, crossImpacts, apiSurface, specIndex
+ *                          → writes: testDesigns
+ *
+ *   execute (parallel):
+ *     generator            → reads: impactedFlows, testDesigns, apiSurface
+ *                          → writes: generatedSpecs
+ *
+ *   validate (sequential):
+ *     executor             → reads: generatedSpecs, impactedFlows
+ *     healer               → reads: generatedSpecs, impactedFlows
  */
 
 import type {AgentRole} from './types.js';

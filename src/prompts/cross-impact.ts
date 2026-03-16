@@ -7,6 +7,7 @@
 
 import type {RouteFamily} from '../knowledge/route_families.js';
 import type {CrossImpact} from '../crew/types.js';
+import {sanitizeForPrompt} from '../crew/sanitize.js';
 
 export interface CrossImpactPromptContext {
     changedFiles: string[];
@@ -27,7 +28,7 @@ export function buildCrossImpactPrompt(ctx: CrossImpactPromptContext): string {
         })
         .join('\n');
 
-    const changedBlock = ctx.changedFiles.join('\n');
+    const changedBlock = ctx.changedFiles.map((f) => sanitizeForPrompt(f)).join('\n');
 
     return [
         'You are analyzing code changes in Mattermost to identify cross-family ripple effects.',
@@ -69,7 +70,7 @@ export interface CrossImpactAgentResponse {
         sourceFamily: string;
         affectedFamily: string;
         sharedDependency: string;
-        riskLevel: string;
+        riskLevel: 'high' | 'medium' | 'low' | string;
         evidence: string;
     }>;
 }

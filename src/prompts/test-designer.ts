@@ -10,6 +10,7 @@ import type {FlowDecision} from '../validation/output_schema.js';
 import {formatApiSurfaceForPrompt, type ApiSurfaceCatalog} from '../knowledge/api_surface.js';
 import type {SpecEntry} from '../knowledge/spec_index.js';
 import type {StrategyEntry, CrossImpact, TestDesign} from '../crew/types.js';
+import {sanitizeForPrompt} from '../crew/sanitize.js';
 
 export interface TestDesignerPromptContext {
     flow: FlowDecision;
@@ -56,8 +57,8 @@ export function buildTestDesignerPrompt(ctx: TestDesignerPromptContext): string 
         `Route: ${ctx.flow.specificRoute || '(not specified)'}`,
         `Priority: ${ctx.strategy.priority}`,
         `Approach: ${ctx.strategy.approach}`,
-        `User Actions: ${ctx.flow.userActions.join('; ') || 'unknown'}`,
-        `Evidence: ${ctx.flow.evidence}`,
+        `User Actions: ${sanitizeForPrompt(ctx.flow.userActions.join('; ') || 'unknown')}`,
+        `Evidence: ${sanitizeForPrompt(ctx.flow.evidence)}`,
         '',
         `REQUIRED TEST CATEGORIES: ${categories}`,
         '',
@@ -114,11 +115,11 @@ export interface TestDesignerAgentResponse {
         flowName: string;
         testCases: Array<{
             name: string;
-            type: string;
+            type: 'happy-path' | 'edge-case' | 'boundary' | 'negative' | 'state-transition' | 'race-condition' | 'permission' | 'accessibility' | 'performance' | string;
             preconditions: string[];
             steps: string[];
             expectedOutcome: string;
-            priority: string;
+            priority: 'P0' | 'P1' | 'P2' | string;
             rationale: string;
         }>;
     };

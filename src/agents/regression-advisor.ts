@@ -116,7 +116,7 @@ export class RegressionAdvisorAgent implements Agent {
             }
         }
 
-        ctx.regressionRisks = risks;
+        ctx.regressionRisks.push(...risks);
 
         if (risks.length === 0) {
             warnings.push('Regression advisor: no historical risk data found.');
