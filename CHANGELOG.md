@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.4] - 2026-03-16
+
+### Bug Fixes
+
+- **Snapshot filtering** — `.snap` files and `__snapshots__/` directories are now excluded from impact analysis, preventing massive over-reporting on snapshot-only PRs (e.g. 5 false gaps for a button type fix)
+- **Cross-family dedup** — family-level gaps are suppressed when all their changed files are already covered by more specific feature-level matches in other families (prevents double-counting like `config` + `system_console/permissions`)
+- **PR-included test awareness** — PRs that add Cypress or Playwright spec files alongside source changes are no longer blocked; decision softens to "run-now" instead of "must-add-tests"
+- **AI scenario specificity** — prompt now requires diff-specific scenarios with BAD/GOOD examples, rejects generic feature tests, and handles trivial/test-only diffs
+
 ## [1.7.3] - 2026-03-16
 
 ### Bug Fixes
