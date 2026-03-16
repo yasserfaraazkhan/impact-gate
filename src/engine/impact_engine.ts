@@ -61,8 +61,8 @@ export interface ImpactEngineOptions {
     cypressRoot?: string;
     routeFamilies?: RouteFamiliesConfig;
     expandedFiles?: string[];
-    /** Full unfiltered file list from git diff (includes test files). Used to detect PR-included E2E specs. */
-    allFiles?: string[];
+    /** Test files that were filtered by the caller (e.g. isRelevantFile in git.ts). Used to detect PR-included E2E specs. */
+    filteredTestFiles?: string[];
 }
 
 function scanDirForSpecs(baseDir: string, specDir: string, extension: string): string[] {
@@ -244,11 +244,10 @@ export function analyzeImpact(
     const warnings: string[] = [];
 
     // Partition into source files and test files.
-    // When allFiles is provided (from git.ts before relevance filtering), use it
-    // to capture test files that were pre-filtered by the caller.
-    const allOriginalFiles = options.allFiles && options.allFiles.length > 0
-        ? [...new Set([...options.allFiles, ...changedFiles])]
-        : [...changedFiles];
+    // Combine: (a) test files already in changedFiles that isTestFile catches, and
+    // (b) test files pre-filtered by the caller (filteredTestFiles from git.ts).
+    const preFilteredTests = options.filteredTestFiles ?? [];
+    const allOriginalFiles = [...new Set([...changedFiles, ...preFilteredTests])];
     changedFiles = changedFiles.filter((f) => !isTestFile(f));
     const prIncludedTestFiles = classifyPrTestFiles(allOriginalFiles, changedFiles);
 
@@ -339,15 +338,22 @@ function inferCypressRoot(testsRoot: string): string | undefined {
     return undefined;
 }
 
+export interface GapResult {
+    /** Active gaps that should be reported/enforced. */
+    gaps: ImpactedFeature[];
+    /** Family-level gaps suppressed because all their files are covered by specific feature matches. These should be promoted to advisory. */
+    suppressedGaps: ImpactedFeature[];
+}
+
 /**
  * Get gaps: P0/P1 features with 'uncovered' status.
  *
  * Suppresses family-level (generic) gaps when ALL their changed files are
  * already covered by feature-level (specific) matches in other families.
- * This prevents double-counting when a file like `policies.tsx` matches both
- * a generic family (`config`) and a specific feature (`system_console/permissions`).
+ * Suppressed gaps are returned separately so the plan builder can promote
+ * them to advisory ("new behavior detected") on covered flows.
  */
-export function getGaps(result: ImpactResult): ImpactedFeature[] {
+export function getGapsWithSuppressed(result: ImpactResult): GapResult {
     // Collect files that are covered via feature-level matches (more specific)
     const filesCoveredByFeatures = new Set<string>();
     for (const f of result.impactedFeatures) {
@@ -358,18 +364,30 @@ export function getGaps(result: ImpactResult): ImpactedFeature[] {
         }
     }
 
-    return result.impactedFeatures.filter((f) => {
-        if (f.priority !== 'P0' && f.priority !== 'P1') return false;
-        if (f.coverageStatus !== 'uncovered') return false;
+    const gaps: ImpactedFeature[] = [];
+    const suppressedGaps: ImpactedFeature[] = [];
+
+    for (const f of result.impactedFeatures) {
+        if (f.priority !== 'P0' && f.priority !== 'P1') continue;
+        if (f.coverageStatus !== 'uncovered') continue;
 
         // Only suppress FAMILY-level gaps (no featureId = generic match).
-        // If it's a feature-level gap, keep it — it's specific and intentional.
         if (!f.featureId && f.changedFiles.every((file) => filesCoveredByFeatures.has(file))) {
-            return false;
+            suppressedGaps.push(f);
+        } else {
+            gaps.push(f);
         }
+    }
 
-        return true;
-    });
+    return {gaps, suppressedGaps};
+}
+
+/**
+ * Get gaps: P0/P1 features with 'uncovered' status.
+ * Convenience wrapper that returns only active gaps (backward-compatible).
+ */
+export function getGaps(result: ImpactResult): ImpactedFeature[] {
+    return getGapsWithSuppressed(result).gaps;
 }
 
 /**

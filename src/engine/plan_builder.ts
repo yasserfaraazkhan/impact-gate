@@ -7,8 +7,9 @@ import {minimatch} from 'minimatch';
 
 import type {PolicyConfig} from '../agent/config.js';
 import {inferSubsystemFromTestPath} from '../agent/test_path.js';
-import type {ImpactResult, ImpactedFeature} from './impact_engine.js';
-import {getGaps, getPartialGaps} from './impact_engine.js';
+import type {ImpactResult, ImpactedFeature, PrTestFile} from './impact_engine.js';
+import {getGaps, getGapsWithSuppressed, getPartialGaps} from './impact_engine.js';
+import {bindFilesToFamilies, loadRouteFamilyManifest} from '../knowledge/route_families.js';
 import type {AIEnrichmentResult} from './ai_enrichment.js';
 import type {AdaptiveThresholds} from '../agent/feedback.js';
 
@@ -148,24 +149,94 @@ function pickRunSet(
     };
 }
 
+/**
+ * Check which gaps have matching PR-included E2E spec files by binding
+ * spec files to families via the manifest. Returns familyIds that are covered.
+ */
+function matchPrSpecsToGaps(
+    prTestFiles: PrTestFile[],
+    gaps: ImpactedFeature[],
+    testsRoot?: string,
+): Set<string> {
+    const coveredFamilies = new Set<string>();
+    const prE2ESpecs = prTestFiles.filter((t) => t.type === 'playwright' || t.type === 'cypress');
+    if (prE2ESpecs.length === 0 || !testsRoot) {
+        return coveredFamilies;
+    }
+
+    // Try to bind PR spec files to families via the manifest
+    const manifest = loadRouteFamilyManifest(testsRoot);
+    if (manifest) {
+        const specBindings = bindFilesToFamilies(prE2ESpecs.map((s) => s.file), manifest);
+        for (const sb of specBindings) {
+            for (const binding of sb.bindings) {
+                coveredFamilies.add(binding.family);
+            }
+        }
+    }
+
+    // Fallback heuristic: if manifest binding didn't match (common for Cypress specs
+    // in directories not mapped in the manifest), check path-based keyword overlap.
+    if (coveredFamilies.size === 0) {
+        const gapFamilyIds = new Set(gaps.map((g) => g.familyId));
+        for (const spec of prE2ESpecs) {
+            const specLower = spec.file.toLowerCase().replace(/[_\-/\\]/g, ' ');
+            for (const familyId of gapFamilyIds) {
+                // Check if the spec path contains the family name or related terms
+                if (specLower.includes(familyId.toLowerCase())) {
+                    coveredFamilies.add(familyId);
+                }
+            }
+        }
+    }
+
+    return coveredFamilies;
+}
+
 function buildDecision(
     impact: ImpactResult,
     runSet: RecommendedRunSet,
     confidence: number,
     policy: PolicyConfig,
 ): DecisionSummary {
-    const gaps = getGaps(impact);
+    const gaps = getGapsWithSuppressed(impact).gaps;
 
     if (gaps.length > 0) {
-        // Check if PR already includes E2E test files that likely cover the gaps
-        const prE2ESpecCount = (impact.prIncludedTestFiles ?? [])
-            .filter((t) => t.type === 'playwright' || t.type === 'cypress').length;
+        const prE2ESpecs = (impact.prIncludedTestFiles ?? [])
+            .filter((t) => t.type === 'playwright' || t.type === 'cypress');
 
-        if (prE2ESpecCount > 0) {
+        if (prE2ESpecs.length > 0) {
+            // Bind PR specs to families — only soften gaps that have matching specs
+            const coveredFamilies = matchPrSpecsToGaps(
+                impact.prIncludedTestFiles ?? [],
+                gaps,
+                /* testsRoot not available here — use heuristic only */
+            );
+
+            const uncoveredGaps = gaps.filter((g) => !coveredFamilies.has(g.familyId));
+
+            if (uncoveredGaps.length === 0) {
+                // ALL gaps have matching PR specs
+                return {
+                    action: 'run-now',
+                    title: 'Run now',
+                    summary: `Detected ${gaps.length} coverage gap(s), but the PR includes ${prE2ESpecs.length} E2E test file(s) covering them. Verify the new tests cover impacted flows.`,
+                };
+            }
+            if (uncoveredGaps.length < gaps.length) {
+                // SOME gaps covered by PR specs, others not
+                return {
+                    action: 'must-add-tests',
+                    title: 'Must add tests',
+                    summary: `Detected ${gaps.length} coverage gap(s). PR includes E2E tests for ${gaps.length - uncoveredGaps.length}, but ${uncoveredGaps.length} flow(s) still need coverage.`,
+                };
+            }
+            // No gaps matched by PR specs — but PR still has E2E files.
+            // Soften to run-now since the developer is actively writing tests.
             return {
                 action: 'run-now',
                 title: 'Run now',
-                summary: `Detected ${gaps.length} coverage gap(s), but the PR includes ${prE2ESpecCount} E2E test file(s). Verify the new tests cover impacted flows.`,
+                summary: `Detected ${gaps.length} coverage gap(s), but the PR includes ${prE2ESpecs.length} E2E test file(s). Verify the new tests cover impacted flows.`,
             };
         }
 
@@ -301,7 +372,7 @@ export function buildPlanFromImpact(
     const decision = buildDecision(impact, runSetResult.runSet, confidence, policy);
     const enforcement = evaluateEnforcement(decision, policy);
 
-    const gaps = getGaps(impact);
+    const {gaps, suppressedGaps} = getGapsWithSuppressed(impact);
     const partialGaps = getPartialGaps(impact);
 
     // Build two separate lookup maps from aiEnrichment: one by featureId, one by familyId.
@@ -393,9 +464,29 @@ export function buildPlanFromImpact(
                 ? (aiFeatureByFeatureId.get(f.featureId) ?? aiFeatureByFamilyId.get(f.familyId))
                 : aiFeatureByFamilyId.get(f.familyId);
             // Only surface advisory scenarios when AI found new behavior in this diff
-            const advisoryScenarios = aiFeature?.aiMissingScenarios?.length
-                ? aiFeature.aiMissingScenarios
+            let advisoryScenarios = aiFeature?.aiMissingScenarios?.length
+                ? [...aiFeature.aiMissingScenarios]
                 : undefined;
+
+            // Promote suppressed gaps to advisory on covered flows that share changed files.
+            // When a family-level gap is suppressed (e.g. "post" because post.go is also in
+            // a covered feature like "channels/threads"), the behavioral change should appear
+            // here as "new behavior detected" instead of vanishing.
+            for (const sg of suppressedGaps) {
+                const sharedFiles = sg.changedFiles.filter((file) => f.changedFiles.includes(file));
+                if (sharedFiles.length > 0) {
+                    const sgAi = sg.featureId
+                        ? (aiFeatureByFeatureId.get(sg.featureId) ?? aiFeatureByFamilyId.get(sg.familyId))
+                        : aiFeatureByFamilyId.get(sg.familyId);
+                    const sgScenarios = sgAi?.aiMissingScenarios?.length
+                        ? sgAi.aiMissingScenarios
+                        : sg.userFlows.slice(0, 3);
+                    if (sgScenarios.length > 0) {
+                        advisoryScenarios = [...(advisoryScenarios || []), ...sgScenarios];
+                    }
+                }
+            }
+
             return {
                 id: featureLabel(f),
                 name: featureLabel(f),

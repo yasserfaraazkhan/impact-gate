@@ -101,7 +101,7 @@ export function analyzeImpactDeterministic(options: AgentApiOptions = {}): Impac
     return analyzeImpactV2(gitResult.files, {
         testsRoot: reportRoot,
         routeFamilies: config.routeFamilies,
-        allFiles: gitResult.allFiles,
+        filteredTestFiles: gitResult.filteredTestFiles,
     });
 }
 
@@ -112,7 +112,7 @@ export function recommendTestsDeterministic(options: AgentApiOptions = {}): Reco
     const impact = analyzeImpactV2(gitResult.files, {
         testsRoot: reportRoot,
         routeFamilies: config.routeFamilies,
-        allFiles: gitResult.allFiles,
+        filteredTestFiles: gitResult.filteredTestFiles,
     });
     const adaptive = getAdaptiveThresholds(reportRoot);
     const plan = buildPlanFromImpact(impact, config.policy, undefined, adaptive);
@@ -130,7 +130,7 @@ export async function recommendTestsAI(options: AgentApiOptions = {}): Promise<R
     const impact = analyzeImpactV2(gitResult.files, {
         testsRoot: reportRoot,
         routeFamilies: config.routeFamilies,
-        allFiles: gitResult.allFiles,
+        filteredTestFiles: gitResult.filteredTestFiles,
     });
 
     const apiKey = process.env.ANTHROPIC_API_KEY;

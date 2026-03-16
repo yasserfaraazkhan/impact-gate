@@ -52,8 +52,8 @@ export type {
 } from './api.js';
 
 // V2 Engine (deterministic impact + plan)
-export {analyzeImpact as analyzeImpactV2, getGaps, getPartialGaps} from './engine/impact_engine.js';
-export type {ImpactResult, ImpactedFeature, CoverageStatus, ImpactEngineOptions, SpecWithScenarios, PrTestFile, PrTestFileType} from './engine/impact_engine.js';
+export {analyzeImpact as analyzeImpactV2, getGaps, getGapsWithSuppressed, getPartialGaps} from './engine/impact_engine.js';
+export type {ImpactResult, ImpactedFeature, CoverageStatus, ImpactEngineOptions, SpecWithScenarios, PrTestFile, PrTestFileType, GapResult} from './engine/impact_engine.js';
 export {extractScenarios} from './engine/impact_engine.js';
 export {buildPlanFromImpact} from './engine/plan_builder.js';
 export {appendFeedbackAndRecompute, readCalibration, readFlakyTests, getAdaptiveThresholds} from './agent/feedback.js';

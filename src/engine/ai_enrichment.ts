@@ -102,7 +102,8 @@ function buildPrompt(options: AIEnrichmentOptions): string {
         const specCount = feature.playwrightSpecs.length + feature.cypressSpecs.length;
         const specList2 = [...feature.playwrightSpecs, ...feature.cypressSpecs];
         const specsDisplay = specList2.length > 0 ? specList2.join(', ') : 'none';
-        lines.push(`- familyId=${feature.familyId} ${featureIdPart} (${feature.priority}): ${specCount} files, coverage=${feature.coverageStatus}, specs=[${specsDisplay}]`);
+        const userFlowsDisplay = feature.userFlows.length > 0 ? ` userFlows=[${feature.userFlows.slice(0, 5).join(', ')}]` : '';
+        lines.push(`- familyId=${feature.familyId} ${featureIdPart} (${feature.priority}): ${specCount} specs, coverage=${feature.coverageStatus}, specs=[${specsDisplay}]${userFlowsDisplay}`);
     }
     lines.push('');
 

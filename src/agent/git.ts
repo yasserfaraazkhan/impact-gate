@@ -114,8 +114,8 @@ function isRelevantFile(file: string): boolean {
 
 export interface GitChangeResult {
     files: string[];
-    /** All files from the diff before relevance filtering (includes test files, config, etc.). */
-    allFiles?: string[];
+    /** Test/spec files from the diff that were filtered by isRelevantFile(). Only includes files matching TEST_FILE_PATTERNS — not config, docs, or other non-test filtered files. */
+    filteredTestFiles: string[];
     error?: string;
     baseRef?: string;
     baseStrategy?: 'merge-base' | 'direct';
@@ -192,7 +192,7 @@ export function getChangedFiles(appRoot: string, since: string, options?: GitCha
 
         const diffFiles = runGit(['diff', '--name-only', `${baseRef}..HEAD`], repoRoot);
         if (!diffFiles) {
-            return {files: [], error: 'git diff failed'};
+            return {files: [], filteredTestFiles: [], error: 'git diff failed'};
         }
         diffFiles.forEach((file) => files.add(file));
 
@@ -209,8 +209,22 @@ export function getChangedFiles(appRoot: string, since: string, options?: GitCha
         }
 
         const allFiles = Array.from(files);
-        return {files: allFiles.filter(isRelevantFile), allFiles, baseRef, baseStrategy};
+        const relevant: string[] = [];
+        const filteredTestFiles: string[] = [];
+        for (const f of allFiles) {
+            if (isRelevantFile(f)) {
+                relevant.push(f);
+            } else {
+                // Only capture files that were filtered because they match test patterns.
+                // Config, docs, workflow files etc. are not useful for PR-test detection.
+                const basename = f.split('/').pop() || f;
+                if (TEST_FILE_PATTERNS.some((p) => p.test(basename))) {
+                    filteredTestFiles.push(f);
+                }
+            }
+        }
+        return {files: relevant, filteredTestFiles, baseRef, baseStrategy};
     } catch {
-        return {files: [], error: 'git diff failed'};
+        return {files: [], filteredTestFiles: [], error: 'git diff failed'};
     }
 }
