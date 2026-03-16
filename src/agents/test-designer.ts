@@ -55,6 +55,7 @@ export class TestDesignerAgent implements Agent {
         for (const strategy of designable) {
             const flow = ctx.impactedFlows.find((f) => f.flowId === strategy.flowId);
             if (!flow) {
+                warnings.push(`Test designer: strategy entry '${strategy.flowId}' has no matching flow.`);
                 continue;
             }
 

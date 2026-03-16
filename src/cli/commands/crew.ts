@@ -109,9 +109,11 @@ export async function runCrewCommand(args: ParsedArgs, autoConfig: string | unde
     }
 
     // Timings
-    console.log('\nPhase timings:');
-    for (const [phase, ms] of Object.entries(result.timings)) {
-        console.log(`  ${phase}: ${ms}ms`);
+    if (result.timings && Object.keys(result.timings).length > 0) {
+        console.log('\nPhase timings:');
+        for (const [phase, ms] of Object.entries(result.timings)) {
+            console.log(`  ${phase}: ${ms}ms`);
+        }
     }
 
     if (result.warnings.length > 0) {
