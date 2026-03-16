@@ -169,6 +169,41 @@ function parseStatusLines(lines: string[]): string[] {
     return files;
 }
 
+// Comment-line patterns by file extension.
+// A diff that ONLY touches these lines is a comment-only change (typo fix, doc update).
+const COMMENT_PATTERNS: Array<{extensions: string[]; pattern: RegExp}> = [
+    {extensions: ['.go'], pattern: /^\s*(\/\/|\/\*|\*)/},
+    {extensions: ['.ts', '.tsx', '.js', '.jsx'], pattern: /^\s*(\/\/|\/\*|\*|\*\/)/},
+    {extensions: ['.py'], pattern: /^\s*#/},
+    {extensions: ['.css', '.scss'], pattern: /^\s*(\/\*|\*|\*\/)/},
+];
+
+/**
+ * Check if a file's diff only changes comment lines (no code changes).
+ * Returns true if the diff is comment-only and can be safely excluded.
+ */
+function isCommentOnlyDiff(file: string, repoRoot: string, baseRef: string): boolean {
+    const diff = runGitRaw(['diff', `${baseRef}..HEAD`, '-U0', '--', file], repoRoot);
+    if (!diff) return false;
+
+    const ext = file.slice(file.lastIndexOf('.'));
+    const commentEntry = COMMENT_PATTERNS.find((cp) => cp.extensions.includes(ext));
+    if (!commentEntry) return false;
+
+    // Extract only added/removed content lines (skip diff headers)
+    const contentLines = diff
+        .split('\n')
+        .filter((line) => (line.startsWith('+') || line.startsWith('-')) && !line.startsWith('+++') && !line.startsWith('---'));
+
+    if (contentLines.length === 0) return false;
+
+    // Every changed line must be a comment line
+    return contentLines.every((line) => {
+        const content = line.slice(1).trim(); // Remove +/- prefix
+        return content === '' || commentEntry.pattern.test(content);
+    });
+}
+
 export function getChangedFiles(appRoot: string, since: string, options?: GitChangeOptions): GitChangeResult {
     try {
         const files = new Set<string>();
@@ -213,6 +248,10 @@ export function getChangedFiles(appRoot: string, since: string, options?: GitCha
         const filteredTestFiles: string[] = [];
         for (const f of allFiles) {
             if (isRelevantFile(f)) {
+                // Skip files where the diff only touches comments (typo fixes, doc updates)
+                if (isCommentOnlyDiff(f, repoRoot, baseRef)) {
+                    continue;
+                }
                 relevant.push(f);
             } else {
                 // Only capture files that were filtered because they match test patterns.
