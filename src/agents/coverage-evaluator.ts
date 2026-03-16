@@ -21,25 +21,31 @@ export class CoverageEvaluatorAgent implements Agent {
             return {role: this.role, status: 'partial', output: [], warnings};
         }
 
-        const result = await runCoverageStage(
-            ctx.impactedFlows,
-            ctx.specIndex,
-            ctx.context,
-            ctx.testsRoot,
-            {provider: ctx.providerOverride},
-        );
+        try {
+            const result = await runCoverageStage(
+                ctx.impactedFlows,
+                ctx.specIndex,
+                ctx.context,
+                ctx.testsRoot,
+                {provider: ctx.providerOverride},
+            );
 
-        // Replace impacted flows with coverage-enriched versions.
-        // This is intentionally a full replace (not push) because coverage evaluation
-        // returns the same flow IDs with updated coverage fields.
-        ctx.impactedFlows = result.decisions;
-        warnings.push(...result.warnings);
+            // Replace impacted flows with coverage-enriched versions.
+            // This is intentionally a full replace (not push) because coverage evaluation
+            // returns the same flow IDs with updated coverage fields.
+            ctx.impactedFlows = result.decisions;
+            warnings.push(...result.warnings);
 
-        return {
-            role: this.role,
-            status: 'success',
-            output: result.decisions,
-            warnings,
-        };
+            return {
+                role: this.role,
+                status: 'success',
+                output: result.decisions,
+                warnings,
+            };
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            warnings.push(`Coverage evaluator failed: ${message}`);
+            return {role: this.role, status: 'failed', output: null, warnings};
+        }
     }
 }

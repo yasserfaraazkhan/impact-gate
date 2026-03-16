@@ -70,21 +70,27 @@ export class GeneratorAgent implements Agent {
             return {role: this.role, status: 'partial', output: [], warnings};
         }
 
-        const result = await runGenerationStage(
-            enrichedDecisions,
-            ctx.apiSurface,
-            ctx.testsRoot,
-            {provider: ctx.providerOverride},
-        );
+        try {
+            const result = await runGenerationStage(
+                enrichedDecisions,
+                ctx.apiSurface,
+                ctx.testsRoot,
+                {provider: ctx.providerOverride},
+            );
 
-        ctx.generatedSpecs.push(...result.generated);
-        warnings.push(...result.warnings);
+            ctx.generatedSpecs.push(...result.generated);
+            warnings.push(...result.warnings);
 
-        return {
-            role: this.role,
-            status: result.generatedCount > 0 ? 'success' : 'partial',
-            output: result,
-            warnings,
-        };
+            return {
+                role: this.role,
+                status: result.generatedCount > 0 ? 'success' : 'partial',
+                output: result,
+                warnings,
+            };
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            warnings.push(`Generator failed: ${message}`);
+            return {role: this.role, status: 'failed', output: null, warnings};
+        }
     }
 }

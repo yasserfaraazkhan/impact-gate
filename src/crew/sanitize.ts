@@ -13,8 +13,8 @@ const INJECTION_PATTERNS = [
     /\[INST\]/gi,
     /<<SYS>>/gi,
     /<\|im_start\|>/gi,
-    /\bHuman\s*:\s*/g,
-    /\bAssistant\s*:\s*/g,
+    /\bHuman\s*:\s*/gi,
+    /\bAssistant\s*:\s*/gi,
 ];
 
 const MAX_FIELD_LENGTH = 2000;

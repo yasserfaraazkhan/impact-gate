@@ -66,7 +66,14 @@ export async function runCrewCommand(args: ParsedArgs, autoConfig: string | unde
     orchestrator.registerAgent(new CrossImpactAgent());
     orchestrator.registerAgent(new RegressionAdvisorAgent());
 
-    const result = await orchestrator.run(crewConfig);
+    let result;
+    try {
+        result = await orchestrator.run(crewConfig);
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`Crew workflow failed: ${message}`);
+        process.exit(1);
+    }
     const ctx = result.context;
 
     // JSON output mode

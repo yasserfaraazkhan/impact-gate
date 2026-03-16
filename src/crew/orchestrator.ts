@@ -133,7 +133,9 @@ export class CrewOrchestrator {
             if (result.usage) {
                 mergeUsageStats(ctx.usage, result.usage);
             }
-            ctx.warnings.push(...result.warnings);
+            if (result.warnings && result.warnings.length > 0) {
+                ctx.warnings.push(...result.warnings);
+            }
             return result;
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);

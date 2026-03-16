@@ -21,23 +21,29 @@ export class ImpactAnalystAgent implements Agent {
             return {role: this.role, status: 'partial', output: [], warnings};
         }
 
-        const result = await runImpactStage(
-            ctx.familyGroups,
-            ctx.manifest,
-            ctx.specIndex,
-            ctx.apiSurface,
-            ctx.context,
-            {provider: ctx.providerOverride},
-        );
+        try {
+            const result = await runImpactStage(
+                ctx.familyGroups,
+                ctx.manifest,
+                ctx.specIndex,
+                ctx.apiSurface,
+                ctx.context,
+                {provider: ctx.providerOverride},
+            );
 
-        ctx.impactedFlows.push(...result.decisions);
-        warnings.push(...result.warnings);
+            ctx.impactedFlows.push(...result.decisions);
+            warnings.push(...result.warnings);
 
-        return {
-            role: this.role,
-            status: result.decisions.length > 0 ? 'success' : 'partial',
-            output: result.decisions,
-            warnings,
-        };
+            return {
+                role: this.role,
+                status: result.decisions.length > 0 ? 'success' : 'partial',
+                output: result.decisions,
+                warnings,
+            };
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            warnings.push(`Impact analyst failed: ${message}`);
+            return {role: this.role, status: 'failed', output: null, warnings};
+        }
     }
 }
