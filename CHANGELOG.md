@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.7] - 2026-03-16
+
+### Bug Fixes
+
+- **Comment-only diff filter** — files where the diff only touches comment lines (typo fixes, doc updates) are excluded from impact analysis, preventing false gaps for non-behavioral changes like `// toa → // to a`
+
 ## [1.7.6] - 2026-03-16
 
 ### Bug Fixes
