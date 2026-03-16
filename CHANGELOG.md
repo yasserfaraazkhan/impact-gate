@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.6] - 2026-03-16
+
+### Bug Fixes
+
+- **Precise PR test file detection** — `getChangedFiles()` now returns only files matching `TEST_FILE_PATTERNS` (not all filtered files), eliminating base-branch noise that caused false "PR includes E2E tests" softening
+- **Targeted gap softening** — PR-included E2E specs are now bound to families via the manifest; only gaps with matching PR specs are softened, preventing unrelated specs from suppressing real gaps
+- **Advisory escalation for dedup** — when a family-level gap is suppressed by cross-family dedup, its scenarios are promoted to "new behavior detected" on the covered flow instead of vanishing silently
+- **AI prompt context** — userFlows from the manifest are now included in the AI enrichment prompt, giving the LLM behavioral context for store/model-only diffs
+
 ## [1.7.5] - 2026-03-16
 
 ### Bug Fixes
