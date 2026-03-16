@@ -314,8 +314,18 @@ export function buildPlanFromImpact(
             : aiFeatureByFamilyId.get(f.familyId);
 
         const baseReasons = [`No E2E tests found for ${label}`];
-        const reasons = aiFeature && aiFeature.aiReasons.length > 0
-            ? [...baseReasons, ...aiFeature.aiReasons.slice(0, 2)]
+        let aiReasonsList: string[] = [];
+        if (aiFeature) {
+            if (aiFeature.aiReasons.length > 0) {
+                aiReasonsList = aiFeature.aiReasons.slice(0, 2);
+            } else {
+                // Fallback: LLM returned scenarios but no reasons — synthesize a description
+                const fileHint = f.changedFiles.slice(0, 3).map((p) => p.split('/').pop()).join(', ');
+                aiReasonsList = [`Changes to ${fileHint} affect the ${label} feature, which currently lacks E2E coverage.`];
+            }
+        }
+        const reasons = aiReasonsList.length > 0
+            ? [...baseReasons, ...aiReasonsList]
             : baseReasons;
 
         const missingScenarios = aiFeature && aiFeature.aiMissingScenarios.length > 0
@@ -341,8 +351,17 @@ export function buildPlanFromImpact(
             : aiFeatureByFamilyId.get(f.familyId);
 
         const baseReasons = [`${label} is covered by Cypress only — consider adding Playwright tests`];
-        const reasons = aiFeature && aiFeature.aiReasons.length > 0
-            ? [...baseReasons, ...aiFeature.aiReasons.slice(0, 2)]
+        let partialAiReasons: string[] = [];
+        if (aiFeature) {
+            if (aiFeature.aiReasons.length > 0) {
+                partialAiReasons = aiFeature.aiReasons.slice(0, 2);
+            } else {
+                const fileHint = f.changedFiles.slice(0, 3).map((p) => p.split('/').pop()).join(', ');
+                partialAiReasons = [`Changes to ${fileHint} affect the ${label} feature, which has Cypress but no Playwright coverage.`];
+            }
+        }
+        const reasons = partialAiReasons.length > 0
+            ? [...baseReasons, ...partialAiReasons]
             : baseReasons;
 
         gapDetails.push({
