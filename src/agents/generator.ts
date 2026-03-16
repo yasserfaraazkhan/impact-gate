@@ -43,7 +43,10 @@ function enrichDecisionsWithTestDesigns(ctx: CrewContext): FlowDecision[] {
         return {
             ...decision,
             scenariosToAdd: mergedScenarios,
-            // If we have designs but no action, promote to create_spec
+            // Intentionally promote run_existing → add_scenarios when the test-designer
+            // produced new test cases. This ensures designed tests are generated even if
+            // impact-analyst thought existing coverage was sufficient. The test-designer
+            // only runs for flows the strategist deemed worth testing.
             action: decision.action === 'run_existing' && designedScenarios.length > 0
                 ? 'add_scenarios' as const
                 : decision.action,

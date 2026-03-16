@@ -81,7 +81,7 @@ describe('mergeUsageStats', () => {
         assert.equal(target.totalTokens, 1500);
     });
 
-    it('should compute weighted average response time', () => {
+    it('should compute weighted average with equal weights', () => {
         const target = createEmptyUsageStats();
         target.requestCount = 2;
         target.averageResponseTimeMs = 100;
@@ -93,6 +93,22 @@ describe('mergeUsageStats', () => {
         mergeUsageStats(target, source);
 
         assert.equal(target.averageResponseTimeMs, 150);
+    });
+
+    it('should compute weighted average with unequal weights', () => {
+        const target = createEmptyUsageStats();
+        target.requestCount = 10;
+        target.averageResponseTimeMs = 100;
+
+        const source = createEmptyUsageStats();
+        source.requestCount = 2;
+        source.averageResponseTimeMs = 200;
+
+        mergeUsageStats(target, source);
+
+        // Expected: (10*100 + 2*200) / 12 = 1400/12 ≈ 116.67
+        const expected = (10 * 100 + 2 * 200) / 12;
+        assert.ok(Math.abs(target.averageResponseTimeMs - expected) < 0.01);
     });
 
     it('should handle zero-request source', () => {

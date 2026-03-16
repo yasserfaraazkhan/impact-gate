@@ -99,6 +99,8 @@ export class CrewOrchestrator {
                 await this.runParallel(phase.parallel, phase.name, ctx);
             } else if (phase.sequential && phase.sequential.length > 0) {
                 await this.runSequential(phase.sequential, phase.name, ctx);
+            } else {
+                warnings.push(`Phase '${phase.name}' has no handler, parallel, or sequential agents — skipped.`);
             }
 
             timings[phase.name] = timer.end();
