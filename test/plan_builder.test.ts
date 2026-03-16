@@ -23,6 +23,7 @@ function makeImpactResult(overrides = {}) {
         ],
         unboundFiles: [],
         warnings: [],
+        prIncludedTestFiles: [],
         ...overrides,
     };
 }
@@ -164,6 +165,77 @@ describe('plan_builder', () => {
         const plan = buildPlanFromImpact(impact);
         assert.equal(plan.runSet, 'full');
         assert.ok(plan.policy.triggeredRules.includes('risky-files'));
+    });
+
+    it('softens to run-now when PR includes Cypress E2E specs alongside gaps', () => {
+        const impact = makeImpactResult({
+            impactedFeatures: [
+                {
+                    familyId: 'post',
+                    priority: 'P0',
+                    changedFiles: ['webapp/channels/src/components/message_attachment.tsx'],
+                    playwrightSpecs: [],
+                    playwrightSpecDetails: [],
+                    cypressSpecs: [],
+                    cypressSpecDetails: [],
+                    userFlows: ['View attachments'],
+                    coverageStatus: 'uncovered',
+                },
+            ],
+            prIncludedTestFiles: [
+                {file: 'e2e-tests/cypress/tests/integration/channels/attachment_spec.ts', type: 'cypress'},
+            ],
+        });
+        const plan = buildPlanFromImpact(impact);
+        assert.equal(plan.decision.action, 'run-now');
+        assert.ok(plan.decision.summary.includes('E2E'));
+    });
+
+    it('softens to run-now when PR includes Playwright specs alongside gaps', () => {
+        const impact = makeImpactResult({
+            impactedFeatures: [
+                {
+                    familyId: 'auth',
+                    priority: 'P0',
+                    changedFiles: ['webapp/channels/src/components/login.tsx'],
+                    playwrightSpecs: [],
+                    playwrightSpecDetails: [],
+                    cypressSpecs: [],
+                    cypressSpecDetails: [],
+                    userFlows: ['Log in'],
+                    coverageStatus: 'uncovered',
+                },
+            ],
+            prIncludedTestFiles: [
+                {file: 'e2e-tests/playwright/specs/auth/login.spec.ts', type: 'playwright'},
+            ],
+        });
+        const plan = buildPlanFromImpact(impact);
+        assert.equal(plan.decision.action, 'run-now');
+    });
+
+    it('still blocks when PR has only unit tests (not E2E) alongside gaps', () => {
+        const impact = makeImpactResult({
+            impactedFeatures: [
+                {
+                    familyId: 'auth',
+                    priority: 'P0',
+                    changedFiles: ['webapp/channels/src/components/login.tsx'],
+                    playwrightSpecs: [],
+                    playwrightSpecDetails: [],
+                    cypressSpecs: [],
+                    cypressSpecDetails: [],
+                    userFlows: ['Log in'],
+                    coverageStatus: 'uncovered',
+                },
+            ],
+            prIncludedTestFiles: [
+                {file: 'server/channels/api4/auth_test.go', type: 'unit'},
+                {file: 'webapp/channels/src/components/__snapshots__/login.test.tsx.snap', type: 'snapshot'},
+            ],
+        });
+        const plan = buildPlanFromImpact(impact);
+        assert.equal(plan.decision.action, 'must-add-tests');
     });
 
     it('correctly counts priority metrics', () => {

@@ -152,8 +152,9 @@ function buildPrompt(options: AIEnrichmentOptions): string {
     lines.push('');
     lines.push('Rules for missingScenarios:');
     lines.push('- Cross-reference the scenario titles in Existing Test Coverage. If a scenario already exists that covers the behavior, do NOT suggest it — instead list it in coveredBy.');
-    lines.push('- For coverage=uncovered: list all scenarios the feature needs.');
+    lines.push('- For coverage=uncovered: list ONLY scenarios that test the SPECIFIC behavior change in this diff — NOT generic scenarios for the entire feature. A permission check fix needs permission-denial test scenarios, not general CRUD tests.');
     lines.push('- For coverage=covered or coverage=partial: ONLY list scenarios introduced by THIS diff that have NO matching scenario in existing coverage. If the diff adds no new user-visible behavior, return []. Do not pad with generic scenarios.');
+    lines.push('- If the source code diff is trivial (single-line fix, type change, field rename, or the PR is primarily adding tests), return missingScenarios=[] and explain in reasons that no new user-visible behavior was introduced.');
     lines.push('');
     lines.push(JSON.stringify({
         impactedFlows: [
@@ -162,10 +163,10 @@ function buildPrompt(options: AIEnrichmentOptions): string {
                 name: '<human-readable flow name>',
                 priority: 'P0|P1|P2',
                 reasons: [
-                    '<EXACTLY 1-2 sentences describing user-visible behavioral impact. Focus on what a user would observe or do differently — NOT file names, NOT implementation details.>',
+                    '<EXACTLY 1-2 sentences explaining what SPECIFICALLY changed for users in THIS diff. Reference the actual behavior modification — NOT a general description of what the feature does. BAD: "Users can create and view posts." GOOD: "Users editing posts now require create_post permission, which may block edits for restricted roles.">',
                 ],
                 coveredBy: ['<spec file paths that cover this flow>'],
-                missingScenarios: ['<concrete scenario title for a new or changed behavior introduced by THIS diff. E.g. "Thread popout preserves scroll position on reload">'],
+                missingScenarios: ['<concrete scenario title for a NEW or CHANGED behavior in THIS diff. Must be SPECIFIC to the code change — never generic feature tests. BAD: "User can create a new post". GOOD: "User without create_post permission sees error when editing a post". If the diff is trivial (typo, field rename, test-only) return [].>'],
             },
         ],
         unboundFileAnalysis: [

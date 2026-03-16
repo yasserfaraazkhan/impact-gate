@@ -157,6 +157,18 @@ function buildDecision(
     const gaps = getGaps(impact);
 
     if (gaps.length > 0) {
+        // Check if PR already includes E2E test files that likely cover the gaps
+        const prE2ESpecCount = (impact.prIncludedTestFiles ?? [])
+            .filter((t) => t.type === 'playwright' || t.type === 'cypress').length;
+
+        if (prE2ESpecCount > 0) {
+            return {
+                action: 'run-now',
+                title: 'Run now',
+                summary: `Detected ${gaps.length} coverage gap(s), but the PR includes ${prE2ESpecCount} E2E test file(s). Verify the new tests cover impacted flows.`,
+            };
+        }
+
         return {
             action: 'must-add-tests',
             title: 'Must add tests',
@@ -454,6 +466,7 @@ export function renderCiSummaryMarkdown(plan: PlanReport): string {
     const lines: string[] = [];
     const {uncoveredP0P1Flows, changedFiles, impactedFlows, coveredFlows: coveredCount, partialFlows: partialCount, unboundFiles: unboundCount} = plan.metrics;
     const mustAddTests = plan.decision.action === 'must-add-tests';
+    const hasGapsButPrHasSpecs = !mustAddTests && plan.gapDetails.filter((g) => !g.name.includes('(partial)')).length > 0;
 
     const flowsWithAdvisory = plan.coveredFlows.filter((f) => f.advisoryScenarios && f.advisoryScenarios.length > 0);
     const cleanFlows = plan.coveredFlows.filter((f) => !f.advisoryScenarios || f.advisoryScenarios.length === 0);
@@ -510,6 +523,25 @@ export function renderCiSummaryMarkdown(plan: PlanReport): string {
                 lines.push('');
             }
         }
+    }
+
+    // ── Informational gaps (PR includes E2E specs) ─────────────────────────────
+    if (hasGapsButPrHasSpecs) {
+        const infoGaps = plan.gapDetails.filter((g) => !g.name.includes('(partial)'));
+        lines.push('');
+        lines.push(`### ℹ️ Coverage gaps detected (PR includes E2E tests)`);
+        lines.push('');
+        lines.push('> The PR adds E2E test files. Verify they cover these flows:');
+        lines.push('');
+        for (const gap of infoGaps) {
+            const aiLabel = gap.source === 'ai+deterministic' ? ' ✦ AI-enriched' : '';
+            lines.push(`- **${gap.name}** · ${gap.priority}${aiLabel}`);
+            const aiReasons = gap.reasons.slice(1);
+            if (aiReasons.length > 0) {
+                lines.push(`  ${aiReasons.join(' ')}`);
+            }
+        }
+        lines.push('');
     }
 
     // ── Advisory: covered flows with new behavior ─────────────────────────────

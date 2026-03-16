@@ -64,8 +64,24 @@ function createTestEnvironment() {
                 priority: 'P0',
                 userFlows: ['Log in with email'],
             },
+            {
+                id: 'config',
+                routes: ['/admin/config'],
+                webappPaths: ['webapp/channels/src/components/admin*'],
+                specDirs: [],
+                cypressSpecDirs: [],
+                priority: 'P0',
+                userFlows: ['Configure system'],
+            },
         ],
     };
+    // Add admin_panel feature to channels that overlaps with config family
+    manifest.families[0].features.push({
+        id: 'channels/admin_panel',
+        webappPaths: ['webapp/channels/src/components/admin*'],
+        specDirs: ['specs/functional/channels/center_view/'],
+        priority: 'P1',
+    });
     writeFileSync(join(testsRoot, '.e2e-ai-agents', 'route-families.json'), JSON.stringify(manifest));
 
     return {root, testsRoot, cypressRoot};
@@ -228,5 +244,69 @@ describe('impact_engine', () => {
         // Both files should bind to channels/search
         assert.equal(result.impactedFeatures.length, 1);
         assert.equal(result.impactedFeatures[0].changedFiles.length, 2);
+    });
+
+    it('filters out snapshot files (.snap) from changed files', () => {
+        const result = analyzeImpact(
+            [
+                'webapp/channels/src/components/post_view/__snapshots__/post.test.tsx.snap',
+                'webapp/channels/src/components/admin/__snapshots__/admin_user_card.test.tsx.snap',
+                'webapp/channels/src/components/channel_header.tsx',
+            ],
+            {testsRoot: env.testsRoot, cypressRoot: env.cypressRoot},
+        );
+        // Only the non-snapshot source file should survive filtering
+        assert.equal(result.changedFiles.length, 1);
+        assert.equal(result.changedFiles[0], 'webapp/channels/src/components/channel_header.tsx');
+    });
+
+    it('filters out files in __snapshots__ directories', () => {
+        const result = analyzeImpact(
+            ['webapp/channels/src/components/__snapshots__/anything.snap'],
+            {testsRoot: env.testsRoot},
+        );
+        assert.equal(result.changedFiles.length, 0);
+        assert.equal(result.impactedFeatures.length, 0);
+    });
+
+    it('suppresses family-level gaps when files are covered by feature-level matches elsewhere', () => {
+        const result = analyzeImpact(
+            ['webapp/channels/src/components/admin_settings.tsx'],
+            {testsRoot: env.testsRoot, cypressRoot: env.cypressRoot},
+        );
+        // File should match both: config (family-level, uncovered) and channels/admin_panel (feature-level, covered)
+        assert.ok(result.impactedFeatures.length >= 2, 'Should match multiple families');
+
+        const gaps = getGaps(result);
+        // config gap should be suppressed because admin_settings.tsx is also covered via channels/admin_panel
+        const configGap = gaps.find((g) => g.familyId === 'config');
+        assert.equal(configGap, undefined, 'config family-level gap should be suppressed when files are covered by feature-level match');
+    });
+
+    it('classifies PR-included test files by type', () => {
+        const result = analyzeImpact(
+            [
+                'webapp/channels/src/components/channel_header.tsx',
+                'webapp/channels/src/components/__snapshots__/channel.test.tsx.snap',
+                'e2e-tests/playwright/specs/channels/new.spec.ts',
+                'e2e-tests/cypress/tests/integration/channels/post_spec.js',
+                'webapp/channels/src/components/channel_header.test.tsx',
+                'server/channels/api4/post_test.go',
+            ],
+            {testsRoot: env.testsRoot, cypressRoot: env.cypressRoot},
+        );
+
+        // Only source file survives filtering
+        assert.equal(result.changedFiles.length, 1);
+        assert.equal(result.changedFiles[0], 'webapp/channels/src/components/channel_header.tsx');
+
+        // All test files classified
+        assert.equal(result.prIncludedTestFiles.length, 5);
+
+        const byType = (type) => result.prIncludedTestFiles.filter((t) => t.type === type);
+        assert.equal(byType('snapshot').length, 1);
+        assert.equal(byType('playwright').length, 1);
+        assert.equal(byType('cypress').length, 1);
+        assert.equal(byType('unit').length, 2); // .test.tsx + _test.go
     });
 });

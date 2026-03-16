@@ -26,6 +26,7 @@ function makeImpactResult(overrides = {}) {
         ],
         unboundFiles: [],
         warnings: [],
+        prIncludedTestFiles: [],
         ...overrides,
     };
 }
@@ -308,6 +309,7 @@ describe('advisory scenarios for covered features', () => {
             ],
             unboundFiles: [],
             warnings: [],
+            prIncludedTestFiles: [],
         };
     }
 

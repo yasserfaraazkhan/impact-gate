@@ -39,12 +39,21 @@ export interface ImpactedFeature {
     coverageStatus: CoverageStatus;
 }
 
+export type PrTestFileType = 'playwright' | 'cypress' | 'unit' | 'snapshot';
+
+export interface PrTestFile {
+    file: string;
+    type: PrTestFileType;
+}
+
 export interface ImpactResult {
     changedFiles: string[];
     expandedFiles: string[];
     impactedFeatures: ImpactedFeature[];
     unboundFiles: string[];
     warnings: string[];
+    /** Test files that were in the original PR changeset but filtered from analysis. */
+    prIncludedTestFiles: PrTestFile[];
 }
 
 export interface ImpactEngineOptions {
@@ -197,10 +206,32 @@ function groupBindings(fileBindings: FileBinding[]): Map<string, {familyId: stri
 function isTestFile(file: string): boolean {
     const normalized = file.replace(/\\/g, '/');
     return /\.(spec|test)\.(ts|tsx|js|jsx)$/.test(normalized) ||
+           /\.snap$/.test(normalized) ||
            /_test\.go$/.test(normalized) ||
            normalized.includes('__tests__/') ||
+           normalized.includes('__snapshots__/') ||
            normalized.includes('/tests/') ||
            normalized.includes('/test/');
+}
+
+/** Classify filtered test files by type for downstream decision-making. */
+function classifyPrTestFiles(allFiles: string[], sourceFiles: string[]): PrTestFile[] {
+    const sourceSet = new Set(sourceFiles);
+    return allFiles
+        .filter((f) => !sourceSet.has(f))
+        .map((f) => {
+            const n = f.replace(/\\/g, '/');
+            if (/\.snap$/.test(n) || n.includes('__snapshots__/')) {
+                return {file: f, type: 'snapshot' as const};
+            }
+            if (/\.spec\.(ts|tsx|js|jsx)$/.test(n)) {
+                return {file: f, type: 'playwright' as const};
+            }
+            if (n.includes('/cypress/') && /\.(js|ts)$/.test(n)) {
+                return {file: f, type: 'cypress' as const};
+            }
+            return {file: f, type: 'unit' as const};
+        });
 }
 
 export function analyzeImpact(
@@ -210,8 +241,10 @@ export function analyzeImpact(
     const {testsRoot, routeFamilies} = options;
     const warnings: string[] = [];
 
-    // Filter out test files before analysis
+    // Partition into source files and test files
+    const allOriginalFiles = [...changedFiles];
     changedFiles = changedFiles.filter((f) => !isTestFile(f));
+    const prIncludedTestFiles = classifyPrTestFiles(allOriginalFiles, changedFiles);
 
     // Load manifest
     const manifest = loadRouteFamilyManifest(testsRoot, routeFamilies);
@@ -222,6 +255,7 @@ export function analyzeImpact(
             impactedFeatures: [],
             unboundFiles: [...changedFiles],
             warnings: ['Route family manifest not found. All files are unbound.'],
+            prIncludedTestFiles,
         };
     }
 
@@ -285,6 +319,7 @@ export function analyzeImpact(
         impactedFeatures,
         unboundFiles,
         warnings,
+        prIncludedTestFiles,
     };
 }
 
@@ -300,11 +335,35 @@ function inferCypressRoot(testsRoot: string): string | undefined {
 
 /**
  * Get gaps: P0/P1 features with 'uncovered' status.
+ *
+ * Suppresses family-level (generic) gaps when ALL their changed files are
+ * already covered by feature-level (specific) matches in other families.
+ * This prevents double-counting when a file like `policies.tsx` matches both
+ * a generic family (`config`) and a specific feature (`system_console/permissions`).
  */
 export function getGaps(result: ImpactResult): ImpactedFeature[] {
-    return result.impactedFeatures.filter(
-        (f) => (f.priority === 'P0' || f.priority === 'P1') && f.coverageStatus === 'uncovered',
-    );
+    // Collect files that are covered via feature-level matches (more specific)
+    const filesCoveredByFeatures = new Set<string>();
+    for (const f of result.impactedFeatures) {
+        if (f.featureId && f.coverageStatus !== 'uncovered') {
+            for (const file of f.changedFiles) {
+                filesCoveredByFeatures.add(file);
+            }
+        }
+    }
+
+    return result.impactedFeatures.filter((f) => {
+        if (f.priority !== 'P0' && f.priority !== 'P1') return false;
+        if (f.coverageStatus !== 'uncovered') return false;
+
+        // Only suppress FAMILY-level gaps (no featureId = generic match).
+        // If it's a feature-level gap, keep it — it's specific and intentional.
+        if (!f.featureId && f.changedFiles.every((file) => filesCoveredByFeatures.has(file))) {
+            return false;
+        }
+
+        return true;
+    });
 }
 
 /**
