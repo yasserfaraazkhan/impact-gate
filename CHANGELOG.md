@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.5] - 2026-03-16
+
+### Bug Fixes
+
+- **PR-included test files now visible to engine** — `getChangedFiles()` now passes the full unfiltered file list alongside the filtered source files, so the engine can detect when a PR adds Cypress/Playwright specs even though `isRelevantFile()` pre-filters them
+
 ## [1.7.4] - 2026-03-16
 
 ### Bug Fixes
