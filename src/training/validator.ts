@@ -3,6 +3,7 @@
 
 import {execFileSync} from 'child_process';
 import {resolve} from 'path';
+import {logger} from '../logger.js';
 
 import {bindFilesToFamilies} from '../knowledge/route_families.js';
 import type {RouteFamilyManifest} from '../knowledge/route_families.js';
@@ -104,7 +105,7 @@ export function getCommitFiles(projectRoot: string, since: string): Array<{hash:
             maxBuffer: 10 * 1024 * 1024,
         });
     } catch (error) {
-        console.warn(`[train] git log failed: ${error instanceof Error ? error.message : String(error)}`);
+        logger.warn(`[train] git log failed: ${error instanceof Error ? error.message : String(error)}`);
         return [];
     }
 

@@ -2,8 +2,7 @@
 // See LICENSE.txt for license information.
 
 /**
- * Simple structured logging system
- * Replaces 18 console.log statements with configurable logging
+ * Structured logging system.
  * Environment variable: LOG_LEVEL (ERROR, WARN, INFO, DEBUG)
  */
 

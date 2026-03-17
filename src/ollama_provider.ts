@@ -124,7 +124,7 @@ export class OllamaProvider extends BaseProvider {
         // SECURITY: Validate and sanitize URL
         const urlValidation = validateOllamaUrl(config.baseUrl);
         if (!urlValidation.valid && urlValidation.warning) {
-            console.warn(urlValidation.warning);
+            logger.warn(urlValidation.warning);
         }
 
         // SECURITY: Validate timeout

@@ -7,7 +7,7 @@
 
 import type {RouteFamily, RouteFamilyManifest} from '../knowledge/route_families.js';
 import type {ApiSurfaceCatalog} from '../knowledge/api_surface.js';
-import type {SpecEntry, SpecIndex} from '../knowledge/spec_index.js';
+import type {SpecIndex} from '../knowledge/spec_index.js';
 import type {FlowDecision} from '../validation/output_schema.js';
 import type {ProviderUsageStats} from '../provider_interface.js';
 import type {GeneratedSpec} from '../pipeline/stage3_generation.js';

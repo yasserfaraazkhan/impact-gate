@@ -3,6 +3,7 @@
 
 import {lstatSync, readdirSync, readFileSync} from 'fs';
 import {join, relative, resolve} from 'path';
+import {logger} from '../logger.js';
 
 import type {LLMProvider} from '../provider_interface.js';
 import type {RouteFamily} from '../knowledge/route_families.js';
@@ -318,10 +319,10 @@ export async function enrichFamilies(
             // Truncate at the last complete section boundary to avoid malformed input
             const lastSectionEnd = prompt.lastIndexOf('\n---\n', MAX_PROMPT_CHARS);
             if (lastSectionEnd > 0) {
-                console.warn(`[train] Prompt truncated from ${prompt.length} chars at section boundary`);
+                logger.warn(`[train] Prompt truncated from ${prompt.length} chars at section boundary`);
                 prompt = prompt.slice(0, lastSectionEnd);
             } else {
-                console.warn(`[train] Prompt truncated from ${prompt.length} to ${MAX_PROMPT_CHARS} chars`);
+                logger.warn(`[train] Prompt truncated from ${prompt.length} to ${MAX_PROMPT_CHARS} chars`);
                 prompt = prompt.slice(0, MAX_PROMPT_CHARS);
             }
         }
@@ -355,7 +356,7 @@ export async function enrichFamilies(
             }
         } catch (error) {
             // On LLM failure, keep families unchanged
-            console.warn(`[train] LLM enrichment failed for chunk: ${error instanceof Error ? error.message : String(error)}`);
+            logger.warn(`[train] LLM enrichment failed for chunk: ${error instanceof Error ? error.message : String(error)}`);
             enriched.push(...chunk);
         } finally {
             if (timeoutTimer) clearTimeout(timeoutTimer);

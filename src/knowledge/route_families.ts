@@ -3,6 +3,7 @@
 
 import {existsSync, readFileSync, statSync} from 'fs';
 import {join} from 'path';
+import {logger} from '../logger.js';
 
 export type FeaturePriority = 'P0' | 'P1' | 'P2';
 
@@ -211,8 +212,7 @@ export function loadRouteFamilyManifest(testsRoot: string, config?: RouteFamilyC
     }
 
     if (config?.strict) {
-        // eslint-disable-next-line no-console
-        console.warn('[e2e-agents] Route family manifest not found. The manifest is optional context for AI enrichment — create .e2e-ai-agents/route-families.json to enable family-level routing hints.');
+        logger.warn('Route family manifest not found. Create .e2e-ai-agents/route-families.json to enable family-level routing hints.');
     }
     return null;
 }
