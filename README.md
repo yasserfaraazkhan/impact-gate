@@ -11,6 +11,9 @@ AI-powered E2E test impact analysis, generation, healing, and autonomous QA for 
 Given a git diff, `e2e-ai-agents` determines which E2E test flows are impacted, identifies coverage gaps, and can generate or heal Playwright tests — all from the CLI. The companion `e2e-qa-agent` goes further: it opens a real browser, explores your app autonomously, and produces a QA report with findings and a release-readiness verdict.
 
 **Pipeline:** `impact` → `plan` → `generate` → `heal` → `finalize`
+**Crew (v1.8.0):** `impact` + `cross-impact` + `regression-advisor` → `strategist` → `test-designer` → `generator` → `executor` → `healer`
+
+> **How does this compare to other tools?** See [docs/comparison.md](docs/comparison.md) for a detailed analysis against Launchable, Codecov ATS, Qodo, Testsigma, mabl, GitHub Copilot, and others.
 
 ## Installation
 
@@ -53,6 +56,58 @@ npx e2e-ai-agents llm-health
 ```
 
 `plan` and `suggest` are aliases. `analyze` is a convenience wrapper that runs impact + plan and optionally generation/healing in one invocation. Use `--help` for all available flags.
+
+## Multi-Agent Crew (v1.8.0)
+
+The Crew orchestrates 10 specialized agents for deep test analysis. While the standard pipeline gives a fast pass/fail gate, the Crew produces structured test designs, cross-family impact maps, and prioritized test strategies.
+
+```bash
+# Quick strategy: impact + strategy recommendations (~$0.10, ~1 min)
+npx e2e-ai-agents crew --workflow quick-check --path /path/to/project --tests-root ./e2e-tests --since origin/master
+
+# Full test design without generation (~$0.50-2.00, ~5-40 min)
+npx e2e-ai-agents crew --workflow design-only --path /path/to/project --tests-root ./e2e-tests --since origin/master
+
+# End-to-end: design + generate + execute + heal (~$2-5, ~10-60 min)
+npx e2e-ai-agents crew --workflow full-qa --path /path/to/project --tests-root ./e2e-tests --since origin/master
+
+# With budget cap and JSON output
+npx e2e-ai-agents crew --workflow design-only --budget-usd 2.00 --json --path /path/to/project --tests-root ./e2e-tests --since origin/master
+```
+
+### What the Crew Adds Beyond the Pipeline
+
+| Capability | Pipeline | Crew |
+|-----------|---------|------|
+| Impact detection | Per-family, isolated | Same + cross-family ripple detection |
+| Test scenarios | Flat `scenariosToAdd` strings | Structured `TestCase[]` with type, preconditions, steps, expected outcome, rationale |
+| Test categories | None | 9: happy-path, edge-case, boundary, negative, state-transition, race-condition, permission, accessibility, performance |
+| Strategy | None | Per-flow approach (full-test / smoke-test / skip) with priority and rationale |
+| Regression awareness | None | Risk scoring from flaky history, calibration data, and file-pattern heuristics |
+
+### Programmatic API
+
+```typescript
+import { CrewOrchestrator, ImpactAnalystAgent, StrategistAgent, TestDesignerAgent, CrossImpactAgent, RegressionAdvisorAgent } from '@yasserkhanorg/e2e-agents';
+
+const orchestrator = new CrewOrchestrator();
+orchestrator.registerAgent(new ImpactAnalystAgent());
+orchestrator.registerAgent(new CrossImpactAgent());
+orchestrator.registerAgent(new RegressionAdvisorAgent());
+orchestrator.registerAgent(new StrategistAgent());
+orchestrator.registerAgent(new TestDesignerAgent());
+
+const result = await orchestrator.run({
+    appPath: './webapp',
+    testsRoot: './e2e-tests',
+    gitSince: 'origin/master',
+    workflow: 'design-only',
+});
+
+console.log(result.context.testDesigns);   // Structured test cases
+console.log(result.context.crossImpacts);  // Cross-family links
+console.log(result.context.strategyEntries); // Prioritized strategy
+```
 
 ## Route-Families Training
 
