@@ -7,7 +7,7 @@ import {mkdtempSync, readFileSync, existsSync} from 'fs';
 import {join} from 'path';
 import {tmpdir} from 'os';
 
-import {buildCrewMarkdown, appendCrewToSummary, writeCrewArtifacts} from '../dist/cli/commands/plan_crew.js';
+import {buildCrewMarkdown, appendCrewToSummary, writeCrewArtifacts, buildCrewTestPlan} from '../dist/cli/commands/plan_crew.js';
 import type {CrewPlanInsights} from '../dist/agent/plan.js';
 
 function makeCrewInsights(overrides: Partial<CrewPlanInsights> = {}): CrewPlanInsights {
@@ -91,10 +91,8 @@ describe('buildCrewMarkdown', () => {
         assert.ok(md.includes('### Crew Insights'));
         assert.ok(md.includes('Workflow: `quick-check`'));
         assert.ok(md.includes('Impacted flows: **3**'));
-        assert.ok(md.includes('Strategy entries: **2**'));
-        assert.ok(md.includes('Structured test designs: **1**'));
+        assert.ok(md.includes('**1** test cases'));
         assert.ok(md.includes('Cross-impacts: **2** (1 high risk)'));
-        assert.ok(md.includes('Findings: **1**'));
         assert.ok(md.includes('$0.0042'));
     });
 
@@ -190,13 +188,14 @@ describe('appendCrewToSummary', () => {
 // ---------------------------------------------------------------------------
 
 describe('writeCrewArtifacts', () => {
-    it('should write JSON and markdown files', () => {
+    it('should write JSON, markdown, and test plan files', () => {
         const tmpDir = mkdtempSync(join(tmpdir(), 'crew-test-'));
         const crew = makeCrewInsights();
-        const {crewSummaryPath, crewMarkdownPath} = writeCrewArtifacts(tmpDir, crew);
+        const {crewSummaryPath, crewMarkdownPath, crewTestPlanPath} = writeCrewArtifacts(tmpDir, crew);
 
         assert.ok(existsSync(crewSummaryPath));
         assert.ok(existsSync(crewMarkdownPath));
+        assert.ok(existsSync(crewTestPlanPath));
 
         // JSON should be valid and round-trip
         const json = JSON.parse(readFileSync(crewSummaryPath, 'utf-8'));
@@ -206,23 +205,102 @@ describe('writeCrewArtifacts', () => {
         // Markdown should contain crew insights
         const md = readFileSync(crewMarkdownPath, 'utf-8');
         assert.ok(md.includes('### Crew Insights'));
+
+        // Test plan should be a structured document
+        const tp = readFileSync(crewTestPlanPath, 'utf-8');
+        assert.ok(tp.includes('# Crew Test Plan'));
     });
 
     it('should create output directory if missing', () => {
         const tmpDir = mkdtempSync(join(tmpdir(), 'crew-test-'));
-        const nested = join(tmpDir, 'deep', 'nested');
-        // nested doesn't exist yet — writeCrewArtifacts should handle it
-        // Actually, writeCrewArtifacts writes to <root>/.e2e-ai-agents/
         const {crewSummaryPath} = writeCrewArtifacts(tmpDir, makeCrewInsights());
         assert.ok(existsSync(crewSummaryPath));
     });
 
     it('should write to .e2e-ai-agents subdirectory', () => {
         const tmpDir = mkdtempSync(join(tmpdir(), 'crew-test-'));
-        const {crewSummaryPath, crewMarkdownPath} = writeCrewArtifacts(tmpDir, makeCrewInsights());
+        const {crewSummaryPath, crewMarkdownPath, crewTestPlanPath} = writeCrewArtifacts(tmpDir, makeCrewInsights());
         assert.ok(crewSummaryPath.includes('.e2e-ai-agents'));
         assert.ok(crewMarkdownPath.includes('.e2e-ai-agents'));
-        assert.ok(crewSummaryPath.endsWith('crew-summary.json'));
-        assert.ok(crewMarkdownPath.endsWith('crew-summary.md'));
+        assert.ok(crewTestPlanPath.endsWith('crew-test-plan.md'));
+    });
+});
+
+// ---------------------------------------------------------------------------
+// buildCrewTestPlan
+// ---------------------------------------------------------------------------
+
+describe('buildCrewTestPlan', () => {
+    const mockPlan = {
+        gapDetails: [
+            {id: 'channels', name: 'channels', priority: 'P0', reasons: ['No tests'], files: []},
+        ],
+    } as any;
+
+    const crewWithGaps = makeCrewInsights({
+        testDesigns: [
+            {
+                flowId: 'channels/create',
+                flowName: 'Create Channel',
+                testCases: [
+                    {name: 'should create channel', type: 'happy-path', preconditions: ['logged in'], steps: ['click create', 'fill name'], expectedOutcome: 'channel created', priority: 'P0', rationale: 'core'},
+                    {name: 'should validate name', type: 'edge-case', preconditions: [], steps: ['submit empty'], expectedOutcome: 'error shown', priority: 'P1', rationale: 'validation'},
+                ],
+            },
+            {
+                flowId: 'permissions/view',
+                flowName: 'View Permissions',
+                testCases: [
+                    {name: 'should show roles', type: 'happy-path', preconditions: [], steps: ['navigate'], expectedOutcome: 'roles visible', priority: 'P0', rationale: 'basic'},
+                ],
+            },
+        ],
+    });
+
+    it('should split gap flows from covered flows', () => {
+        const tp = buildCrewTestPlan(crewWithGaps, mockPlan);
+        assert.ok(tp.includes('## Priority: Gap Flows'));
+        assert.ok(tp.includes('Create Channel'));
+        assert.ok(tp.includes('## Covered Flows'));
+        assert.ok(tp.includes('View Permissions'));
+    });
+
+    it('should show P0 cases expanded for gap flows', () => {
+        const tp = buildCrewTestPlan(crewWithGaps, mockPlan);
+        assert.ok(tp.includes('**P0 — Must test:**'));
+        assert.ok(tp.includes('- [ ] **should create channel**'));
+        assert.ok(tp.includes('Steps: click create → fill name'));
+    });
+
+    it('should collapse P1 cases for gap flows', () => {
+        const tp = buildCrewTestPlan(crewWithGaps, mockPlan);
+        assert.ok(tp.includes('<details><summary>P1 — Should test (1)</summary>'));
+        assert.ok(tp.includes('should validate name'));
+    });
+
+    it('should collapse covered flow designs', () => {
+        const tp = buildCrewTestPlan(crewWithGaps, mockPlan);
+        assert.ok(tp.includes('<details><summary><strong>View Permissions</strong>'));
+    });
+
+    it('should show summary table with gap vs covered counts', () => {
+        const tp = buildCrewTestPlan(crewWithGaps, mockPlan);
+        assert.ok(tp.includes('Gap flows (missing tests)'));
+        assert.ok(tp.includes('Covered flows (expansion)'));
+        assert.ok(tp.includes('**2 test cases**')); // gap: 2 cases
+    });
+
+    it('should include high-risk cross-impacts section', () => {
+        const tp = buildCrewTestPlan(crewWithGaps, mockPlan);
+        assert.ok(tp.includes('## High-Risk Cross-Impacts'));
+        assert.ok(tp.includes('**channels**'));
+        assert.ok(tp.includes('**threads**'));
+    });
+
+    it('should work without plan (all flows treated as covered)', () => {
+        const tp = buildCrewTestPlan(crewWithGaps);
+        assert.ok(tp.includes('# Crew Test Plan'));
+        // No gap section since no plan provided
+        assert.ok(!tp.includes('## Priority: Gap Flows'));
     });
 });

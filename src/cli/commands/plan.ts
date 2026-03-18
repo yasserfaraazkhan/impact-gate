@@ -58,6 +58,7 @@ export async function runPlanCommand(args: ParsedArgs, autoConfig: string | unde
     let combinedSummaryMarkdown = ciSummaryMarkdown;
     let crewSummaryPath = '';
     let crewMarkdownPath = '';
+    let crewTestPlanPath = '';
 
     if (args.crew) {
         try {
@@ -66,10 +67,11 @@ export async function runPlanCommand(args: ParsedArgs, autoConfig: string | unde
                 ...plan,
                 crew,
             };
-            combinedSummaryMarkdown = appendCrewToSummary(ciSummaryMarkdown, crew);
-            const artifacts = writeCrewArtifacts(reportRoot, crew);
+            combinedSummaryMarkdown = appendCrewToSummary(ciSummaryMarkdown, crew, plan);
+            const artifacts = writeCrewArtifacts(reportRoot, crew, plan);
             crewSummaryPath = artifacts.crewSummaryPath;
             crewMarkdownPath = artifacts.crewMarkdownPath;
+            crewTestPlanPath = artifacts.crewTestPlanPath;
             writeFileSync(planPath, JSON.stringify(planReport, null, 2), 'utf-8');
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
@@ -101,6 +103,7 @@ export async function runPlanCommand(args: ParsedArgs, autoConfig: string | unde
         appendFileSync(ghaOutput, `crew_workflow=${planReport.crew?.workflow || ''}\n`);
         appendFileSync(ghaOutput, `crew_summary_path=${crewSummaryPath}\n`);
         appendFileSync(ghaOutput, `crew_markdown_path=${crewMarkdownPath}\n`);
+        appendFileSync(ghaOutput, `crew_test_plan_path=${crewTestPlanPath}\n`);
         appendFileSync(ghaOutput, `crew_impacted_flows=${planReport.crew?.summary.impactedFlows || 0}\n`);
         appendFileSync(ghaOutput, `crew_strategy_entries=${planReport.crew?.summary.strategyEntries || 0}\n`);
         appendFileSync(ghaOutput, `crew_test_designs=${planReport.crew?.summary.testDesigns || 0}\n`);
@@ -113,6 +116,7 @@ export async function runPlanCommand(args: ParsedArgs, autoConfig: string | unde
     if (planReport.crew) {
         console.log(`Crew workflow: ${planReport.crew.workflow} (impactedFlows=${planReport.crew.summary.impactedFlows}, strategyEntries=${planReport.crew.summary.strategyEntries}, testDesigns=${planReport.crew.summary.testDesigns})`);
         console.log(`Crew summary: ${crewSummaryPath}`);
+        console.log(`Crew test plan: ${crewTestPlanPath}`);
     }
     console.log(`Plan metrics: ${metricsSummaryPath}`);
     const failOnLegacyFlag = args.failOnMustAddTests && planReport.decision.action === 'must-add-tests';
