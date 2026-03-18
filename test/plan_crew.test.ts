@@ -88,8 +88,8 @@ function makeCrewInsights(overrides: Partial<CrewPlanInsights> = {}): CrewPlanIn
 describe('buildCrewMarkdown', () => {
     it('should include header and summary metrics', () => {
         const md = buildCrewMarkdown(makeCrewInsights());
-        assert.ok(md.includes('### Crew Insights'));
-        assert.ok(md.includes('Workflow: `quick-check`'));
+        assert.ok(md.includes('### Crew Analysis'));
+        assert.ok(md.includes('what to verify'));
         assert.ok(md.includes('Impacted flows: **3**'));
         assert.ok(md.includes('Strategy entries: **2**'));
         assert.ok(md.includes('Cross-impacts: **2** (1 high risk)'));
@@ -173,7 +173,7 @@ describe('appendCrewToSummary', () => {
         const result = appendCrewToSummary(base, makeCrewInsights());
         assert.ok(result.startsWith('## Plan Summary'));
         assert.ok(result.includes('---'));
-        assert.ok(result.includes('### Crew Insights'));
+        assert.ok(result.includes('Crew Analysis'));
     });
 
     it('should preserve base markdown', () => {
@@ -204,11 +204,11 @@ describe('writeCrewArtifacts', () => {
 
         // Markdown should contain crew insights
         const md = readFileSync(crewMarkdownPath, 'utf-8');
-        assert.ok(md.includes('### Crew Insights'));
+        assert.ok(md.includes('### Crew Analysis'));
 
         // Test plan should be a structured document
         const tp = readFileSync(crewTestPlanPath, 'utf-8');
-        assert.ok(tp.includes('# Crew Test Plan'));
+        assert.ok(tp.includes('# Crew Test Plan'))  /* header */;
     });
 
     it('should create output directory if missing', () => {
@@ -263,9 +263,9 @@ describe('buildCrewTestPlan', () => {
 
     it('should split gap flows from covered flows', () => {
         const tp = buildCrewTestPlan(crewWithGaps, mockPlan);
-        assert.ok(tp.includes('## Priority: Gap Flows'));
+        assert.ok(tp.includes('## Action Required: Gap Flows'));
         assert.ok(tp.includes('Create Channel'));
-        assert.ok(tp.includes('## Covered Flows'));
+        assert.ok(tp.includes('## Regression Check: Covered Flows'));
         assert.ok(tp.includes('View Permissions'));
     });
 
@@ -289,21 +289,21 @@ describe('buildCrewTestPlan', () => {
 
     it('should show summary table with gap vs covered counts', () => {
         const tp = buildCrewTestPlan(crewWithGaps, mockPlan);
-        assert.ok(tp.includes('Gap flows (missing tests)'));
-        assert.ok(tp.includes('Covered flows (expansion)'));
+        assert.ok(tp.includes('no existing tests, must verify'));
+        assert.ok(tp.includes('has tests, verify no regressions'));
         assert.ok(tp.includes('1 flows')); // 1 gap strategy
     });
 
     it('should include high-risk cross-impacts section', () => {
         const tp = buildCrewTestPlan(crewWithGaps, mockPlan);
-        assert.ok(tp.includes('## High-Risk Cross-Impacts'));
+        assert.ok(tp.includes('## High-Risk Cross-Impacts — Verify Before Release'));
         assert.ok(tp.includes('**channels**'));
         assert.ok(tp.includes('**threads**'));
     });
 
     it('should work without plan (all flows treated as covered)', () => {
         const tp = buildCrewTestPlan(crewWithGaps);
-        assert.ok(tp.includes('# Crew Test Plan'));
+        assert.ok(tp.includes('# Crew Test Plan'))  /* header */;
         // No gap section since no plan provided
         assert.ok(!tp.includes('## Priority: Gap Flows'));
     });
@@ -318,11 +318,11 @@ describe('buildCrewTestPlan', () => {
             ],
         });
         const tp = buildCrewTestPlan(quickCheckCrew, mockPlan);
-        assert.ok(tp.includes('# Crew Test Plan'));
-        assert.ok(tp.includes('## Priority: Gap Flows'));
+        assert.ok(tp.includes('# Crew Test Plan'))  /* header */;
+        assert.ok(tp.includes('## Action Required: Gap Flows'));
         assert.ok(tp.includes('Create Channel'));
         assert.ok(tp.includes('full-test'));
-        assert.ok(tp.includes('## Covered Flows'));
+        assert.ok(tp.includes('## Regression Check: Covered Flows'));
         assert.ok(tp.includes('Search Results'));
     });
 });
