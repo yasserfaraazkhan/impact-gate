@@ -18,7 +18,7 @@ import {getChangedFiles} from './agent/git.js';
 import {getAdaptiveThresholds} from './agent/feedback.js';
 import {loadDiffs} from './engine/diff_loader.js';
 import {enrichImpactWithAI, type AIEnrichmentResult} from './engine/ai_enrichment.js';
-import {AnthropicProvider} from './anthropic_provider.js';
+import {LLMProviderFactory} from './provider_factory.js';
 import {finalizeGeneratedTests, type FinalizeGeneratedTestsOptions, type FinalizeGeneratedTestsResult} from './agent/handoff.js';
 import {
     ingestTraceabilityInput,
@@ -133,12 +133,25 @@ export async function recommendTestsAI(options: AgentApiOptions = {}): Promise<R
         filteredTestFiles: gitResult.filteredTestFiles,
     });
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
     let aiEnrichment: AIEnrichmentResult | undefined;
 
-    if (apiKey) {
+    let provider;
+    try {
+        provider = await LLMProviderFactory.createFromPreference(config.llm.provider);
+    } catch (error) {
+        const configuredProvider = config.llm.provider?.trim().toLowerCase();
+        const envProvider = process.env.LLM_PROVIDER?.trim().toLowerCase();
+        const shouldThrow = Boolean(
+            (configuredProvider && configuredProvider !== 'auto') ||
+            (envProvider && envProvider !== 'auto'),
+        );
+        if (shouldThrow) {
+            throw error;
+        }
+    }
+
+    if (provider) {
         const diffs = loadDiffs(config.path, config.git.since, gitResult.files);
-        const provider = new AnthropicProvider({apiKey});
         // Collect all known spec paths and scenario details from impacted features
         const specSet = new Set<string>();
         const specDetailsMap = new Map<string, {file: string; scenarios: string[]}>();

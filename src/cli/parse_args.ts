@@ -83,6 +83,7 @@ const FLAGS: Record<string, FlagDef> = {
     '--pipeline-parallel':          {key: 'pipelineParallel', type: 'boolean'},
     '--pipeline-dry-run':           {key: 'pipelineDryRun', type: 'boolean'},
     '--fail-on-must-add-tests':     {key: 'failOnMustAddTests', type: 'boolean'},
+    '--crew':                       {key: 'crew', type: 'boolean'},
     '--create-pr':                  {key: 'createPr', type: 'boolean'},
     '--dry-run':                    {key: 'dryRun', type: 'boolean'},
     '--generate':                   {key: 'analyzeGenerate', type: 'boolean'},
@@ -127,6 +128,7 @@ const FLAGS: Record<string, FlagDef> = {
     '--output':                        {key: 'trainOutput', type: 'string'},
     '--server-path':                   {key: 'serverPath', type: 'string'},
     '--workflow':                       {key: 'crewWorkflow', type: 'string'},
+    '--crew-workflow':                  {key: 'crewWorkflow', type: 'string'},
 
     // -- number flags (with isFinite guard) --
     '--pipeline-scenarios':              {key: 'pipelineScenarios', type: 'number'},

@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
@@ -8,7 +9,8 @@
 
 import {spawnSync} from 'child_process';
 import {readFileSync, writeFileSync, existsSync, realpathSync} from 'fs';
-import {join, resolve} from 'path';
+import {join, resolve, dirname} from 'path';
+import {fileURLToPath} from 'url';
 import {globSync} from 'glob';
 
 interface Tool {
@@ -534,13 +536,180 @@ export class E2EAgentsMCPServer {
 }
 
 /**
- * Start MCP server
- * Usage: node dist/mcp-server.js
+ * Read the package version at runtime so the MCP initialize response
+ * always reflects the installed version.
  */
+function getPackageVersion(): string {
+    try {
+        const pkgPath = join(dirname(__dirname), 'package.json');
+        const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as {version?: string};
+        return pkg.version || '0.0.0';
+    } catch {
+        return '0.0.0';
+    }
+}
+
+/**
+ * Encode a JSON-RPC message with Content-Length framing.
+ * Exported for testability.
+ */
+export function encodeJsonRpcMessage(message: Record<string, unknown>): string {
+    const body = JSON.stringify(message);
+    return `Content-Length: ${Buffer.byteLength(body, 'utf8')}\r\n\r\n${body}`;
+}
+
+/**
+ * Parse Content-Length framed JSON-RPC messages from a buffer.
+ * Returns parsed messages and the remaining (unconsumed) buffer.
+ * Exported for testability.
+ */
+export function parseJsonRpcFrames(input: Buffer): {messages: Array<{id?: unknown; method?: string; params?: Record<string, unknown>}>; remainder: Buffer<ArrayBuffer>} {
+    const messages: Array<{id?: unknown; method?: string; params?: Record<string, unknown>}> = [];
+    let buffer: Buffer<ArrayBuffer> = Buffer.from(input);
+
+    while (true) {
+        const headerEnd = buffer.indexOf('\r\n\r\n');
+        if (headerEnd === -1) break;
+
+        const headerText = buffer.slice(0, headerEnd).toString('utf8');
+        const match = headerText.match(/Content-Length:\s*(\d+)/i);
+        if (!match) {
+            buffer = Buffer.alloc(0);
+            break;
+        }
+
+        const contentLength = Number(match[1]);
+        const messageEnd = headerEnd + 4 + contentLength;
+        if (buffer.length < messageEnd) break;
+
+        const body = buffer.slice(headerEnd + 4, messageEnd).toString('utf8');
+        buffer = buffer.slice(messageEnd);
+
+        messages.push(JSON.parse(body) as {id?: unknown; method?: string; params?: Record<string, unknown>});
+    }
+
+    return {messages, remainder: buffer};
+}
+
+/**
+ * Handle a single JSON-RPC message against the server.
+ * Returns the response message (or null for notifications).
+ * Exported for testability.
+ */
+export async function handleJsonRpcMessage(
+    server: E2EAgentsMCPServer,
+    message: {id?: unknown; method?: string; params?: Record<string, unknown>},
+): Promise<Record<string, unknown> | null> {
+    const {id, method, params} = message;
+    const version = getPackageVersion();
+
+    if (method === 'initialize') {
+        return {
+            jsonrpc: '2.0',
+            id,
+            result: {
+                protocolVersion: typeof params?.protocolVersion === 'string' ? params.protocolVersion : '2024-11-05',
+                capabilities: {tools: {}, resources: {}, prompts: {}},
+                serverInfo: {name: 'e2e-agents-mcp', version},
+            },
+        };
+    }
+
+    if (method === 'notifications/initialized' || method === 'initialized') {
+        return null;
+    }
+
+    if (method === 'tools/list') {
+        return {
+            jsonrpc: '2.0',
+            id,
+            result: {
+                tools: server.getTools().map((tool) => ({
+                    name: tool.name,
+                    description: tool.description,
+                    inputSchema: tool.inputSchema,
+                })),
+            },
+        };
+    }
+
+    if (method === 'tools/call') {
+        const resultText = await server.callTool(
+            typeof params?.name === 'string' ? params.name : '',
+            typeof params?.arguments === 'object' && params.arguments !== null ? params.arguments as Record<string, unknown> : {},
+        );
+        let isError = false;
+        try {
+            const parsed = JSON.parse(resultText) as {error?: unknown};
+            isError = Boolean(parsed.error);
+        } catch {
+            isError = false;
+        }
+
+        return {
+            jsonrpc: '2.0',
+            id,
+            result: {content: [{type: 'text', text: resultText}], isError},
+        };
+    }
+
+    if (method === 'resources/list') {
+        return {jsonrpc: '2.0', id, result: {resources: []}};
+    }
+
+    if (method === 'prompts/list') {
+        return {jsonrpc: '2.0', id, result: {prompts: []}};
+    }
+
+    if (method === 'ping') {
+        return {jsonrpc: '2.0', id, result: {}};
+    }
+
+    return {jsonrpc: '2.0', id, error: {code: -32601, message: `Method not found: ${method}`}};
+}
+
+/**
+ * Start MCP server over stdio using Content-Length framed JSON-RPC messages.
+ */
+export function startStdioServer(repoRoot: string = process.cwd()): void {
+    const server = new E2EAgentsMCPServer(repoRoot);
+    let buffer = Buffer.alloc(0);
+
+    const sendMessage = (message: Record<string, unknown>): void => {
+        process.stdout.write(encodeJsonRpcMessage(message));
+    };
+
+    const sendError = (id: unknown, code: number, msg: string): void => {
+        sendMessage({jsonrpc: '2.0', id, error: {code, message: msg}});
+    };
+
+    const processBuffer = (): void => {
+        const {messages, remainder} = parseJsonRpcFrames(buffer);
+        buffer = remainder;
+
+        for (const parsed of messages) {
+            void handleJsonRpcMessage(server, parsed)
+                .then((response) => {
+                    if (response) sendMessage(response);
+                })
+                .catch((error) => {
+                    sendError(parsed.id ?? null, -32603, error instanceof Error ? error.message : String(error));
+                });
+        }
+    };
+
+    process.stdin.on('data', (chunk: Buffer) => {
+        buffer = Buffer.concat([buffer, chunk]);
+        processBuffer();
+    });
+
+    process.stdin.on('end', () => {
+        process.exit(0);
+    });
+}
+
 if (require.main === module) {
-    const server = new E2EAgentsMCPServer();
-    console.log('E2E Agents MCP Server started');
-    console.log('Tools:', server.getTools().map((t) => t.name).join(', '));
+    startStdioServer();
 }
 
 export default E2EAgentsMCPServer;

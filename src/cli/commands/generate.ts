@@ -66,7 +66,7 @@ export async function runGenerateCommand(args: ParsedArgs, config: ReturnType<ty
         console.warn('Could not load API surface catalog. Generation will use generic selectors.');
     }
 
-    const provider = await LLMProviderFactory.createFromEnv();
+    const provider = await LLMProviderFactory.createFromPreference(config.llm.provider);
 
     console.log(`Generating tests for ${scenarios.length} scenario(s)...`);
 

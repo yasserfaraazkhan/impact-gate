@@ -280,6 +280,68 @@
       },
       "additionalProperties": false
     },
+    "crew": {
+      "type": "object",
+      "required": [
+        "workflow",
+        "providerOverride",
+        "summary",
+        "impactedFlows",
+        "strategyEntries",
+        "testDesigns",
+        "crossImpacts",
+        "regressionRisks",
+        "findings",
+        "warnings",
+        "timings"
+      ],
+      "properties": {
+        "workflow": {"type": "string"},
+        "providerOverride": {"type": "string"},
+        "summary": {
+          "type": "object",
+          "required": [
+            "impactedFlows",
+            "strategyEntries",
+            "testDesigns",
+            "crossImpacts",
+            "highRiskCrossImpacts",
+            "regressionRisks",
+            "findings",
+            "generatedSpecs",
+            "manualReviewEntries",
+            "totalCostUSD",
+            "totalTokens"
+          ],
+          "properties": {
+            "impactedFlows": {"type": "number"},
+            "strategyEntries": {"type": "number"},
+            "testDesigns": {"type": "number"},
+            "crossImpacts": {"type": "number"},
+            "highRiskCrossImpacts": {"type": "number"},
+            "regressionRisks": {"type": "number"},
+            "findings": {"type": "number"},
+            "generatedSpecs": {"type": "number"},
+            "manualReviewEntries": {"type": "number"},
+            "totalCostUSD": {"type": "number"},
+            "totalTokens": {"type": "number"}
+          },
+          "additionalProperties": false
+        },
+        "impactedFlows": {"type": "array", "items": {"$ref": "#/$defs/flowDecision"}},
+        "strategyEntries": {"type": "array", "items": {"$ref": "#/$defs/strategyEntry"}},
+        "testDesigns": {"type": "array", "items": {"$ref": "#/$defs/testDesign"}},
+        "crossImpacts": {"type": "array", "items": {"$ref": "#/$defs/crossImpact"}},
+        "regressionRisks": {"type": "array", "items": {"$ref": "#/$defs/regressionRisk"}},
+        "findings": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
+        "warnings": {"type": "array", "items": {"type": "string"}},
+        "timings": {
+          "type": "object",
+          "additionalProperties": {"type": "number"}
+        }
+      },
+      "additionalProperties": false
+    },
     "metrics": {
       "type": "object",
       "required": [
@@ -325,6 +387,102 @@
         "name": {"type": "string"},
         "status": {"enum": ["pass", "warn", "fail"]},
         "details": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "flowDecision": {
+      "type": "object",
+      "required": ["flowId", "flowName", "routeFamily", "changedFiles", "evidence", "evidenceSource", "confidence", "existingSpecs", "action", "priority"],
+      "properties": {
+        "flowId": {"type": "string"},
+        "flowName": {"type": "string"},
+        "routeFamily": {"type": "string"},
+        "changedFiles": {"type": "array", "items": {"type": "string"}},
+        "evidence": {"type": "string"},
+        "evidenceSource": {"enum": ["deterministic", "ai", "hybrid"]},
+        "confidence": {"type": "number"},
+        "existingSpecs": {"type": "array", "items": {"type": "string"}},
+        "action": {"enum": ["create_spec", "update_spec", "skip"]},
+        "priority": {"enum": ["P0", "P1", "P2"]},
+        "userActions": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    },
+    "strategyEntry": {
+      "type": "object",
+      "required": ["flowId", "flowName", "priority", "approach", "rationale", "testCategories", "crossImpactRisk"],
+      "properties": {
+        "flowId": {"type": "string"},
+        "flowName": {"type": "string"},
+        "priority": {"enum": ["P0", "P1", "P2"]},
+        "approach": {"enum": ["full-test", "smoke-test", "skip", "manual-review"]},
+        "rationale": {"type": "string"},
+        "testCategories": {"type": "array", "items": {"type": "string"}},
+        "crossImpactRisk": {"enum": ["high", "medium", "low", "none"]}
+      },
+      "additionalProperties": false
+    },
+    "testDesign": {
+      "type": "object",
+      "required": ["flowId", "flowName", "testCases"],
+      "properties": {
+        "flowId": {"type": "string"},
+        "flowName": {"type": "string"},
+        "testCases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "type", "preconditions", "steps", "expectedOutcome", "priority", "rationale"],
+            "properties": {
+              "name": {"type": "string"},
+              "type": {"enum": ["happy-path", "edge-case", "boundary", "negative", "state-transition", "race-condition", "permission", "accessibility", "performance"]},
+              "preconditions": {"type": "array", "items": {"type": "string"}},
+              "steps": {"type": "array", "items": {"type": "string"}},
+              "expectedOutcome": {"type": "string"},
+              "priority": {"enum": ["P0", "P1", "P2"]},
+              "rationale": {"type": "string"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "crossImpact": {
+      "type": "object",
+      "required": ["sourceFamily", "affectedFamily", "sharedDependency", "riskLevel", "evidence"],
+      "properties": {
+        "sourceFamily": {"type": "string"},
+        "affectedFamily": {"type": "string"},
+        "sharedDependency": {"type": "string"},
+        "riskLevel": {"enum": ["high", "medium", "low"]},
+        "evidence": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "regressionRisk": {
+      "type": "object",
+      "required": ["familyId", "filePattern", "riskScore", "reason", "historicalFailures"],
+      "properties": {
+        "familyId": {"type": "string"},
+        "filePattern": {"type": "string"},
+        "riskScore": {"type": "number"},
+        "reason": {"type": "string"},
+        "historicalFailures": {"type": "number"}
+      },
+      "additionalProperties": false
+    },
+    "finding": {
+      "type": "object",
+      "required": ["id", "type", "severity", "source", "summary", "details", "relatedFlows"],
+      "properties": {
+        "id": {"type": "string"},
+        "type": {"enum": ["bug", "gap", "risk", "flaky"]},
+        "severity": {"enum": ["critical", "high", "medium", "low"]},
+        "source": {"enum": ["strategist", "test-designer", "cross-impact", "regression-advisor", "impact-analyst", "coverage-evaluator", "generator", "executor", "healer", "explorer"]},
+        "summary": {"type": "string"},
+        "details": {"type": "string"},
+        "relatedFlows": {"type": "array", "items": {"type": "string"}}
       },
       "additionalProperties": false
     }

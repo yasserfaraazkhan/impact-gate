@@ -4,6 +4,8 @@
 import {appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync} from 'fs';
 import {join} from 'path';
 import type {PolicyConfig} from './config.js';
+import type {CrossImpact, Finding, RegressionRisk, StrategyEntry, TestDesign} from '../crew/types.js';
+import type {FlowDecision} from '../validation/output_schema.js';
 
 export type RecommendedRunSet = 'smoke' | 'targeted' | 'full';
 export type CiAction = 'run-now' | 'must-add-tests' | 'safe-to-merge';
@@ -37,6 +39,34 @@ export interface CoveredFlowSummary {
     priority: string;
     coveredBy: string[];
     advisoryScenarios?: string[]; // AI-detected new behavior in this PR that may not be covered
+}
+
+export interface CrewPlanSummary {
+    impactedFlows: number;
+    strategyEntries: number;
+    testDesigns: number;
+    crossImpacts: number;
+    highRiskCrossImpacts: number;
+    regressionRisks: number;
+    findings: number;
+    generatedSpecs: number;
+    manualReviewEntries: number;
+    totalCostUSD: number;
+    totalTokens: number;
+}
+
+export interface CrewPlanInsights {
+    workflow: string;
+    providerOverride: string;
+    summary: CrewPlanSummary;
+    impactedFlows: FlowDecision[];
+    strategyEntries: StrategyEntry[];
+    testDesigns: TestDesign[];
+    crossImpacts: CrossImpact[];
+    regressionRisks: RegressionRisk[];
+    findings: Finding[];
+    warnings: string[];
+    timings: Record<string, number>;
 }
 
 export interface PlanReport {
@@ -99,6 +129,7 @@ export interface PlanReport {
         commitGeneratedTests?: string;
         openPullRequest?: string;
     };
+    crew?: CrewPlanInsights;
     metrics: {
         changedFiles: number;
         impactedFlows: number;

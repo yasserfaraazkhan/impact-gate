@@ -60,6 +60,7 @@ export interface ParsedArgs {
     ciCommentPath?: string;
     githubOutputPath?: string;
     failOnMustAddTests?: boolean;
+    crew?: boolean;
     feedbackInputPath?: string;
     traceabilityReportPath?: string;
     traceabilityCaptureOutputPath?: string;

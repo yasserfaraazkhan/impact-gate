@@ -58,6 +58,8 @@ export function printUsage(): void {
             '  --policy-risky-patterns <globs>     Comma-separated risky file globs',
             '  --policy-enforcement-mode <mode>    advisory | warn | block',
             '  --policy-block-actions <actions>    Comma-separated CI actions to block/warn',
+            '  --crew                               Run Crew enrichment and attach insights to plan output',
+            '  --crew-workflow <name>               full-qa | quick-check | design-only',
             '  --ci-comment-path <path>            Write CI markdown summary',
             '  --github-output <path>              Write GitHub Actions outputs',
             '  --fail-on-must-add-tests            Exit non-zero on must-add-tests decision',

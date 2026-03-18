@@ -177,6 +177,19 @@ export class LLMProviderFactory {
     }
 
     /**
+     * Create provider from an explicit preference when supplied, otherwise
+     * fall back to environment auto-detection.
+     */
+    static async createFromPreference(providerPreference?: string): Promise<LLMProvider> {
+        const normalized = providerPreference?.trim().toLowerCase();
+        if (!normalized || normalized === 'auto') {
+            return this.createFromEnv();
+        }
+
+        return this.createFromString(normalized);
+    }
+
+    /**
      * Create provider from simple string format
      *
      * Examples:
