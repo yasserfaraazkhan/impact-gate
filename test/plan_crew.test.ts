@@ -91,7 +91,7 @@ describe('buildCrewMarkdown', () => {
         assert.ok(md.includes('### Crew Insights'));
         assert.ok(md.includes('Workflow: `quick-check`'));
         assert.ok(md.includes('Impacted flows: **3**'));
-        assert.ok(md.includes('**1** test cases'));
+        assert.ok(md.includes('Strategy entries: **2**'));
         assert.ok(md.includes('Cross-impacts: **2** (1 high risk)'));
         assert.ok(md.includes('$0.0042'));
     });
@@ -238,6 +238,10 @@ describe('buildCrewTestPlan', () => {
     } as any;
 
     const crewWithGaps = makeCrewInsights({
+        strategyEntries: [
+            {flowId: 'channels/create', flowName: 'Create Channel', priority: 'P0', approach: 'full-test', rationale: 'critical path', testCategories: ['happy-path', 'edge-case'], crossImpactRisk: 'high'},
+            {flowId: 'permissions/view', flowName: 'View Permissions', priority: 'P1', approach: 'smoke-test', rationale: 'secondary', testCategories: ['happy-path'], crossImpactRisk: 'low'},
+        ],
         testDesigns: [
             {
                 flowId: 'channels/create',
@@ -287,7 +291,7 @@ describe('buildCrewTestPlan', () => {
         const tp = buildCrewTestPlan(crewWithGaps, mockPlan);
         assert.ok(tp.includes('Gap flows (missing tests)'));
         assert.ok(tp.includes('Covered flows (expansion)'));
-        assert.ok(tp.includes('**2 test cases**')); // gap: 2 cases
+        assert.ok(tp.includes('1 flows')); // 1 gap strategy
     });
 
     it('should include high-risk cross-impacts section', () => {
@@ -302,5 +306,23 @@ describe('buildCrewTestPlan', () => {
         assert.ok(tp.includes('# Crew Test Plan'));
         // No gap section since no plan provided
         assert.ok(!tp.includes('## Priority: Gap Flows'));
+    });
+
+    it('should render strategy entries when testDesigns is empty (quick-check mode)', () => {
+        const quickCheckCrew = makeCrewInsights({
+            workflow: 'quick-check',
+            testDesigns: [],
+            strategyEntries: [
+                {flowId: 'channels/create', flowName: 'Create Channel', priority: 'P0', approach: 'full-test', rationale: 'critical', testCategories: ['happy-path'], crossImpactRisk: 'high'},
+                {flowId: 'search/results', flowName: 'Search Results', priority: 'P1', approach: 'smoke-test', rationale: 'secondary', testCategories: ['edge-case'], crossImpactRisk: 'low'},
+            ],
+        });
+        const tp = buildCrewTestPlan(quickCheckCrew, mockPlan);
+        assert.ok(tp.includes('# Crew Test Plan'));
+        assert.ok(tp.includes('## Priority: Gap Flows'));
+        assert.ok(tp.includes('Create Channel'));
+        assert.ok(tp.includes('full-test'));
+        assert.ok(tp.includes('## Covered Flows'));
+        assert.ok(tp.includes('Search Results'));
     });
 });

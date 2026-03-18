@@ -99,34 +99,44 @@ export async function runPlanCrewAnalysis(plan: PlanReport, config: AgentConfig,
     };
 }
 
+/**
+ * Match a strategy/design entry against a set of gap family IDs.
+ */
+function matchesGapFamily(flowId: string, flowName: string, gapFamilies: Set<string>): boolean {
+    return Array.from(gapFamilies).some((fam) =>
+        flowId.startsWith(fam) || flowName.toLowerCase().includes(fam.replace(/_/g, ' ')),
+    );
+}
+
 export function buildCrewMarkdown(crew: CrewPlanInsights, plan?: PlanReport): string {
     const totalCases = crew.testDesigns.reduce((n, td) => n + td.testCases.length, 0);
     const gapFamilies = new Set((plan?.gapDetails ?? []).map((g) => g.id));
-    const gapDesigns = gapFamilies.size > 0
-        ? crew.testDesigns.filter((td) =>
-            Array.from(gapFamilies).some((fam) =>
-                td.flowId.startsWith(fam) || td.flowName.toLowerCase().includes(fam.replace(/_/g, ' ')),
-            ))
-        : [];
-    const gapCases = gapDesigns.reduce((n, td) => n + td.testCases.length, 0);
-    const gapP0Cases = gapDesigns.reduce((n, td) => n + td.testCases.filter((tc) => tc.priority === 'P0').length, 0);
 
     const lines = [
         '### Crew Insights',
         '',
         `Workflow: \`${crew.workflow}\``,
         `Impacted flows: **${crew.summary.impactedFlows}**`,
-        `Structured test designs: **${crew.summary.testDesigns}** flows, **${totalCases}** test cases`,
+        `Strategy entries: **${crew.summary.strategyEntries}**`,
     ];
 
-    if (gapFamilies.size > 0 && gapDesigns.length > 0) {
-        lines.push(`Gap-focused: **${gapDesigns.length}** flows, **${gapCases}** test cases (**${gapP0Cases}** P0)`);
+    if (totalCases > 0) {
+        const gapDesigns = gapFamilies.size > 0
+            ? crew.testDesigns.filter((td) => matchesGapFamily(td.flowId, td.flowName, gapFamilies))
+            : [];
+        const gapCases = gapDesigns.reduce((n, td) => n + td.testCases.length, 0);
+        const gapP0Cases = gapDesigns.reduce((n, td) => n + td.testCases.filter((tc) => tc.priority === 'P0').length, 0);
+        lines.push(`Structured test designs: **${crew.summary.testDesigns}** flows, **${totalCases}** test cases`);
+        if (gapDesigns.length > 0) {
+            lines.push(`Gap-focused: **${gapDesigns.length}** flows, **${gapCases}** test cases (**${gapP0Cases}** P0)`);
+        }
     }
 
-    lines.push(
-        `Cross-impacts: **${crew.summary.crossImpacts}** (${crew.summary.highRiskCrossImpacts} high risk)`,
-        `Estimated AI cost: **$${crew.summary.totalCostUSD.toFixed(4)}**`,
-    );
+    if (crew.summary.crossImpacts > 0) {
+        lines.push(`Cross-impacts: **${crew.summary.crossImpacts}** (${crew.summary.highRiskCrossImpacts} high risk)`);
+    }
+
+    lines.push(`Estimated AI cost: **$${crew.summary.totalCostUSD.toFixed(4)}**`);
 
     if (crew.strategyEntries.length > 0) {
         lines.push('');
@@ -182,24 +192,25 @@ export function appendCrewToSummary(baseMarkdown: string, crew: CrewPlanInsights
  */
 export function buildCrewTestPlan(crew: CrewPlanInsights, plan?: PlanReport): string {
     const gapFamilies = new Set((plan?.gapDetails ?? []).map((g) => g.id));
+    const hasTestDesigns = crew.testDesigns.length > 0;
     const totalCases = crew.testDesigns.reduce((n, td) => n + td.testCases.length, 0);
 
-    // Split designs into gap-related and coverage-expansion
+    // Split strategy entries into gap-related and covered
+    const gapStrategies = gapFamilies.size > 0
+        ? crew.strategyEntries.filter((s) => matchesGapFamily(s.flowId, s.flowName, gapFamilies))
+        : [];
+    const coveredStrategies = crew.strategyEntries.filter((s) => !gapStrategies.includes(s));
+
+    // Split test designs (if present) into gap-related and covered
     const gapDesigns: TestDesign[] = [];
     const coveredDesigns: TestDesign[] = [];
-
     for (const td of crew.testDesigns) {
-        // Match by flowId prefix against gap family ids
-        const isGap = Array.from(gapFamilies).some((fam) =>
-            td.flowId.startsWith(fam) || td.flowName.toLowerCase().includes(fam.replace(/_/g, ' ')),
-        );
-        if (isGap) {
+        if (matchesGapFamily(td.flowId, td.flowName, gapFamilies)) {
             gapDesigns.push(td);
         } else {
             coveredDesigns.push(td);
         }
     }
-
     const gapCases = gapDesigns.reduce((n, td) => n + td.testCases.length, 0);
     const coveredCases = coveredDesigns.reduce((n, td) => n + td.testCases.length, 0);
 
@@ -212,72 +223,90 @@ export function buildCrewTestPlan(crew: CrewPlanInsights, plan?: PlanReport): st
         '',
         `| Metric | Count |`,
         `|--------|-------|`,
-        `| Gap flows (missing tests) | ${gapDesigns.length} flows, **${gapCases} test cases** |`,
-        `| Covered flows (expansion) | ${coveredDesigns.length} flows, ${coveredCases} test cases |`,
-        `| Total | ${crew.testDesigns.length} flows, ${totalCases} test cases |`,
+        `| Gap flows (missing tests) | ${gapStrategies.length} flows${hasTestDesigns ? `, **${gapCases} test cases**` : ''} |`,
+        `| Covered flows (expansion) | ${coveredStrategies.length} flows${hasTestDesigns ? `, ${coveredCases} test cases` : ''} |`,
+        `| Total strategy entries | ${crew.strategyEntries.length} flows${hasTestDesigns ? `, ${totalCases} test cases` : ''} |`,
         `| High-risk cross-impacts | ${crew.summary.highRiskCrossImpacts} |`,
         `| AI cost | $${crew.summary.totalCostUSD.toFixed(4)} |`,
         '',
     ];
 
-    // Priority action items
-    if (gapDesigns.length > 0) {
+    // ── Gap flows ──
+    if (gapStrategies.length > 0) {
         lines.push('## Priority: Gap Flows (Missing Tests)');
         lines.push('');
         lines.push('These flows have **no existing E2E coverage** and should be addressed first.');
         lines.push('');
-        for (const td of gapDesigns) {
-            const strategy = crew.strategyEntries.find((s) => s.flowId === td.flowId);
-            const approach = strategy?.approach ?? 'full-test';
-            const risk = strategy?.crossImpactRisk ?? 'unknown';
-            const p0Cases = td.testCases.filter((tc) => tc.priority === 'P0');
-            const p1Cases = td.testCases.filter((tc) => tc.priority === 'P1');
-            lines.push(`### ${td.flowName}`);
+
+        for (const strategy of gapStrategies) {
+            const td = crew.testDesigns.find((d) => d.flowId === strategy.flowId);
+            lines.push(`### ${strategy.flowName}`);
             lines.push('');
-            lines.push(`Strategy: **${approach}** | Cross-impact risk: **${risk}** | ${td.testCases.length} cases (${p0Cases.length} P0, ${p1Cases.length} P1)`);
-            lines.push('');
-            // Show P0 cases expanded
-            if (p0Cases.length > 0) {
-                lines.push('**P0 — Must test:**');
-                lines.push('');
-                for (const tc of p0Cases) {
-                    lines.push(`- [ ] **${tc.name}** (${tc.type})`);
-                    if (tc.preconditions.length > 0) {
-                        lines.push(`  - Preconditions: ${tc.preconditions.join('; ')}`);
-                    }
-                    lines.push(`  - Steps: ${tc.steps.join(' → ')}`);
-                    lines.push(`  - Expected: ${tc.expectedOutcome}`);
-                }
-                lines.push('');
+            lines.push(`Strategy: **${strategy.approach}** | Priority: **${strategy.priority}** | Cross-impact risk: **${strategy.crossImpactRisk}**`);
+            if (strategy.rationale) {
+                lines.push(`> ${strategy.rationale}`);
             }
-            // Show P1 as a collapsed checklist
-            if (p1Cases.length > 0) {
-                lines.push(`<details><summary>P1 — Should test (${p1Cases.length})</summary>`);
-                lines.push('');
-                for (const tc of p1Cases) {
-                    lines.push(`- [ ] **${tc.name}** (${tc.type}) — ${tc.expectedOutcome}`);
+            if (strategy.testCategories.length > 0) {
+                lines.push(`Test categories: ${strategy.testCategories.join(', ')}`);
+            }
+            lines.push('');
+
+            // If test designs exist, show P0/P1 cases
+            if (td && td.testCases.length > 0) {
+                const p0Cases = td.testCases.filter((tc) => tc.priority === 'P0');
+                const p1Cases = td.testCases.filter((tc) => tc.priority === 'P1');
+                if (p0Cases.length > 0) {
+                    lines.push('**P0 — Must test:**');
+                    lines.push('');
+                    for (const tc of p0Cases) {
+                        lines.push(`- [ ] **${tc.name}** (${tc.type})`);
+                        if (tc.preconditions.length > 0) {
+                            lines.push(`  - Preconditions: ${tc.preconditions.join('; ')}`);
+                        }
+                        lines.push(`  - Steps: ${tc.steps.join(' → ')}`);
+                        lines.push(`  - Expected: ${tc.expectedOutcome}`);
+                    }
+                    lines.push('');
                 }
-                lines.push('');
-                lines.push('</details>');
-                lines.push('');
+                if (p1Cases.length > 0) {
+                    lines.push(`<details><summary>P1 — Should test (${p1Cases.length})</summary>`);
+                    lines.push('');
+                    for (const tc of p1Cases) {
+                        lines.push(`- [ ] **${tc.name}** (${tc.type}) — ${tc.expectedOutcome}`);
+                    }
+                    lines.push('');
+                    lines.push('</details>');
+                    lines.push('');
+                }
             }
         }
     }
 
-    // Covered flow expansion — collapsed by default
-    if (coveredDesigns.length > 0) {
+    // ── Covered flows ──
+    if (coveredStrategies.length > 0) {
         lines.push('## Covered Flows (Regression / Expansion)');
         lines.push('');
-        lines.push('These flows already have specs. The test cases below extend coverage for changes in this PR.');
+        lines.push('These flows already have specs. Verify changes haven\'t introduced regressions.');
         lines.push('');
-        for (const td of coveredDesigns) {
-            const strategy = crew.strategyEntries.find((s) => s.flowId === td.flowId);
-            const approach = strategy?.approach ?? 'smoke-test';
-            const p0Count = td.testCases.filter((tc) => tc.priority === 'P0').length;
-            lines.push(`<details><summary><strong>${td.flowName}</strong> — ${approach} | ${td.testCases.length} cases (${p0Count} P0)</summary>`);
+
+        for (const strategy of coveredStrategies) {
+            const td = crew.testDesigns.find((d) => d.flowId === strategy.flowId);
+            const caseCount = td ? td.testCases.length : 0;
+            const detail = caseCount > 0 ? ` | ${caseCount} cases` : '';
+            lines.push(`<details><summary><strong>${strategy.flowName}</strong> — ${strategy.approach}${detail} (${strategy.priority})</summary>`);
             lines.push('');
-            for (const tc of td.testCases) {
-                lines.push(`- [ ] **${tc.name}** (${tc.priority}, ${tc.type}) — ${tc.expectedOutcome}`);
+            lines.push(`Cross-impact risk: ${strategy.crossImpactRisk}`);
+            if (strategy.rationale) {
+                lines.push(`> ${strategy.rationale}`);
+            }
+            if (strategy.testCategories.length > 0) {
+                lines.push(`Test categories: ${strategy.testCategories.join(', ')}`);
+            }
+            if (td && td.testCases.length > 0) {
+                lines.push('');
+                for (const tc of td.testCases) {
+                    lines.push(`- [ ] **${tc.name}** (${tc.priority}, ${tc.type}) — ${tc.expectedOutcome}`);
+                }
             }
             lines.push('');
             lines.push('</details>');
@@ -285,7 +314,7 @@ export function buildCrewTestPlan(crew: CrewPlanInsights, plan?: PlanReport): st
         }
     }
 
-    // Cross-impacts section
+    // ── Cross-impacts ──
     const highRisk = crew.crossImpacts.filter((ci) => ci.riskLevel === 'high');
     if (highRisk.length > 0) {
         lines.push('## High-Risk Cross-Impacts');
