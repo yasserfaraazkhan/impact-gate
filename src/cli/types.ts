@@ -103,6 +103,9 @@ export interface ParsedArgs {
     // Gate command
     gateThreshold?: number;
 
+    // Degraded mode (skip AI, deterministic only)
+    degradedMode?: boolean;
+
     // Observability flags
     verbose?: boolean;
     jsonOutput?: boolean;

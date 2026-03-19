@@ -46,6 +46,12 @@ export async function runCrewCommand(args: ParsedArgs, autoConfig: string | unde
     }
     const workflowName = rawWorkflow as WorkflowName;
 
+    // Degraded mode: skip all AI features, deterministic analysis only
+    const degraded = args.degradedMode || process.env.E2E_AGENTS_DEGRADED === 'true';
+    if (degraded) {
+        console.log('Running in degraded mode — deterministic analysis only, no LLM calls.');
+    }
+
     const crewConfig: CrewConfig = {
         appPath: config.path,
         testsRoot,
@@ -55,7 +61,7 @@ export async function runCrewCommand(args: ParsedArgs, autoConfig: string | unde
         workflow: workflowName,
         providerOverride: args.llmProvider,
         budgetUSD: args.budgetUSD,
-        dryRun: args.dryRun,
+        dryRun: degraded || args.dryRun,
     };
 
     // Create orchestrator and register all agents

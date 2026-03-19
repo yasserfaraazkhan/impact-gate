@@ -132,6 +132,13 @@ export type {RetryConfig} from './resilience/retry.js';
 export {CircuitBreaker} from './resilience/circuit_breaker.js';
 export type {CircuitBreakerConfig} from './resilience/circuit_breaker.js';
 
+// Secret scanning
+export {sanitizeSecrets, containsSecrets, sanitizeObject} from './sanitize.js';
+
+// CLI errors
+export {CliError, classifyError, EXIT_CODES} from './cli/errors.js';
+export type {ExitCode} from './cli/errors.js';
+
 // Training (route-families bootstrap and maintenance)
 export {scanProject} from './training/scanner.js';
 export {mergeFamilies, detectStaleFamilies} from './training/merger.js';

@@ -20,6 +20,7 @@ import {runTrainCommand} from './cli/commands/train.js';
 import {runCrewCommand} from './cli/commands/crew.js';
 import {runCostReportCommand} from './cli/commands/cost_report.js';
 import {runGateCommand} from './cli/commands/gate.js';
+import {classifyError, EXIT_CODES} from './cli/errors.js';
 
 // Commands that skip default resolution (they handle their own setup)
 const SKIP_DEFAULTS_COMMANDS = new Set(['init', 'llm-health', 'cost-report']);
@@ -195,6 +196,13 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-    console.error(error instanceof Error ? error.message : String(error));
-    process.exit(1);
+    const exitCode = classifyError(error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(message);
+    if (exitCode === EXIT_CODES.BUDGET_EXCEEDED) {
+        console.error('Hint: Increase --budget or use --degraded-mode to skip AI features.');
+    } else if (exitCode === EXIT_CODES.PROVIDER_UNAVAILABLE) {
+        console.error('Hint: Check API key or use --degraded-mode for deterministic analysis only.');
+    }
+    process.exit(exitCode);
 });

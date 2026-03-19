@@ -89,6 +89,7 @@ const FLAGS: Record<string, FlagDef> = {
     '--generate':                   {key: 'analyzeGenerate', type: 'boolean'},
     '--heal':                       {key: 'analyzeHeal', type: 'boolean'},
     '--no-ai':                      {key: 'noAi', type: 'boolean'},
+    '--degraded-mode':              {key: 'degradedMode', type: 'boolean'},
     '--enrich':                     {key: 'trainEnrich', type: 'boolean'},
     '--no-enrich':                  {key: 'trainEnrich', type: 'boolean-false'},
     '--validate':                   {key: 'trainValidate', type: 'boolean'},
