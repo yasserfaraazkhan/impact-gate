@@ -61,8 +61,21 @@ If you are writing a plugin today, depend only on the fields documented as STABL
 | `budgetUSD` | `number \| undefined` | EXPERIMENTAL |
 | `modelRoutingProviderType` | `string \| undefined` | EXPERIMENTAL |
 | `modelRoutingOverrides` | `Record<string, string> \| undefined` | EXPERIMENTAL |
+| `budgetLedger` | `BudgetLedger \| undefined` | INTERNAL |
 
 EXPERIMENTAL fields support evolving multi-provider routing and budget controls. Their names, types, or semantics may change in minor releases. Do not depend on them for core plugin logic.
+
+INTERNAL fields are implementation details. `budgetLedger` is the shared cost tracker used by `BaseProvider` for pre-reservation budget enforcement. Plugins must not read from or write to it directly — use `getCrewProvider()` with the `budgetLedger` option instead, which wires it automatically.
+
+## Plugin Phase Injection (v1.9.3)
+
+When plugins are loaded, the orchestrator reads their `phase` and `runAfter` fields and injects them into the workflow:
+
+- **No `runAfter`** — plugin is appended to the phase's parallel agent list
+- **With `runAfter`** — plugin is appended to the phase's sequential list (the phase is converted to sequential if it was parallel, to respect dependency ordering)
+- **Unknown phase** — plugin is skipped with a warning
+- **Built-in phase (e.g., `preprocess`)** — plugin is skipped (not supported)
+- **Unresolved `runAfter` deps** — plugin is injected anyway with a warning
 
 ## AgentPlugin Interface
 

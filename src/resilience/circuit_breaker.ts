@@ -13,6 +13,8 @@
 export interface CircuitBreakerConfig {
     failureThreshold: number;    // Consecutive failures to open circuit (default: 3)
     cooldownMs: number;          // Time in OPEN before trying HALF_OPEN (default: 60000)
+    /** Optional predicate: only count errors where this returns true. Defaults to counting all errors. */
+    shouldCount?: (error: unknown) => boolean;
 }
 
 const DEFAULT_CONFIG: CircuitBreakerConfig = {
@@ -65,13 +67,16 @@ export class CircuitBreaker {
             this.onSuccess();
             return result;
         } catch (error) {
-            this.onFailure();
+            const shouldCount = !this.config.shouldCount || this.config.shouldCount(error);
+            if (shouldCount) {
+                this.onFailure();
+            }
             // In half-open state, a failure re-opens the circuit
             if (stateBeforeCall === 'half-open') {
                 throw error;
             }
             // In closed state, if failures hit threshold the circuit opened
-            if (this.failures >= this.config.failureThreshold) {
+            if (shouldCount && this.failures >= this.config.failureThreshold) {
                 return fallback();
             }
             throw error;

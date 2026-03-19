@@ -2,6 +2,50 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.9.3] - 2026-03-19
+
+### Budget Enforcement (breaking fix)
+
+- **Shared BudgetLedger** — All agents in a crew run share a single budget ledger instead of each having an independent budget check. Parallel agents can no longer independently overshoot the budget by N×limit.
+- **Pre-reservation with reconciliation** — Before each LLM call, the provider reserves estimated cost (4096 output tokens × model rate). Parallel agents see in-flight holds and stop before overshoot. Reservations self-heal on failed calls.
+- **NaN/negative cost guard** — `BudgetLedger.record()` silently ignores non-finite and negative values to prevent silent budget bypass.
+
+### Resilience
+
+- **CircuitBreaker wired into provider call path** — `BaseProvider.retryCall()` now composes retry-inside-circuit-breaker. After 3 consecutive transient failures, the circuit opens and calls fail fast instead of waiting through retries.
+- **Shared circuit breaker per provider type** — All `AnthropicProvider` instances share one breaker (static `Map`). If Anthropic is down, 3 parallel agents discover it in 3 total failures, not 3×3=9.
+- **`shouldCount` predicate on CircuitBreaker** — Budget, auth, and validation errors no longer trip the circuit. Only transient provider failures (429, 5xx, network errors) count toward the threshold.
+
+### Plugin System
+
+- **Plugin `phase`/`runAfter` now wired** — `loadPlugins()` reads `plugin.phase` and injects the plugin into the matching workflow phase. Plugins with `runAfter` run sequentially after their dependencies; plugins without run in parallel.
+- **Dependency validation** — Warns when `runAfter` references agents not found in the target phase or agent registry.
+- **Path traversal blocked** — Plugin paths that resolve outside `process.cwd()` are rejected (prevents `../../etc/evil.js`).
+
+### Security
+
+- **`sanitizeObject` circular reference protection** — `WeakSet`-based tracking prevents stack overflow on self-referencing objects.
+- **Plugin sandbox tightened** — relative-path check plus resolved-path containment check.
+
+### Cache
+
+- **Automatic `cache.prune()`** — Expired cache entries are pruned at the start of every `crew` command. Errors are logged instead of silently swallowed.
+
+### CI/CD
+
+- **Test step in publish.yml** — `npm test` runs before `npm publish`, preventing broken releases.
+
+### Testing
+
+- **41 new tests** (406 total, 0 failures):
+  - `sanitize.test.ts` — 23 tests: all secret patterns, concurrent regex safety, `sanitizeObject` with nested/null/circular inputs
+  - `cli_errors.test.ts` — 18 tests: all exit codes, `classifyError` for every error category
+
+### Exports
+
+- `BudgetLedger` exported from package index for custom provider integrations.
+- `CrewContext.budgetLedger` marked `@internal`.
+
 ## [1.7.7] - 2026-03-16
 
 ### Bug Fixes

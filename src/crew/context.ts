@@ -13,6 +13,7 @@ import type {ProviderUsageStats} from '../provider_interface.js';
 import type {GeneratedSpec} from '../pipeline/stage3_generation.js';
 import type {LoadedContext} from '../knowledge/context_loader.js';
 import type {FamilyGroup, PreprocessResult} from '../pipeline/stage0_preprocess.js';
+import type {BudgetLedger} from '../budget_ledger.js';
 import type {AgentMessage} from './protocol.js';
 import type {TestDesign, CrossImpact, Finding, StrategyEntry, RegressionRisk} from './types.js';
 
@@ -35,6 +36,8 @@ export interface CrewContext {
     budgetUSD?: number;
     modelRoutingProviderType?: string;
     modelRoutingOverrides?: Record<string, string>;
+    /** @internal Shared budget enforcement — not part of the public API. */
+    budgetLedger?: BudgetLedger;
 
     // Accumulated by agents
     impactedFlows: FlowDecision[];

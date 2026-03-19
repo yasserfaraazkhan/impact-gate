@@ -10,6 +10,7 @@ import {join} from 'path';
 
 import {resolveConfig} from '../../agent/config.js';
 import {CrewOrchestrator, type CrewConfig, type CrewResult} from '../../crew/orchestrator.js';
+import {ResponseCache} from '../../cache/response_cache.js';
 import {WORKFLOWS, type WorkflowName} from '../../crew/workflows.js';
 import {ImpactAnalystAgent} from '../../agents/impact-analyst.js';
 import {GeneratorAgent} from '../../agents/generator.js';
@@ -50,6 +51,18 @@ export async function runCrewCommand(args: ParsedArgs, autoConfig: string | unde
     const degraded = args.degradedMode || process.env.E2E_AGENTS_DEGRADED === 'true';
     if (degraded) {
         console.log('Running in degraded mode — deterministic analysis only, no LLM calls.');
+    }
+
+    // Prune expired cache entries to prevent unbounded growth on CI
+    try {
+        const cache = new ResponseCache(testsRoot);
+        const pruned = cache.prune();
+        if (pruned > 0) {
+            console.log(`Cache: pruned ${pruned} expired entries.`);
+        }
+    } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`Cache prune warning: ${msg}`);
     }
 
     const crewConfig: CrewConfig = {

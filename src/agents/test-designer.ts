@@ -47,6 +47,7 @@ export class TestDesignerAgent implements Agent {
                 agentRole: 'test-designer',
                 modelRoutingProviderType: ctx.modelRoutingProviderType,
                 modelRoutingOverrides: ctx.modelRoutingOverrides,
+                budgetLedger: ctx.budgetLedger,
             });
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);

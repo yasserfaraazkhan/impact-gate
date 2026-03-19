@@ -97,6 +97,50 @@ npx e2e-ai-agents crew --workflow design-only --dry-run --path /path/to/project 
 npx e2e-ai-agents cost-report --path /path/to/project
 ```
 
+### Budget Enforcement
+
+The `--budget-usd` flag sets a hard cost limit for the entire crew run. Budget enforcement uses a **pre-reservation** model (like credit card authorization holds) to prevent parallel agents from overshooting:
+
+1. Before each LLM call, the provider **reserves** estimated cost in a shared ledger
+2. Other parallel agents see the in-flight hold and stop if the budget would be exceeded
+3. After the call completes, the reservation is **settled** to actual cost
+
+This means 3 agents running in parallel against a $1.00 budget will not collectively spend $1.20. The overshoot is bounded by the estimation error of a single call (~$0.01).
+
+### Resilience
+
+Provider calls are protected by a **circuit breaker** (3-failure threshold, 60s cooldown). If a provider goes down, calls fail fast instead of burning through retry timeouts. Circuit breakers are shared per provider type — if Anthropic is down, all agents discover it after 3 total failures.
+
+Only transient errors (429, 5xx, network) trip the circuit. Budget exceeded and auth errors do not.
+
+### Plugins
+
+External agents can register into crew workflows via the `plugins` config:
+
+```typescript
+// my-plugin.ts
+import type { AgentPlugin, AgentTask, AgentResult, CrewContext } from '@yasserkhanorg/e2e-agents';
+
+const myPlugin: AgentPlugin = {
+    role: 'my-custom-analyzer',
+    phase: 'understand',              // Run in the 'understand' phase
+    runAfter: ['impact-analyst'],     // After impact-analyst completes
+    async execute(task: AgentTask, ctx: CrewContext): Promise<AgentResult> {
+        // Access ctx.impactedFlows, ctx.changedFiles, etc.
+        return { role: 'my-custom-analyzer', status: 'success', output: null, warnings: [] };
+    },
+};
+export default myPlugin;
+```
+
+```bash
+npx e2e-ai-agents crew --plugins ./my-plugin.ts --workflow full-qa --path ./app
+```
+
+Plugins with `runAfter` dependencies run sequentially after their dependencies. Plugins without `runAfter` run in parallel with other agents in their phase. Plugin paths must be relative and cannot escape the workspace directory.
+
+See [docs/PLUGIN_API_STABILITY.md](docs/PLUGIN_API_STABILITY.md) for the full API contract and stability guarantees.
+
 ### What the Crew Adds Beyond the Pipeline
 
 | Capability | Pipeline | Crew |

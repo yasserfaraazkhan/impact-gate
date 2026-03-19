@@ -24,6 +24,8 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
+      - name: Run tests
+        run: npm test
       - name: Publish to npm with provenance
         run: npm publish --provenance --access public
         env:

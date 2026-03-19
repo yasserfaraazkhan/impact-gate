@@ -9,6 +9,7 @@ import {getChangedFiles, isTestFile} from '../agent/git.js';
 import {preprocess} from '../pipeline/stage0_preprocess.js';
 import {logger} from '../logger.js';
 import {BudgetExceededError} from '../base_provider.js';
+import {BudgetLedger} from '../budget_ledger.js';
 import type {RouteFamilyConfig} from '../knowledge/route_families.js';
 import type {ApiSurfaceConfig} from '../knowledge/api_surface.js';
 import type {Agent, AgentMessage, AgentPlugin, AgentResult, AgentTask} from './protocol.js';
@@ -61,6 +62,12 @@ export class CrewOrchestrator {
                     continue;
                 }
                 const resolved = new URL(pluginPath, `file://${process.cwd()}/`).href;
+                // Security: reject paths that resolve outside the workspace (e.g., ../../etc/evil.js)
+                const cwd = `file://${process.cwd()}/`;
+                if (!resolved.startsWith(cwd)) {
+                    logger.warn(`Plugin path '${pluginPath}' resolves outside workspace — skipped`);
+                    continue;
+                }
                 const mod = await import(resolved);
                 const plugin: AgentPlugin = mod.default || mod;
                 if (!plugin.role || typeof plugin.execute !== 'function') {
@@ -86,13 +93,16 @@ export class CrewOrchestrator {
         const timings: Record<string, number> = {};
         const warnings: string[] = [];
 
-        // Load plugins if configured
+        // Load plugins if configured, then inject them into workflow phases
+        const pluginRoles: string[] = [];
         if (config.plugins && config.plugins.length > 0) {
             const loaded = await this.loadPlugins(config.plugins);
+            pluginRoles.push(...loaded);
             if (loaded.length > 0) {
                 logger.info(`Loaded ${loaded.length} plugins: ${loaded.join(', ')}`);
             }
         }
+        const effectivePhases = this.injectPluginsIntoPhases(workflow.phases, pluginRoles);
 
         // Step 1: Get changed files
         const gitResult = getChangedFiles(config.appPath, config.gitSince, {
@@ -109,6 +119,9 @@ export class CrewOrchestrator {
             warnings.push('No changed application files detected.');
         }
 
+        // Create shared budget ledger for aggregate cost tracking across all agents
+        const budgetLedger = config.budgetUSD ? new BudgetLedger(config.budgetUSD) : undefined;
+
         // Initialize context (will be populated during preprocess phase)
         const ctx: CrewContext = {
             changedFiles,
@@ -124,6 +137,7 @@ export class CrewOrchestrator {
             gitSince: config.gitSince,
             providerOverride: config.providerOverride,
             budgetUSD: config.budgetUSD,
+            budgetLedger,
             impactedFlows: [],
             strategyEntries: [],
             testDesigns: [],
@@ -138,7 +152,7 @@ export class CrewOrchestrator {
         };
 
         // Execute each phase
-        for (const phase of workflow.phases) {
+        for (const phase of effectivePhases) {
             const timer = logger.timer(`crew:${phase.name}`);
 
             if (phase.handler === 'built-in') {
@@ -160,9 +174,10 @@ export class CrewOrchestrator {
 
             timings[phase.name] = timer.end();
 
-            // Budget check
-            if (config.budgetUSD && ctx.usage.totalCost >= config.budgetUSD) {
-                warnings.push(`Budget limit reached ($${ctx.usage.totalCost.toFixed(4)} >= $${config.budgetUSD}). Stopping workflow.`);
+            // Budget check — prefer ledger (aggregate across all providers) over ctx.usage
+            const currentCost = budgetLedger ? budgetLedger.totalCost : ctx.usage.totalCost;
+            if (config.budgetUSD && currentCost >= config.budgetUSD) {
+                warnings.push(`Budget limit reached ($${currentCost.toFixed(4)} >= $${config.budgetUSD}). Stopping workflow.`);
                 break;
             }
         }
@@ -269,6 +284,87 @@ export class CrewOrchestrator {
             results.push(await this.dispatch(role, phaseName, ctx));
         }
         this.checkPhaseResults(phaseName, results, ctx);
+    }
+
+    /**
+     * Inject loaded plugins into workflow phases based on their `phase` and `runAfter` fields.
+     * Plugins with `runAfter` dependencies are appended to the sequential list of the matching phase;
+     * plugins without `runAfter` are appended to the parallel list.
+     * Returns a new array of phases (does not mutate the original workflow definition).
+     */
+    private injectPluginsIntoPhases(phases: WorkflowPhase[], pluginRoles: string[]): WorkflowPhase[] {
+        if (pluginRoles.length === 0) return phases;
+
+        // Build mutable copies keyed by phase name
+        const phaseMap = new Map<string, {handler?: 'built-in'; parallel?: AgentRole[]; sequential?: AgentRole[]}>();
+        const ordered: string[] = [];
+        for (const p of phases) {
+            ordered.push(p.name);
+            if (p.handler === 'built-in') {
+                phaseMap.set(p.name, {handler: 'built-in'});
+            } else if (p.parallel) {
+                phaseMap.set(p.name, {parallel: [...p.parallel]});
+            } else if (p.sequential) {
+                phaseMap.set(p.name, {sequential: [...p.sequential]});
+            }
+        }
+
+        for (const role of pluginRoles) {
+            const agent = this.agents.get(role as AgentRole);
+            if (!agent) continue;
+
+            const plugin = agent as AgentPlugin;
+            if (!plugin.phase) continue;
+
+            const target = phaseMap.get(plugin.phase);
+            if (!target) {
+                logger.warn(`Plugin '${role}' targets phase '${plugin.phase}' which does not exist in workflow — skipped`);
+                continue;
+            }
+            if (target.handler === 'built-in') {
+                logger.warn(`Plugin '${role}' targets built-in phase '${plugin.phase}' — not supported, skipped`);
+                continue;
+            }
+
+            const pluginRole = role as AgentRole;
+
+            if (plugin.runAfter && plugin.runAfter.length > 0) {
+                // Validate that runAfter dependencies are either in this phase or a prior phase
+                const phaseRoles = target.parallel || target.sequential || [];
+                const missingDeps = plugin.runAfter.filter(
+                    (dep) => !phaseRoles.includes(dep) && !this.agents.has(dep),
+                );
+                if (missingDeps.length > 0) {
+                    logger.warn(`Plugin '${role}' has unresolved runAfter deps [${missingDeps.join(', ')}] — injecting anyway`);
+                }
+
+                // Plugin has dependencies — must run sequentially
+                if (target.sequential) {
+                    target.sequential.push(pluginRole);
+                } else if (target.parallel) {
+                    // Convert to sequential to respect dependency ordering
+                    target.sequential = [...target.parallel, pluginRole];
+                    delete target.parallel;
+                }
+            } else {
+                if (target.parallel) {
+                    target.parallel.push(pluginRole);
+                } else if (target.sequential) {
+                    target.sequential.push(pluginRole);
+                }
+            }
+
+            logger.info(`Plugin '${role}' injected into phase '${plugin.phase}'`);
+        }
+
+        // Rebuild WorkflowPhase array
+        return ordered.map((name): WorkflowPhase => {
+            const entry = phaseMap.get(name)!;
+            if (entry.handler === 'built-in') return {name, handler: 'built-in'};
+            if (entry.parallel) return {name, parallel: entry.parallel};
+            if (entry.sequential) return {name, sequential: entry.sequential};
+            throw new Error(`Phase '${name}' has no handler, parallel, or sequential agents after plugin injection`);
+        });
     }
 
     private checkPhaseResults(phaseName: string, results: AgentResult[], ctx: CrewContext): void {

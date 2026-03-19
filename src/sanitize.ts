@@ -49,16 +49,21 @@ export function containsSecrets(text: string): boolean {
 /**
  * Deep-sanitize a JSON-serializable object.
  * Recursively walks all string values and sanitizes them.
+ * Tracks seen objects to prevent stack overflow on circular references.
  */
-export function sanitizeObject<T>(obj: T): T {
+export function sanitizeObject<T>(obj: T, _seen?: WeakSet<object>): T {
     if (typeof obj === 'string') return sanitizeSecrets(obj) as T;
-    if (Array.isArray(obj)) return obj.map(sanitizeObject) as T;
-    if (obj !== null && typeof obj === 'object') {
-        const result: Record<string, unknown> = {};
-        for (const [key, value] of Object.entries(obj)) {
-            result[key] = sanitizeObject(value);
-        }
-        return result as T;
+    if (obj === null || typeof obj !== 'object') return obj;
+
+    const seen = _seen ?? new WeakSet<object>();
+    if (seen.has(obj as object)) return '[Circular]' as T;
+    seen.add(obj as object);
+
+    if (Array.isArray(obj)) return obj.map((item) => sanitizeObject(item, seen)) as T;
+
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+        result[key] = sanitizeObject(value, seen);
     }
-    return obj;
+    return result as T;
 }

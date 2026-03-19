@@ -44,6 +44,7 @@ export class CrossImpactAgent implements Agent {
                 agentRole: 'cross-impact',
                 modelRoutingProviderType: ctx.modelRoutingProviderType,
                 modelRoutingOverrides: ctx.modelRoutingOverrides,
+                budgetLedger: ctx.budgetLedger,
             });
 
             const prompt = buildCrossImpactPrompt({

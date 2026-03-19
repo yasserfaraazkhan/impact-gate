@@ -48,6 +48,7 @@ export class ExecutorAgent implements Agent {
                 agentRole: 'executor',
                 modelRoutingProviderType: ctx.modelRoutingProviderType,
                 modelRoutingOverrides: ctx.modelRoutingOverrides,
+                budgetLedger: ctx.budgetLedger,
             });
 
             const summary = await runAgenticGeneration({

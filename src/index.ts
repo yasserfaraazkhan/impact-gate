@@ -122,6 +122,9 @@ export {RegressionAdvisorAgent} from './agents/regression-advisor.js';
 // Base provider (for extending with custom providers)
 export {BaseProvider, BudgetExceededError} from './base_provider.js';
 
+// Budget tracking
+export {BudgetLedger} from './budget_ledger.js';
+
 // Model routing
 export {ModelRouter} from './model_router.js';
 export type {TaskComplexity, ModelRoutingConfig} from './model_router.js';

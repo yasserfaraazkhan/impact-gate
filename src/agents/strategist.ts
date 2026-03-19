@@ -41,6 +41,7 @@ export class StrategistAgent implements Agent {
                 agentRole: 'strategist',
                 modelRoutingProviderType: ctx.modelRoutingProviderType,
                 modelRoutingOverrides: ctx.modelRoutingOverrides,
+                budgetLedger: ctx.budgetLedger,
             });
 
             const response = await provider.generateText(prompt, {

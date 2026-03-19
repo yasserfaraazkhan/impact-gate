@@ -10,6 +10,7 @@ import {LLMProviderFactory} from '../provider_factory.js';
 import type {LLMProvider} from '../provider_interface.js';
 import {BaseProvider} from '../base_provider.js';
 import {ModelRouter, type ModelRoutingConfig} from '../model_router.js';
+import type {BudgetLedger} from '../budget_ledger.js';
 import type {AgentRole} from './types.js';
 
 export interface CrewProviderOptions {
@@ -24,6 +25,7 @@ export async function getCrewProvider(providerOverride?: string, budgetUSD?: num
     agentRole?: AgentRole;
     modelRoutingProviderType?: string;
     modelRoutingOverrides?: Record<string, string>;
+    budgetLedger?: BudgetLedger;
 }): Promise<LLMProvider> {
     let effectiveOverride = providerOverride;
 
@@ -41,8 +43,12 @@ export async function getCrewProvider(providerOverride?: string, budgetUSD?: num
         ? await LLMProviderFactory.createFromString(effectiveOverride)
         : await LLMProviderFactory.createFromEnv();
 
-    if (budgetUSD !== undefined && provider instanceof BaseProvider) {
-        provider.setBudget(budgetUSD);
+    if (provider instanceof BaseProvider) {
+        if (opts?.budgetLedger) {
+            provider.setBudgetLedger(opts.budgetLedger);
+        } else if (budgetUSD !== undefined) {
+            provider.setBudget(budgetUSD);
+        }
     }
 
     return provider;
