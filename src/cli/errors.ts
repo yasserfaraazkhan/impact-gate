@@ -48,14 +48,15 @@ export function classifyError(error: unknown): ExitCode {
     // Provider/auth errors
     if (msg.includes('api key') || msg.includes('authentication') ||
         msg.includes('unauthorized') || msg.includes('403') ||
-        msg.includes('provider') && msg.includes('unavailable') ||
+        (msg.includes('provider') && msg.includes('unavailable')) ||
         msg.includes('econnrefused') || msg.includes('econnreset')) {
         return EXIT_CODES.PROVIDER_UNAVAILABLE;
     }
 
     // Config/manifest errors
-    if (msg.includes('manifest') || msg.includes('config') && msg.includes('invalid') ||
-        msg.includes('route-families') && msg.includes('invalid')) {
+    if ((msg.includes('manifest') && (msg.includes('invalid') || msg.includes('not found') || msg.includes('parse'))) ||
+        (msg.includes('config') && msg.includes('invalid')) ||
+        (msg.includes('route-families') && msg.includes('invalid'))) {
         return EXIT_CODES.INVALID_CONFIG;
     }
 

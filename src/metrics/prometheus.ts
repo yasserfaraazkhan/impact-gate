@@ -34,6 +34,7 @@ const DURATION_BUCKETS = [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300];
 
 export class PrometheusMetrics {
     private counters: Counter[] = [];
+    private gauges: Counter[] = [];
     private histograms: Histogram[] = [];
 
     /**
@@ -109,6 +110,17 @@ export class PrometheusMetrics {
             lines.push(`${counter.name}${labelStr} ${counter.value}`);
         }
 
+        // Export gauges
+        for (const gauge of this.gauges) {
+            if (!seenHelp.has(gauge.name)) {
+                lines.push(`# HELP ${gauge.name} ${gauge.help}`);
+                lines.push(`# TYPE ${gauge.name} gauge`);
+                seenHelp.add(gauge.name);
+            }
+            const labelStr = formatLabels(gauge.labels);
+            lines.push(`${gauge.name}${labelStr} ${gauge.value}`);
+        }
+
         // Export histograms
         for (const hist of this.histograms) {
             if (!seenHelp.has(hist.name)) {
@@ -135,6 +147,7 @@ export class PrometheusMetrics {
      */
     reset(): void {
         this.counters = [];
+        this.gauges = [];
         this.histograms = [];
     }
 
@@ -148,11 +161,11 @@ export class PrometheusMetrics {
     }
 
     private setGauge(name: string, help: string, labels: Record<string, string>, value: number): void {
-        const existing = this.counters.find((c) => c.name === name && labelsMatch(c.labels, labels));
+        const existing = this.gauges.find((c) => c.name === name && labelsMatch(c.labels, labels));
         if (existing) {
             existing.value = value;
         } else {
-            this.counters.push({name, help, labels, value});
+            this.gauges.push({name, help, labels, value});
         }
     }
 

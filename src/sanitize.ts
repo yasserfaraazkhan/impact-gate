@@ -4,22 +4,25 @@
 /**
  * Secret scanning and sanitization utilities.
  * Prevents API keys and credentials from leaking into artifacts, logs, and output.
+ *
+ * Patterns are stored WITHOUT the global flag to avoid shared mutable lastIndex state.
+ * New RegExp instances with /g are created per call for safe concurrent usage.
  */
 
-const SECRET_PATTERNS = [
-    // Anthropic API keys
-    /sk-ant-[a-zA-Z0-9_-]{20,}/g,
-    // OpenAI API keys
-    /sk-[a-zA-Z0-9]{20,}/g,
+const SECRET_PATTERNS: RegExp[] = [
+    // Anthropic API keys (must be checked before generic sk- pattern)
+    /sk-ant-[a-zA-Z0-9_-]{20,}/,
+    // OpenAI API keys (negative lookahead to avoid matching Anthropic keys)
+    /sk-(?!ant-)[a-zA-Z0-9]{20,}/,
     // Generic API key patterns
-    /(?:api[_-]?key|api[_-]?secret|access[_-]?token|auth[_-]?token)['":\s=]+['"]?([a-zA-Z0-9_\-./]{20,})['"]?/gi,
+    /(?:api[_-]?key|api[_-]?secret|access[_-]?token|auth[_-]?token)['":\s=]+['"]?([a-zA-Z0-9_\-./]{20,})['"]?/i,
     // Bearer tokens
-    /Bearer\s+[a-zA-Z0-9_\-./]{20,}/g,
+    /Bearer\s+[a-zA-Z0-9_\-./]{20,}/,
     // AWS keys
-    /AKIA[0-9A-Z]{16}/g,
+    /AKIA[0-9A-Z]{16}/,
     // GitHub tokens
-    /gh[ps]_[a-zA-Z0-9]{36,}/g,
-    /github_pat_[a-zA-Z0-9_]{22,}/g,
+    /gh[ps]_[a-zA-Z0-9]{36,}/,
+    /github_pat_[a-zA-Z0-9_]{22,}/,
 ];
 
 /**
@@ -28,9 +31,7 @@ const SECRET_PATTERNS = [
 export function sanitizeSecrets(text: string): string {
     let result = text;
     for (const pattern of SECRET_PATTERNS) {
-        // Reset lastIndex for global patterns
-        pattern.lastIndex = 0;
-        result = result.replace(pattern, '[REDACTED]');
+        result = result.replace(new RegExp(pattern, 'gi'), '[REDACTED]');
     }
     return result;
 }
@@ -40,8 +41,7 @@ export function sanitizeSecrets(text: string): string {
  */
 export function containsSecrets(text: string): boolean {
     for (const pattern of SECRET_PATTERNS) {
-        pattern.lastIndex = 0;
-        if (pattern.test(text)) return true;
+        if (new RegExp(pattern, 'i').test(text)) return true;
     }
     return false;
 }

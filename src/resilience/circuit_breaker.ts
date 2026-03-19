@@ -32,10 +32,10 @@ export class CircuitBreaker {
         this.config = {...DEFAULT_CONFIG, ...config};
     }
 
+    /** Returns the derived state without mutating internal state. */
     get currentState(): CircuitState {
-        // Check if we should transition from open to half-open
         if (this.state === 'open' && Date.now() - this.lastFailureTime >= this.config.cooldownMs) {
-            this.state = 'half-open';
+            return 'half-open';
         }
         return this.state;
     }
@@ -49,11 +49,16 @@ export class CircuitBreaker {
      * If the circuit is open, the fallback is called instead.
      */
     async call<T>(fn: () => Promise<T>, fallback: () => T): Promise<T> {
-        const state = this.currentState;
-
-        if (state === 'open') {
-            return fallback();
+        // Transition from open to half-open if cooldown has elapsed
+        if (this.state === 'open') {
+            if (Date.now() - this.lastFailureTime >= this.config.cooldownMs) {
+                this.state = 'half-open';
+            } else {
+                return fallback();
+            }
         }
+        // At this point state is 'closed' or 'half-open'
+        const stateBeforeCall = this.state;
 
         try {
             const result = await fn();
@@ -62,11 +67,11 @@ export class CircuitBreaker {
         } catch (error) {
             this.onFailure();
             // In half-open state, a failure re-opens the circuit
-            if (state === 'half-open') {
+            if (stateBeforeCall === 'half-open') {
                 throw error;
             }
-            // In closed state, check if we've hit the threshold
-            if (this.state === 'open') {
+            // In closed state, if failures hit threshold the circuit opened
+            if (this.failures >= this.config.failureThreshold) {
                 return fallback();
             }
             throw error;
