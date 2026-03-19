@@ -5,9 +5,12 @@
  * CLI command: crew — runs multi-agent QA analysis workflows.
  */
 
+import {appendFileSync, mkdirSync} from 'fs';
+import {join} from 'path';
+
 import {resolveConfig} from '../../agent/config.js';
-import {CrewOrchestrator, type CrewConfig} from '../../crew/orchestrator.js';
-import type {WorkflowName} from '../../crew/workflows.js';
+import {CrewOrchestrator, type CrewConfig, type CrewResult} from '../../crew/orchestrator.js';
+import {WORKFLOWS, type WorkflowName} from '../../crew/workflows.js';
 import {ImpactAnalystAgent} from '../../agents/impact-analyst.js';
 import {GeneratorAgent} from '../../agents/generator.js';
 import {ExecutorAgent} from '../../agents/executor.js';
@@ -75,6 +78,34 @@ export async function runCrewCommand(args: ParsedArgs, autoConfig: string | unde
         process.exit(1);
     }
     const ctx = result.context;
+
+    // Dry-run output
+    if (result.dryRun) {
+        printDryRunOutput(result, workflowName, args.jsonOutput);
+        return;
+    }
+
+    // Write crew metrics to metrics.jsonl for cost-report
+    if (ctx.usage.requestCount > 0) {
+        try {
+            const baseDir = join(testsRoot, '.e2e-ai-agents');
+            mkdirSync(baseDir, {recursive: true});
+            const metricsPath = join(baseDir, 'metrics.jsonl');
+            const crewMetric = {
+                type: 'crew-run',
+                timestamp: new Date().toISOString(),
+                workflow: workflowName,
+                totalCost: ctx.usage.totalCost,
+                totalTokens: ctx.usage.totalTokens,
+                totalInputTokens: ctx.usage.totalInputTokens,
+                totalOutputTokens: ctx.usage.totalOutputTokens,
+                agentUsage: ctx.agentUsage,
+            };
+            appendFileSync(metricsPath, `${JSON.stringify(crewMetric)}\n`, 'utf-8');
+        } catch {
+            // Non-fatal: metrics writing should not break the workflow
+        }
+    }
 
     // JSON output mode
     if (args.jsonOutput) {
@@ -148,4 +179,82 @@ export async function runCrewCommand(args: ParsedArgs, autoConfig: string | unde
             console.log(`  ... and ${result.warnings.length - 10} more`);
         }
     }
+}
+
+function printDryRunOutput(result: CrewResult, workflowName: WorkflowName, jsonOutput?: boolean): void {
+    const ctx = result.context;
+    const workflow = WORKFLOWS[workflowName];
+
+    if (jsonOutput) {
+        console.log(JSON.stringify({
+            dryRun: true,
+            workflow: workflowName,
+            changedFiles: ctx.changedFiles,
+            familyGroups: ctx.familyGroups.map((fg) => ({
+                familyId: fg.familyId,
+                featureId: fg.featureId,
+                files: fg.files,
+            })),
+            phases: workflow.phases.map((p) => ({
+                name: p.name,
+                agents: p.parallel || p.sequential || [],
+            })),
+            manifestSource: ctx.manifest?.source || 'none',
+            warnings: result.warnings,
+        }, null, 2));
+        return;
+    }
+
+    console.log('Dry run — no LLM calls will be made.\n');
+
+    console.log(`Changed files (${ctx.changedFiles.length}):`);
+    for (const f of ctx.changedFiles.slice(0, 20)) {
+        console.log(`  ${f}`);
+    }
+    if (ctx.changedFiles.length > 20) {
+        console.log(`  ... and ${ctx.changedFiles.length - 20} more`);
+    }
+
+    console.log(`\nAffected families (${ctx.familyGroups.length}):`);
+    for (const fg of ctx.familyGroups) {
+        const label = fg.featureId ? `${fg.familyId}/${fg.featureId}` : fg.familyId;
+        console.log(`  ${label} (${fg.files.length} files)`);
+    }
+
+    if (ctx.manifest?.source === 'heuristic') {
+        console.log('\n  Note: Using directory-based heuristics. Run `e2e-ai-agents train` for better accuracy.');
+    }
+
+    console.log(`\nWorkflow: ${workflowName}`);
+    const phaseNames = workflow.phases
+        .map((p) => {
+            const agents = p.parallel || p.sequential || [];
+            return agents.length > 0 ? `${p.name} (${agents.join(', ')})` : p.name;
+        })
+        .join(' → ');
+    console.log(`Phases: ${phaseNames}`);
+
+    // Cost estimation based on workflow and family count
+    const familyCount = Math.max(ctx.familyGroups.length, 1);
+    const agentCount = workflow.phases.reduce((sum, p) => sum + (p.parallel?.length || 0) + (p.sequential?.length || 0), 0);
+    const costEstimate = estimateCost(workflowName, familyCount, agentCount);
+    console.log(`\nEstimated cost: $${costEstimate.low.toFixed(2)}-$${costEstimate.high.toFixed(2)}`);
+    if (ctx.modelRoutingProviderType) {
+        console.log(`  With model routing: $${(costEstimate.low * 0.5).toFixed(2)}-$${(costEstimate.high * 0.5).toFixed(2)} (Haiku for classification)`);
+    }
+}
+
+/** Rough cost estimation based on observed averages per workflow type */
+function estimateCost(workflow: WorkflowName, families: number, _agents: number): {low: number; high: number} {
+    // Per-family cost ranges by workflow (based on typical Sonnet pricing)
+    const ranges: Record<WorkflowName, {low: number; high: number}> = {
+        'quick-check': {low: 0.03, high: 0.10},
+        'design-only': {low: 0.10, high: 0.40},
+        'full-qa': {low: 0.30, high: 1.00},
+    };
+    const range = ranges[workflow] || ranges['full-qa'];
+    return {
+        low: range.low * families,
+        high: range.high * families,
+    };
 }

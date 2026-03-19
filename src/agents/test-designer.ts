@@ -43,7 +43,11 @@ export class TestDesignerAgent implements Agent {
 
         let provider;
         try {
-            provider = await getCrewProvider(ctx.providerOverride);
+            provider = await getCrewProvider(ctx.providerOverride, ctx.budgetUSD, {
+                agentRole: 'test-designer',
+                modelRoutingProviderType: ctx.modelRoutingProviderType,
+                modelRoutingOverrides: ctx.modelRoutingOverrides,
+            });
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             warnings.push(`Test designer provider unavailable: ${message}`);

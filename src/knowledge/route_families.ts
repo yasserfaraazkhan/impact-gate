@@ -358,3 +358,48 @@ export function getRoutesForBinding(
 export function clearManifestCache(): void {
     manifestCache.clear();
 }
+
+/**
+ * Build heuristic route families from changed files when no manifest exists.
+ * Groups files by their top-level directory to create rough family groupings.
+ * Results are lower confidence but allow analysis to proceed without training.
+ */
+export function buildHeuristicFamilies(changedFiles: string[], testsRoot: string): RouteFamilyManifest {
+    const dirGroups = new Map<string, string[]>();
+
+    for (const file of changedFiles) {
+        const normalized = file.replace(/\\/g, '/');
+        const parts = normalized.split('/');
+        // Use the first meaningful directory segment as the family ID
+        // Skip common prefixes like 'src/', 'app/', 'lib/'
+        const skipDirs = new Set(['src', 'app', 'lib', 'packages', 'components']);
+        let familyDir = parts[0] || 'root';
+        if (skipDirs.has(familyDir) && parts.length > 1) {
+            familyDir = parts[1];
+        }
+        // Normalize to a clean family name
+        familyDir = familyDir.replace(/\.[^.]+$/, ''); // strip file extensions for single files
+
+        if (!dirGroups.has(familyDir)) {
+            dirGroups.set(familyDir, []);
+        }
+        dirGroups.get(familyDir)!.push(normalized);
+    }
+
+    const families: RouteFamily[] = [];
+    for (const [dir, files] of dirGroups) {
+        families.push({
+            id: dir,
+            routes: [`/${dir}`],
+            webappPaths: files.map((f) => `${f}*`),
+        });
+    }
+
+    logger.info(`Built ${families.length} heuristic families from ${changedFiles.length} changed files (no route-families.json found)`);
+    logger.info('Tip: Run `e2e-ai-agents train` to generate a proper route-families manifest for better accuracy.');
+
+    return {
+        families,
+        source: 'heuristic',
+    };
+}

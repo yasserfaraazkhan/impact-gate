@@ -11,6 +11,7 @@ import type {
 } from '../knowledge/route_families.js';
 import {
     loadRouteFamilyManifest,
+    buildHeuristicFamilies,
     bindFilesToFamilies,
     getSpecDirsForBinding,
     getCypressSpecDirsForBinding,
@@ -251,17 +252,14 @@ export function analyzeImpact(
     changedFiles = changedFiles.filter((f) => !isTestFile(f));
     const prIncludedTestFiles = classifyPrTestFiles(allOriginalFiles, changedFiles);
 
-    // Load manifest
-    const manifest = loadRouteFamilyManifest(testsRoot, routeFamilies);
+    // Load manifest, fall back to heuristic families if not found
+    let manifest = loadRouteFamilyManifest(testsRoot, routeFamilies);
     if (!manifest) {
-        return {
-            changedFiles,
-            expandedFiles: options.expandedFiles || [],
-            impactedFeatures: [],
-            unboundFiles: [...changedFiles],
-            warnings: ['Route family manifest not found. All files are unbound.'],
-            prIncludedTestFiles,
-        };
+        manifest = buildHeuristicFamilies(changedFiles, testsRoot);
+        warnings.push(
+            'Route family manifest not found. Using directory-based heuristics (lower accuracy).',
+            'Tip: Run `e2e-ai-agents train` to generate a proper manifest.',
+        );
     }
 
     // Combine original + expanded files

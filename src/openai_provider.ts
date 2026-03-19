@@ -76,6 +76,7 @@ export class OpenAIProvider extends BaseProvider {
     }
 
     async generateText(prompt: string, options?: GenerateOptions): Promise<LLMResponse> {
+        this.checkBudget();
         const startTime = Date.now();
 
         try {

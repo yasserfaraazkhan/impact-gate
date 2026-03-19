@@ -38,3 +38,17 @@ export interface Agent {
     execute(task: AgentTask, ctx: CrewContext): Promise<AgentResult>;
     onMessage?(msg: AgentMessage): Promise<void>;
 }
+
+/**
+ * AgentPlugin — interface for external agent plugins loaded from config.
+ *
+ * Plugins register into crew workflow phases alongside built-in agents.
+ * The CrewContext interface is a public API contract once plugins exist:
+ * field additions are non-breaking, field removals or type changes are breaking.
+ */
+export interface AgentPlugin extends Agent {
+    /** Which workflow phase to run in (e.g., 'strategize', 'understand') */
+    phase: string;
+    /** Run after these agents complete (dependency ordering) */
+    runAfter?: AgentRole[];
+}

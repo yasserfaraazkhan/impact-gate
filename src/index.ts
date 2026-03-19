@@ -99,7 +99,7 @@ export type {AgenticConfig, AgenticResult, AgenticSummary, PlaywrightRunResult, 
 export {CrewOrchestrator} from './crew/orchestrator.js';
 export type {CrewConfig, CrewResult} from './crew/orchestrator.js';
 export type {CrewContext} from './crew/context.js';
-export type {Agent, AgentTask, AgentResult, AgentMessage} from './crew/protocol.js';
+export type {Agent, AgentPlugin, AgentTask, AgentResult, AgentMessage} from './crew/protocol.js';
 export type {
     AgentRole, TestCaseType, TestCase, TestDesign,
     CrossImpact, Finding, RegressionRisk, StrategyEntry,
@@ -118,6 +118,19 @@ export {StrategistAgent} from './agents/strategist.js';
 export {TestDesignerAgent} from './agents/test-designer.js';
 export {CrossImpactAgent} from './agents/cross-impact.js';
 export {RegressionAdvisorAgent} from './agents/regression-advisor.js';
+
+// Base provider (for extending with custom providers)
+export {BaseProvider, BudgetExceededError} from './base_provider.js';
+
+// Model routing
+export {ModelRouter} from './model_router.js';
+export type {TaskComplexity, ModelRoutingConfig} from './model_router.js';
+
+// Resilience
+export {withRetry} from './resilience/retry.js';
+export type {RetryConfig} from './resilience/retry.js';
+export {CircuitBreaker} from './resilience/circuit_breaker.js';
+export type {CircuitBreakerConfig} from './resilience/circuit_breaker.js';
 
 // Training (route-families bootstrap and maintenance)
 export {scanProject} from './training/scanner.js';

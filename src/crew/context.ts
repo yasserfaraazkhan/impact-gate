@@ -32,6 +32,9 @@ export interface CrewContext {
     testsRoot: string;
     gitSince: string;
     providerOverride?: string;
+    budgetUSD?: number;
+    modelRoutingProviderType?: string;
+    modelRoutingOverrides?: Record<string, string>;
 
     // Accumulated by agents
     impactedFlows: FlowDecision[];
@@ -44,8 +47,18 @@ export interface CrewContext {
 
     // Metadata
     usage: ProviderUsageStats;
+    agentUsage: AgentUsageEntry[];
     messages: AgentMessage[];
     warnings: string[];
+}
+
+export interface AgentUsageEntry {
+    agent: string;
+    family?: string;
+    inputTokens: number;
+    outputTokens: number;
+    cost: number;
+    durationMs: number;
 }
 
 export function createEmptyUsageStats(): ProviderUsageStats {

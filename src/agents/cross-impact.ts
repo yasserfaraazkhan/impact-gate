@@ -40,7 +40,11 @@ export class CrossImpactAgent implements Agent {
 
         // Then: LLM-enriched analysis for semantic cross-impacts
         try {
-            const provider = await getCrewProvider(ctx.providerOverride);
+            const provider = await getCrewProvider(ctx.providerOverride, ctx.budgetUSD, {
+                agentRole: 'cross-impact',
+                modelRoutingProviderType: ctx.modelRoutingProviderType,
+                modelRoutingOverrides: ctx.modelRoutingOverrides,
+            });
 
             const prompt = buildCrossImpactPrompt({
                 changedFiles: ctx.changedFiles,

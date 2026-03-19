@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://github.com/yasserkhanorg/e2e-agents#readme
+    about: Read the docs before opening an issue

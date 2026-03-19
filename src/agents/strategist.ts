@@ -37,7 +37,11 @@ export class StrategistAgent implements Agent {
         });
 
         try {
-            const provider = await getCrewProvider(ctx.providerOverride);
+            const provider = await getCrewProvider(ctx.providerOverride, ctx.budgetUSD, {
+                agentRole: 'strategist',
+                modelRoutingProviderType: ctx.modelRoutingProviderType,
+                modelRoutingOverrides: ctx.modelRoutingOverrides,
+            });
 
             const response = await provider.generateText(prompt, {
                 maxTokens: 4000,

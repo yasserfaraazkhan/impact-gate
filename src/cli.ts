@@ -4,6 +4,7 @@
 
 import {resolveConfig} from './agent/config.js';
 import {parseArgs, resolveAutoConfig} from './cli/parse_args.js';
+import {resolveDefaults} from './cli/defaults.js';
 import {printUsage} from './cli/usage.js';
 import {runLlmHealth} from './cli/commands/llm_health.js';
 import {runAnalyzeCommand} from './cli/commands/analyze.js';
@@ -17,10 +18,35 @@ import {runGenerateCommand} from './cli/commands/generate.js';
 import {runInitCommand} from './cli/commands/init.js';
 import {runTrainCommand} from './cli/commands/train.js';
 import {runCrewCommand} from './cli/commands/crew.js';
+import {runCostReportCommand} from './cli/commands/cost_report.js';
+import {runGateCommand} from './cli/commands/gate.js';
+
+// Commands that skip default resolution (they handle their own setup)
+const SKIP_DEFAULTS_COMMANDS = new Set(['init', 'llm-health', 'cost-report']);
+
+// Commands that need path/testsRoot/framework/since
+const NEEDS_DEFAULTS_COMMANDS = new Set([
+    'impact', 'plan', 'suggest', 'crew', 'generate', 'heal', 'analyze', 'train',
+    'feedback', 'traceability-capture', 'traceability-ingest', 'finalize-generated-tests',
+]);
 
 async function main(): Promise<void> {
     const args = parseArgs(process.argv.slice(2));
     const autoConfig = resolveAutoConfig(args);
+
+    // Auto-detect defaults for commands that need them (when no config file found)
+    if (args.command && NEEDS_DEFAULTS_COMMANDS.has(args.command) && !SKIP_DEFAULTS_COMMANDS.has(args.command)) {
+        const defaults = resolveDefaults({
+            path: args.path,
+            testsRoot: args.testsRoot,
+            framework: args.framework,
+            gitSince: args.gitSince,
+        });
+        args.path = args.path || defaults.path;
+        args.testsRoot = args.testsRoot || defaults.testsRoot;
+        args.framework = args.framework || defaults.framework;
+        args.gitSince = args.gitSince || defaults.since;
+    }
 
     if (args.command === 'init') {
         const hasYes = process.argv.includes('--yes') || process.argv.includes('-y');
@@ -75,6 +101,16 @@ async function main(): Promise<void> {
 
     if (args.command === 'crew') {
         await runCrewCommand(args, autoConfig);
+        return;
+    }
+
+    if (args.command === 'cost-report') {
+        runCostReportCommand(args);
+        return;
+    }
+
+    if (args.command === 'gate') {
+        await runGateCommand(args, autoConfig);
         return;
     }
 

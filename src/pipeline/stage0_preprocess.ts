@@ -5,6 +5,7 @@ import {existsSync, readFileSync} from 'fs';
 import {join} from 'path';
 import {
     bindFilesToFamilies,
+    buildHeuristicFamilies,
     loadRouteFamilyManifest,
     type FileBinding,
     type RouteFamilyConfig,
@@ -66,10 +67,14 @@ function loadFileSnippet(appPath: string, filePath: string): string | undefined 
 export function preprocess(changedFiles: string[], config: PreprocessConfig): PreprocessResult {
     const warnings: string[] = [];
 
-    // Load route family manifest
-    const manifest = loadRouteFamilyManifest(config.testsRoot, config.routeFamilies);
+    // Load route family manifest, fall back to heuristic families
+    let manifest = loadRouteFamilyManifest(config.testsRoot, config.routeFamilies);
     if (!manifest) {
-        warnings.push('Route family manifest not found. File-to-family binding will be skipped; AI will operate without route constraints.');
+        manifest = buildHeuristicFamilies(changedFiles, config.testsRoot);
+        warnings.push(
+            'Route family manifest not found. Using directory-based heuristics (lower accuracy).',
+            'Tip: Run `e2e-ai-agents train` to generate a proper manifest.',
+        );
     }
 
     // Load API surface catalog
@@ -85,22 +90,15 @@ export function preprocess(changedFiles: string[], config: PreprocessConfig): Pr
     const context = loadContextDocuments(config.testsRoot, config.appPath);
     warnings.push(...context.warnings);
 
-    // Bind files to families
-    let fileBindings: FileBinding[] = [];
-    let unboundFiles: string[] = [];
-    if (manifest) {
-        fileBindings = bindFilesToFamilies(changedFiles, manifest);
-        unboundFiles = fileBindings
-            .filter((fb) => fb.bindings.length === 0)
-            .map((fb) => fb.file);
-        if (unboundFiles.length > 0) {
-            warnings.push(
-                `${unboundFiles.length} changed file(s) did not match any route family: ${unboundFiles.slice(0, 5).join(', ')}${unboundFiles.length > 5 ? '...' : ''}`,
-            );
-        }
-    } else {
-        fileBindings = changedFiles.map((f) => ({file: f, bindings: []}));
-        unboundFiles = changedFiles;
+    // Bind files to families (manifest is always non-null now — either real or heuristic)
+    const fileBindings = bindFilesToFamilies(changedFiles, manifest);
+    const unboundFiles = fileBindings
+        .filter((fb) => fb.bindings.length === 0)
+        .map((fb) => fb.file);
+    if (unboundFiles.length > 0) {
+        warnings.push(
+            `${unboundFiles.length} changed file(s) did not match any route family: ${unboundFiles.slice(0, 5).join(', ')}${unboundFiles.length > 5 ? '...' : ''}`,
+        );
     }
 
     // Group files by family+feature

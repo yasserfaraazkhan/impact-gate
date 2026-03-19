@@ -1,10 +1,11 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {existsSync, writeFileSync, readFileSync} from 'fs';
-import {execFileSync} from 'child_process';
-import {join, resolve} from 'path';
+import {existsSync, writeFileSync} from 'fs';
+import {join} from 'path';
 import * as readline from 'readline';
+
+import {detectFramework, detectTestsRoot, detectGitDefaultBranch} from '../defaults.js';
 
 const CONFIG_FILENAME = 'e2e-ai-agents.config.json';
 
@@ -32,62 +33,6 @@ function ask(rl: readline.Interface, question: string, defaultValue?: string): P
             resolve(answer.trim() || defaultValue || '');
         });
     });
-}
-
-function detectFramework(appPath: string): string {
-    const resolvedPath = resolve(appPath);
-    const pkgPath = join(resolvedPath, 'package.json');
-    if (!existsSync(pkgPath)) {
-        return 'auto';
-    }
-    try {
-        const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
-        const allDeps = {...(pkg.dependencies || {}), ...(pkg.devDependencies || {})};
-        if (allDeps['@playwright/test'] || allDeps.playwright) {
-            return 'playwright';
-        }
-        if (allDeps.cypress) {
-            return 'cypress';
-        }
-        if (allDeps['selenium-webdriver'] || allDeps.webdriverio) {
-            return 'selenium';
-        }
-    } catch {
-        // ignore
-    }
-    return 'auto';
-}
-
-function detectGitDefaultBranch(appPath: string): string {
-    try {
-        const result = execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
-            cwd: resolve(appPath),
-            encoding: 'utf-8',
-            stdio: ['pipe', 'pipe', 'pipe'],
-        }).trim();
-        return `origin/${result}`;
-    } catch {
-        return 'origin/main';
-    }
-}
-
-function detectTestsRoot(appPath: string): string | undefined {
-    const resolvedPath = resolve(appPath);
-    const candidates = [
-        'e2e-tests/playwright',
-        'e2e-tests',
-        'e2e',
-        'tests/e2e',
-        'test/e2e',
-        'tests',
-        'test',
-    ];
-    for (const candidate of candidates) {
-        if (existsSync(join(resolvedPath, candidate))) {
-            return candidate;
-        }
-    }
-    return undefined;
 }
 
 function buildConfig(answers: InitAnswers): Record<string, unknown> {

@@ -44,7 +44,11 @@ export class ExecutorAgent implements Agent {
         });
 
         try {
-            const provider = await getCrewProvider(ctx.providerOverride);
+            const provider = await getCrewProvider(ctx.providerOverride, ctx.budgetUSD, {
+                agentRole: 'executor',
+                modelRoutingProviderType: ctx.modelRoutingProviderType,
+                modelRoutingOverrides: ctx.modelRoutingOverrides,
+            });
 
             const summary = await runAgenticGeneration({
                 scenarios,

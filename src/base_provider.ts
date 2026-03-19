@@ -9,20 +9,50 @@ import type {
     ProviderCapabilities,
     ProviderUsageStats,
 } from './provider_interface.js';
+import {withRetry} from './resilience/retry.js';
 
 /**
  * Abstract base class for all LLM providers
  * Eliminates 240+ lines of duplicate stats management code
  * Provides common functionality for token tracking, cost calculation, and stats management
  */
+export class BudgetExceededError extends Error {
+    constructor(public currentCost: number, public budgetUSD: number) {
+        super(`Budget exceeded: $${currentCost.toFixed(4)} >= $${budgetUSD} limit`);
+        this.name = 'BudgetExceededError';
+    }
+}
+
 export abstract class BaseProvider implements LLMProvider {
     abstract name: string;
     abstract capabilities: ProviderCapabilities;
 
     protected stats!: ProviderUsageStats;
+    private _budgetUSD: number | undefined;
 
     constructor() {
         this.initializeStats();
+    }
+
+    /**
+     * Set a hard budget limit. Once totalCost reaches this value,
+     * subsequent calls will throw BudgetExceededError.
+     */
+    setBudget(usd: number | undefined): void {
+        this._budgetUSD = usd;
+    }
+
+    get budgetUSD(): number | undefined {
+        return this._budgetUSD;
+    }
+
+    /**
+     * Check if budget has been exceeded. Call before making LLM requests.
+     */
+    protected checkBudget(): void {
+        if (this._budgetUSD !== undefined && this.stats.totalCost >= this._budgetUSD) {
+            throw new BudgetExceededError(this.stats.totalCost, this._budgetUSD);
+        }
     }
 
     /**
@@ -77,6 +107,14 @@ export abstract class BaseProvider implements LLMProvider {
      */
     resetUsageStats(): void {
         this.initializeStats();
+    }
+
+    /**
+     * Wrap an async call with retry logic for transient failures.
+     * Retries up to 2 times with exponential backoff + jitter.
+     */
+    protected retryCall<T>(fn: () => Promise<T>): Promise<T> {
+        return withRetry(fn, {maxRetries: 2, baseDelayMs: 1000, maxDelayMs: 10000, jitter: true});
     }
 
     /**

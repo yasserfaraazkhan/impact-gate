@@ -185,14 +185,15 @@ describe('impact_engine', () => {
         assert.ok(result.warnings[0].includes('not mapped'));
     });
 
-    it('returns empty result when manifest not found', () => {
+    it('uses heuristic families when manifest not found', () => {
         const result = analyzeImpact(
             ['webapp/channels/src/components/search_bar.tsx'],
             {testsRoot: '/nonexistent/path'},
         );
-        assert.equal(result.impactedFeatures.length, 0);
-        assert.equal(result.unboundFiles.length, 1);
-        assert.ok(result.warnings.some((w) => w.includes('manifest not found')));
+        // Heuristic fallback should produce families from directory grouping
+        assert.ok(result.impactedFeatures.length >= 1, 'heuristic families should produce impacted features');
+        assert.ok(result.warnings.some((w) => w.includes('heuristic')));
+        assert.ok(result.warnings.some((w) => w.includes('train')));
     });
 
     it('getGaps returns only P0/P1 uncovered features', () => {

@@ -15,6 +15,22 @@ Given a git diff, `e2e-ai-agents` determines which E2E test flows are impacted, 
 
 > **How does this compare to other tools?** See [docs/comparison.md](docs/comparison.md) for a detailed analysis against Launchable, Codecov ATS, Qodo, Testsigma, mabl, GitHub Copilot, and others.
 
+## Free Tier
+
+These commands work with **zero LLM cost** — no API key required:
+
+| Command | What It Does |
+|---------|-------------|
+| `impact` | Deterministic impact analysis from git diff |
+| `plan` | Coverage gap detection and test recommendations |
+| `train --no-enrich` | Build route-families manifest (scanner only) |
+| `traceability-capture` | Extract test-file relationships from Playwright JSON |
+| `traceability-ingest` | Merge traceability mappings into rolling manifest |
+| `feedback` | Ingest recommendation outcomes for calibration |
+| `cost-report` | View LLM cost breakdown from past runs |
+
+AI-powered features (crew workflows, test generation, healing) require an API key from [Anthropic](https://console.anthropic.com/), [OpenAI](https://platform.openai.com/), or a local [Ollama](https://ollama.ai/) instance (free).
+
 ## Installation
 
 ```bash
@@ -73,6 +89,12 @@ npx e2e-ai-agents crew --workflow full-qa --path /path/to/project --tests-root .
 
 # With budget cap and JSON output
 npx e2e-ai-agents crew --workflow design-only --budget-usd 2.00 --json --path /path/to/project --tests-root ./e2e-tests --since origin/master
+
+# Dry run: preview what would happen without LLM calls
+npx e2e-ai-agents crew --workflow design-only --dry-run --path /path/to/project --tests-root ./e2e-tests --since origin/master
+
+# View LLM cost breakdown
+npx e2e-ai-agents cost-report --path /path/to/project
 ```
 
 ### What the Crew Adds Beyond the Pipeline

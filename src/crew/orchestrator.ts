@@ -8,9 +8,10 @@
 import {getChangedFiles, isTestFile} from '../agent/git.js';
 import {preprocess} from '../pipeline/stage0_preprocess.js';
 import {logger} from '../logger.js';
+import {BudgetExceededError} from '../base_provider.js';
 import type {RouteFamilyConfig} from '../knowledge/route_families.js';
 import type {ApiSurfaceConfig} from '../knowledge/api_surface.js';
-import type {Agent, AgentMessage, AgentResult, AgentTask} from './protocol.js';
+import type {Agent, AgentMessage, AgentPlugin, AgentResult, AgentTask} from './protocol.js';
 import type {CrewContext} from './context.js';
 import {createEmptyUsageStats, mergeUsageStats} from './context.js';
 import type {AgentRole} from './types.js';
@@ -28,12 +29,14 @@ export interface CrewConfig {
     providerOverride?: string;
     budgetUSD?: number;
     dryRun?: boolean;
+    plugins?: string[];  // Paths to plugin modules
 }
 
 export interface CrewResult {
     context: CrewContext;
     warnings: string[];
     timings: Record<string, number>;
+    dryRun?: boolean;
 }
 
 export class CrewOrchestrator {
@@ -43,10 +46,45 @@ export class CrewOrchestrator {
         this.agents.set(agent.role, agent);
     }
 
+    /**
+     * Load and register plugins from file paths.
+     * Each module must default-export an object satisfying AgentPlugin.
+     */
+    async loadPlugins(pluginPaths: string[]): Promise<string[]> {
+        const loaded: string[] = [];
+        for (const pluginPath of pluginPaths) {
+            try {
+                const resolved = pluginPath.startsWith('.')
+                    ? new URL(pluginPath, `file://${process.cwd()}/`).href
+                    : pluginPath;
+                const mod = await import(resolved);
+                const plugin: AgentPlugin = mod.default || mod;
+                if (!plugin.role || typeof plugin.execute !== 'function') {
+                    logger.warn(`Plugin at ${pluginPath} missing required role/execute — skipped`);
+                    continue;
+                }
+                this.agents.set(plugin.role as AgentRole, plugin);
+                loaded.push(plugin.role);
+            } catch (error) {
+                const msg = error instanceof Error ? error.message : String(error);
+                logger.warn(`Failed to load plugin ${pluginPath}: ${msg}`);
+            }
+        }
+        return loaded;
+    }
+
     async run(config: CrewConfig): Promise<CrewResult> {
         const workflow = WORKFLOWS[config.workflow || 'full-qa'];
         const timings: Record<string, number> = {};
         const warnings: string[] = [];
+
+        // Load plugins if configured
+        if (config.plugins && config.plugins.length > 0) {
+            const loaded = await this.loadPlugins(config.plugins);
+            if (loaded.length > 0) {
+                logger.info(`Loaded ${loaded.length} plugins: ${loaded.join(', ')}`);
+            }
+        }
 
         // Step 1: Get changed files
         const gitResult = getChangedFiles(config.appPath, config.gitSince, {
@@ -77,6 +115,7 @@ export class CrewOrchestrator {
             testsRoot: config.testsRoot,
             gitSince: config.gitSince,
             providerOverride: config.providerOverride,
+            budgetUSD: config.budgetUSD,
             impactedFlows: [],
             strategyEntries: [],
             testDesigns: [],
@@ -85,6 +124,7 @@ export class CrewOrchestrator {
             findings: [],
             generatedSpecs: [],
             usage: createEmptyUsageStats(),
+            agentUsage: [],
             messages: [],
             warnings,
         };
@@ -95,6 +135,13 @@ export class CrewOrchestrator {
 
             if (phase.handler === 'built-in') {
                 await this.runBuiltInPhase(phase.name, ctx, config);
+
+                // Dry-run: after preprocess, return summary without running agents
+                if (config.dryRun && phase.name === 'preprocess') {
+                    timings[phase.name] = timer.end();
+                    ctx.warnings.push('Dry run — no LLM calls were made.');
+                    return {context: ctx, warnings, timings, dryRun: true};
+                }
             } else if (phase.parallel && phase.parallel.length > 0) {
                 await this.runParallel(phase.parallel, phase.name, ctx);
             } else if (phase.sequential && phase.sequential.length > 0) {
@@ -127,17 +174,30 @@ export class CrewOrchestrator {
         }
 
         const task: AgentTask = {role, action, input: null};
+        const startMs = Date.now();
 
         try {
             const result = await agent.execute(task, ctx);
+            const durationMs = Date.now() - startMs;
             if (result.usage) {
                 mergeUsageStats(ctx.usage, result.usage);
+                ctx.agentUsage.push({
+                    agent: role,
+                    inputTokens: result.usage.totalInputTokens,
+                    outputTokens: result.usage.totalOutputTokens,
+                    cost: result.usage.totalCost,
+                    durationMs,
+                });
             }
             if (result.warnings && result.warnings.length > 0) {
                 ctx.warnings.push(...result.warnings);
             }
             return result;
         } catch (error) {
+            if (error instanceof BudgetExceededError) {
+                ctx.warnings.push(`Budget exceeded ($${error.currentCost.toFixed(4)} >= $${error.budgetUSD}). Agent '${role}' skipped.`);
+                return {role, status: 'failed', output: null, warnings: [error.message]};
+            }
             const message = error instanceof Error ? error.message : String(error);
             ctx.warnings.push(`Agent '${role}' failed: ${message}`);
             return {role, status: 'failed', output: null, warnings: [message]};

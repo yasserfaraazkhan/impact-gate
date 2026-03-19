@@ -25,15 +25,15 @@ describe('stage0_preprocess', () => {
         fs.rmSync(tmpDir, {recursive: true, force: true});
     });
 
-    it('should produce warnings when no manifest is found', () => {
+    it('should use heuristic families when no manifest is found', () => {
         const result = preprocess(['webapp/channels/post.tsx'], {
             appPath: tmpDir,
             testsRoot: tmpDir,
         });
-        assert.ok(result.warnings.some((w: string) => w.includes('Route family manifest not found')));
-        assert.equal(result.manifest, null);
-        assert.equal(result.familyGroups.length, 0);
-        assert.equal(result.unboundFiles.length, 1);
+        assert.ok(result.warnings.some((w: string) => w.includes('heuristic')));
+        assert.ok(result.manifest !== null, 'manifest should be non-null (heuristic)');
+        assert.equal(result.manifest!.source, 'heuristic');
+        assert.ok(result.familyGroups.length >= 1, 'heuristic families should create family groups');
     });
 
     it('should group files by family when manifest exists', () => {

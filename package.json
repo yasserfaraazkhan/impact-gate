@@ -103,7 +103,11 @@
     "vision-analysis",
     "screenshot-analysis",
     "test-discovery",
-    "test-healing"
+    "test-healing",
+    "impact-analysis",
+    "coverage",
+    "qa",
+    "ci-cd"
   ],
   "engines": {
     "node": ">=20.0.0"

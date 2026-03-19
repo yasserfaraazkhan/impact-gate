@@ -17,7 +17,9 @@ export type Command =
     | 'analyze'
     | 'llm-health'
     | 'train'
-    | 'crew';
+    | 'crew'
+    | 'cost-report'
+    | 'gate';
 
 export interface ParsedArgs {
     command?: Command;
@@ -97,6 +99,9 @@ export interface ParsedArgs {
 
     // Crew command
     crewWorkflow?: string;
+
+    // Gate command
+    gateThreshold?: number;
 
     // Observability flags
     verbose?: boolean;

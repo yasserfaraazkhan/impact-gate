@@ -166,6 +166,9 @@ const FLAGS: Record<string, FlagDef> = {
                 s === 'run-now' || s === 'must-add-tests' || s === 'safe-to-merge',
         ),
     },
+
+    // -- gate command --
+    '--threshold':             {key: 'gateThreshold', type: 'number'},
 };
 
 // Build a lookup from alias -> canonical flag name
@@ -183,7 +186,7 @@ const COMMANDS = new Set<Command>([
     'init', 'impact', 'plan', 'heal', 'suggest', 'generate',
     'finalize-generated-tests', 'feedback',
     'traceability-capture', 'traceability-ingest',
-    'analyze', 'llm-health', 'train', 'crew',
+    'analyze', 'llm-health', 'train', 'crew', 'cost-report', 'gate',
 ]);
 
 // ---------------------------------------------------------------------------

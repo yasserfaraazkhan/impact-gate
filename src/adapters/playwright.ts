@@ -1,0 +1,67 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
+/**
+ * Playwright Adapter — FrameworkAdapter implementation for @playwright/test.
+ */
+
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
+import type {FrameworkAdapter, RunOptions} from './framework_adapter.js';
+
+export class PlaywrightAdapter implements FrameworkAdapter {
+    readonly name = 'playwright';
+
+    readonly specGlob = '**/*.spec.{ts,js}';
+
+    readonly extractTestPattern = /\btest(?:\.describe)?\s*\(/g;
+
+    readonly configFileNames = ['playwright.config.ts', 'playwright.config.js'];
+
+    detect(projectRoot: string): boolean {
+        const pkgPath = path.join(projectRoot, 'package.json');
+        if (!fs.existsSync(pkgPath)) {
+            return false;
+        }
+
+        try {
+            const raw = fs.readFileSync(pkgPath, 'utf-8');
+            const pkg = JSON.parse(raw) as {
+                dependencies?: Record<string, string>;
+                devDependencies?: Record<string, string>;
+            };
+
+            const allDeps = {
+                ...pkg.dependencies,
+                ...pkg.devDependencies,
+            };
+
+            return '@playwright/test' in allDeps;
+        } catch {
+            return false;
+        }
+    }
+
+    buildRunCommand(specPath: string, options?: RunOptions): string {
+        const parts = ['npx', 'playwright', 'test', specPath];
+
+        if (options?.headed) {
+            parts.push('--headed');
+        }
+
+        if (options?.browser) {
+            parts.push('--browser', options.browser);
+        }
+
+        if (options?.project) {
+            parts.push('--project', options.project);
+        }
+
+        if (options?.timeout != null) {
+            parts.push('--timeout', String(options.timeout));
+        }
+
+        return parts.join(' ');
+    }
+}
