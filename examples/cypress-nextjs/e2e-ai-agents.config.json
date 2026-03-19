@@ -1,0 +1,6 @@
+{
+  "path": ".",
+  "testsRoot": "cypress",
+  "framework": "cypress",
+  "git": { "since": "HEAD~1" }
+}

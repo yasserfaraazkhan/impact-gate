@@ -1,0 +1,32 @@
+---
+title: E2E Agents
+description: AI-powered E2E test impact analysis, generation, and healing for frontend repositories.
+template: splash
+hero:
+  tagline: Determine which E2E tests are impacted by code changes, identify coverage gaps, and generate or heal Playwright tests — all from the CLI.
+  actions:
+    - text: Get Started
+      link: /getting-started/installation/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/yasserfaraazkhan/e2e-agents
+      icon: external
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid stagger>
+  <Card title="Free Impact Analysis" icon="magnifier">
+    Deterministic impact analysis from git diffs with zero LLM cost. No API key required.
+  </Card>
+  <Card title="10-Agent Crew" icon="group">
+    Specialized agents for impact detection, strategy, test design, generation, execution, and healing.
+  </Card>
+  <Card title="CI-Ready" icon="setting">
+    GitHub Actions integration with coverage gating, PR comments, and JSON output for automation.
+  </Card>
+  <Card title="Multi-Provider" icon="puzzle">
+    Works with Anthropic, OpenAI, Ollama (free local), or any OpenAI-compatible endpoint.
+  </Card>
+</CardGrid>

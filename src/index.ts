@@ -132,6 +132,9 @@ export type {RetryConfig} from './resilience/retry.js';
 export {CircuitBreaker} from './resilience/circuit_breaker.js';
 export type {CircuitBreakerConfig} from './resilience/circuit_breaker.js';
 
+// Metrics
+export {PrometheusMetrics} from './metrics/prometheus.js';
+
 // Secret scanning
 export {sanitizeSecrets, containsSecrets, sanitizeObject} from './sanitize.js';
 

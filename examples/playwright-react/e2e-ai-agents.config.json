@@ -1,0 +1,6 @@
+{
+  "path": ".",
+  "testsRoot": "e2e",
+  "framework": "playwright",
+  "git": { "since": "HEAD~1" }
+}
