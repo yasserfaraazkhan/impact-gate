@@ -172,10 +172,14 @@ export class PrometheusMetrics {
     }
 }
 
+function escapeLabel(v: string): string {
+    return v.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+}
+
 function formatLabels(labels: Record<string, string>): string {
     const entries = Object.entries(labels);
     if (entries.length === 0) return '';
-    return `{${entries.map(([k, v]) => `${k}="${v}"`).join(',')}}`;
+    return `{${entries.map(([k, v]) => `${k}="${escapeLabel(v)}"`).join(',')}}`;
 }
 
 function labelsMatch(a: Record<string, string>, b: Record<string, string>): boolean {

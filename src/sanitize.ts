@@ -12,7 +12,7 @@ const SECRET_PATTERNS = [
     // OpenAI API keys
     /sk-[a-zA-Z0-9]{20,}/g,
     // Generic API key patterns
-    /(?:api[_-]?key|api[_-]?secret|access[_-]?token|auth[_-]?token)['":\s=]+['""]?([a-zA-Z0-9_\-./]{20,})['""]?/gi,
+    /(?:api[_-]?key|api[_-]?secret|access[_-]?token|auth[_-]?token)['":\s=]+['"]?([a-zA-Z0-9_\-./]{20,})['"]?/gi,
     // Bearer tokens
     /Bearer\s+[a-zA-Z0-9_\-./]{20,}/g,
     // AWS keys

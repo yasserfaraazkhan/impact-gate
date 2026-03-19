@@ -54,14 +54,22 @@ export class CrewOrchestrator {
         const loaded: string[] = [];
         for (const pluginPath of pluginPaths) {
             try {
-                const resolved = pluginPath.startsWith('.')
-                    ? new URL(pluginPath, `file://${process.cwd()}/`).href
-                    : pluginPath;
+                // Security: Only allow relative paths (starting with . or ..) to prevent loading arbitrary modules.
+                // Absolute paths, URLs, and node_modules references are rejected.
+                if (!pluginPath.startsWith('.')) {
+                    logger.warn(`Plugin path must be relative (start with ./): ${pluginPath} — skipped`);
+                    continue;
+                }
+                const resolved = new URL(pluginPath, `file://${process.cwd()}/`).href;
                 const mod = await import(resolved);
                 const plugin: AgentPlugin = mod.default || mod;
                 if (!plugin.role || typeof plugin.execute !== 'function') {
                     logger.warn(`Plugin at ${pluginPath} missing required role/execute — skipped`);
                     continue;
+                }
+                // Warn if plugin overrides a built-in agent
+                if (this.agents.has(plugin.role as AgentRole)) {
+                    logger.warn(`Plugin '${plugin.role}' overrides built-in agent — ensure this is intentional`);
                 }
                 this.agents.set(plugin.role as AgentRole, plugin);
                 loaded.push(plugin.role);
