@@ -3,6 +3,7 @@
 
 import type {RouteFamily} from '../knowledge/route_families.js';
 import type {SpecEntry} from '../knowledge/spec_index.js';
+import {extractJsonFromResponse} from './json_extract.js';
 import {formatSpecsForPrompt} from '../knowledge/spec_index.js';
 import {formatApiSurfaceForPrompt, type ApiSurfaceCatalog} from '../knowledge/api_surface.js';
 
@@ -91,25 +92,9 @@ export interface ImpactAgentResponse {
 }
 
 export function parseImpactResponse(text: string): ImpactAgentResponse | null {
-    // Try to extract JSON from the response
-    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-    const candidates = fenced ? [fenced[1], text] : [text];
-
-    for (const candidate of candidates) {
-        const start = candidate.indexOf('{');
-        const end = candidate.lastIndexOf('}');
-        if (start < 0 || end <= start) {
-            continue;
-        }
-        const raw = candidate.slice(start, end + 1);
-        try {
-            const parsed = JSON.parse(raw) as ImpactAgentResponse;
-            if (parsed && Array.isArray(parsed.flows)) {
-                return parsed;
-            }
-        } catch {
-            continue;
-        }
-    }
-    return null;
+    return extractJsonFromResponse<ImpactAgentResponse>(
+        text,
+        (obj): obj is ImpactAgentResponse =>
+            obj != null && typeof obj === 'object' && Array.isArray((obj as ImpactAgentResponse).flows),
+    );
 }

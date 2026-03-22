@@ -14,6 +14,8 @@ import {buildSummary, type FlowDecisionReport, type FlowDecision} from '../valid
 import {computeCannotDetermineRatio} from '../validation/guardrails.js';
 import type {RouteFamilyConfig} from '../knowledge/route_families.js';
 import type {ApiSurfaceConfig} from '../knowledge/api_surface.js';
+import type {GenerationProfile} from '../prompts/generation_profile.js';
+import {resolveGenerationProfile} from '../prompts/generation_profile.js';
 
 export interface PipelineConfig {
     appPath: string;
@@ -22,6 +24,7 @@ export interface PipelineConfig {
     gitIncludeUncommitted?: boolean;
     routeFamilies?: RouteFamilyConfig;
     apiSurface?: ApiSurfaceConfig;
+    profile?: GenerationProfile;
     impact?: ImpactConfig;
     coverage?: CoverageConfig;
     generation?: GenerationConfig;
@@ -54,6 +57,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineResul
     const startedAt = new Date().toISOString();
     const allWarnings: string[] = [];
     const stages = config.stages || ['preprocess', 'impact', 'coverage'];
+    const profile = config.profile || resolveGenerationProfile();
     let generatedSpecs: GeneratedSpec[] | undefined;
     let healResult: HealResult | undefined;
 
@@ -131,7 +135,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineResul
             preprocessResult.specIndex,
             preprocessResult.context,
             config.testsRoot,
-            config.coverage || {},
+            {...(config.coverage || {}), profile},
         );
         decisions = coverageResult.decisions;
         timings.coverage = coverageTimer.end();
@@ -145,7 +149,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineResul
             decisions,
             preprocessResult.apiSurface,
             config.testsRoot,
-            config.generation || {},
+            {...(config.generation || {}), profile},
         );
         generatedSpecs = generationResult.generated;
         timings.generation = generationTimer.end();
@@ -164,7 +168,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineResul
             decisions,
         );
         if (healTargets.length > 0) {
-            healResult = await runHealStage(config.testsRoot, healTargets, config.heal || {mcp: true});
+            healResult = await runHealStage(config.testsRoot, healTargets, {...(config.heal || {mcp: true}), profile});
             allWarnings.push(...healResult.warnings);
         } else {
             allWarnings.push('Heal stage: no targets found (no failing specs in report, no generated specs).');

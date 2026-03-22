@@ -10,6 +10,7 @@ import {resolveConfig} from '../../agent/config.js';
 import {loadRouteFamilyManifest, serializeManifest} from '../../knowledge/route_families.js';
 import {LLMProviderFactory} from '../../provider_factory.js';
 import {logger, LogLevel} from '../../logger.js';
+import {getVersion} from '../../version.js';
 
 import type {ParsedArgs} from '../types.js';
 
@@ -374,7 +375,7 @@ export async function runTrainCommand(args: ParsedArgs, autoConfig?: string): Pr
         const reportDir = dirname(opts.outputPath);
         const trainReport = {
             timestamp: new Date().toISOString(),
-            version: '1.9.4',
+            version: getVersion(),
             timings,
             families: {
                 total: mergeResult.manifest.families.length,

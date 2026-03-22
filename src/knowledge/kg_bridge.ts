@@ -125,7 +125,6 @@ export function classifyProjectType(kg: KnowledgeGraph): ProjectType {
 export function transformKGToFamilies(kg: KnowledgeGraph): RouteFamilyManifest {
     const projectType = classifyProjectType(kg);
     const nodeMap = new Map(kg.nodes.map((n) => [n.id, n]));
-    const edgesBySource = groupEdges(kg.edges, 'source');
     const edgesByTarget = groupEdges(kg.edges, 'target');
 
     // Build clusters based on project type
@@ -138,7 +137,7 @@ export function transformKGToFamilies(kg: KnowledgeGraph): RouteFamilyManifest {
         if (nodes.length === 0) continue;
 
         const family = buildFamilyFromCluster(
-            clusterId, nodes, projectType, nodeMap, edgesBySource, edgesByTarget,
+            clusterId, nodes, projectType, nodeMap, edgesByTarget,
         );
         if (family) {
             families.push(family);
@@ -301,7 +300,6 @@ function buildFamilyFromCluster(
     nodes: KGNode[],
     projectType: ProjectType,
     nodeMap: Map<string, KGNode>,
-    edgesBySource: Map<string, KGEdge[]>,
     edgesByTarget: Map<string, KGEdge[]>,
 ): RouteFamily | null {
     const webappPaths = new Set<string>();

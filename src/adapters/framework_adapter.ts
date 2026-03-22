@@ -14,8 +14,11 @@ import {CypressAdapter} from './cypress.js';
 import {SupertestAdapter} from './supertest.js';
 import {PytestAdapter} from './pytest.js';
 import type {KnowledgeGraph} from '../knowledge/kg_types.js';
+import type {TestType} from '../knowledge/route_families.js';
 
-export type TestMode = 'ui' | 'api' | 'both';
+/** Shared framework name lists used for test-mode detection across the codebase. */
+export const UI_FRAMEWORKS = ['playwright', '@playwright/test', 'cypress', 'selenium'] as const;
+export const API_FRAMEWORKS = ['supertest', 'pytest', 'requests', 'vitest', 'jest'] as const;
 
 export interface RunOptions {
     headed?: boolean;
@@ -109,16 +112,14 @@ export function detectFramework(projectRoot: string): FrameworkAdapter {
  * Detect the test mode for a project: UI testing, API testing, or both.
  * Uses package.json / pyproject.toml dependencies and optional KG metadata.
  */
-export function detectTestMode(projectRoot: string, kg?: KnowledgeGraph | null): TestMode {
+export function detectTestMode(projectRoot: string, kg?: KnowledgeGraph | null): TestType {
     // If KG provides framework hints, use them
     if (kg) {
         const frameworks = kg.project.frameworks.map((f) => f.toLowerCase());
-        const hasUi = frameworks.some((f) =>
-            ['playwright', '@playwright/test', 'cypress', 'selenium'].includes(f),
-        );
-        const hasApi = frameworks.some((f) =>
-            ['supertest', 'pytest', 'requests'].includes(f),
-        );
+        const uiSet = new Set<string>(UI_FRAMEWORKS);
+        const apiSet = new Set<string>(API_FRAMEWORKS);
+        const hasUi = frameworks.some((f) => uiSet.has(f));
+        const hasApi = frameworks.some((f) => apiSet.has(f));
         if (hasUi && hasApi) return 'both';
         if (hasApi) return 'api';
         if (hasUi) return 'ui';

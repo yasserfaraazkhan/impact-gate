@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.9.5] - 2026-03-23
+
+### Architecture
+
+- **GenerationProfile threaded through pipeline** — `PipelineConfig` now accepts an optional `profile` field. The pipeline orchestrator resolves it once and passes it to coverage, generation, and heal stages. Non-Mattermost projects no longer get hardcoded Mattermost conventions in pipeline-generated prompts.
+- **Consolidated `TestType`/`TestMode`** — Removed duplicate `TestMode` alias from `framework_adapter.ts`; now imports `TestType` from `route_families.ts` as the single canonical type.
+- **Shared framework constants** — Extracted `UI_FRAMEWORKS` and `API_FRAMEWORKS` arrays from both `framework_adapter.ts` and `generation_profile.ts` into shared exports to prevent list divergence.
+- **`normalizeId` deduplicated** — `training/scanner.ts` now aliases `normalizeToClusterId` from `cluster_utils.ts` instead of maintaining a duplicate function.
+- **Unused `edgesBySource` parameter removed** from `buildFamilyFromCluster` in `kg_bridge.ts`.
+- **Public API exports** — `index.ts` now exports KG types/bridge, `GenerationProfile`, `RunCommand`, `detectFramework`, `detectTestMode`, `serializeManifest`, and `scanFromKnowledgeGraph`.
+
+### Security
+
+- **`sanitizeForPrompt` coverage complete** — Applied to `agentic/runner.ts` (scenario name, evidence, scenarios), `agentic/fix_loop.ts` (error, stack, testTitle, expected, actual), and `prompts/heal.ts` (flowName, userActions, evidence in flow context).
+- **MCP server git `--` separator fixed** — Removed misplaced `--` before revision ranges in `git diff` commands that caused git to interpret refs as filenames.
+
+### Code Quality
+
+- **Shared JSON response extractor** — New `prompts/json_extract.ts` with `extractJsonFromResponse<T>()` replaces 5 identical JSON-from-LLM parsing implementations across impact, coverage, strategist, test-designer, and cross-impact parsers.
+- **Dynamic version in train report** — Uses `getVersion()` from new `version.ts` module instead of hardcoded string.
+
+### Testing
+
+- **63 new tests** (406 → 469) covering 7 previously untested modules:
+  - `cluster_utils.test.ts` — cluster ID derivation and normalization
+  - `kg_bridge.test.ts` — KG loading, classification, transformation, node validation
+  - `kg_scanner.test.ts` — KG-to-ScanResult conversion
+  - `generation_profile.test.ts` — profile resolution, Mattermost detection
+  - `adapters.test.ts` — pytest/supertest adapters, RunCommand, detectTestMode
+  - `bootstrap.test.ts` — BootstrapError behavior
+  - `serialize_manifest.test.ts` — manifest serialization, empty field stripping
+
+Tests: 469 pass, 0 failures.
+
 ## [1.9.4] - 2026-03-23
 
 ### Code Quality & Dead Code Elimination

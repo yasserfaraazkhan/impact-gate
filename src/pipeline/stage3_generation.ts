@@ -12,6 +12,7 @@ import {resolvePlaywrightBinary} from '../agent/process_runner.js';
 import {logger} from '../logger.js';
 import type {FlowDecision} from '../validation/output_schema.js';
 import type {ApiSurfaceCatalog} from '../knowledge/api_surface.js';
+import type {GenerationProfile} from '../prompts/generation_profile.js';
 
 export interface GenerationConfig {
     provider?: string;
@@ -24,6 +25,7 @@ export interface GenerationConfig {
     warnOnHallucinations?: boolean;
     /** When true, only log what would be written without actually writing files */
     dryRun?: boolean;
+    profile?: GenerationProfile;
 }
 
 export interface GeneratedSpec {
@@ -149,6 +151,7 @@ export async function runGenerationStage(
             existingSpecContent,
             specPath,
             mode,
+            profile: config.profile,
         });
 
         try {

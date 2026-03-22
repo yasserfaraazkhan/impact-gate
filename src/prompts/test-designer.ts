@@ -7,6 +7,7 @@
  */
 
 import type {FlowDecision} from '../validation/output_schema.js';
+import {extractJsonFromResponse} from './json_extract.js';
 import {formatApiSurfaceForPrompt, type ApiSurfaceCatalog} from '../knowledge/api_surface.js';
 import type {SpecEntry} from '../knowledge/spec_index.js';
 import type {StrategyEntry, CrossImpact, TestDesign} from '../crew/types.js';
@@ -128,24 +129,11 @@ export interface TestDesignerAgentResponse {
 }
 
 export function parseTestDesignerResponse(text: string): TestDesignerAgentResponse | null {
-    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-    const candidates = fenced ? [fenced[1], text] : [text];
-
-    for (const candidate of candidates) {
-        const start = candidate.indexOf('{');
-        const end = candidate.lastIndexOf('}');
-        if (start < 0 || end <= start) {
-            continue;
-        }
-        const raw = candidate.slice(start, end + 1);
-        try {
-            const parsed = JSON.parse(raw) as TestDesignerAgentResponse;
-            if (parsed?.testDesign?.testCases && Array.isArray(parsed.testDesign.testCases)) {
-                return parsed;
-            }
-        } catch {
-            continue;
-        }
-    }
-    return null;
+    return extractJsonFromResponse<TestDesignerAgentResponse>(
+        text,
+        (obj): obj is TestDesignerAgentResponse => {
+            const r = obj as TestDesignerAgentResponse;
+            return r?.testDesign?.testCases != null && Array.isArray(r.testDesign.testCases);
+        },
+    );
 }

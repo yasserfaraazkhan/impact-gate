@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import type {SpecEntry} from '../knowledge/spec_index.js';
+import {extractJsonFromResponse} from './json_extract.js';
 import {sanitizeForPrompt} from '../crew/sanitize.js';
 import type {GenerationProfile} from './generation_profile.js';
 
@@ -87,24 +88,9 @@ export interface CoverageAgentResponse {
 }
 
 export function parseCoverageResponse(text: string): CoverageAgentResponse | null {
-    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-    const candidates = fenced ? [fenced[1], text] : [text];
-
-    for (const candidate of candidates) {
-        const start = candidate.indexOf('{');
-        const end = candidate.lastIndexOf('}');
-        if (start < 0 || end <= start) {
-            continue;
-        }
-        const raw = candidate.slice(start, end + 1);
-        try {
-            const parsed = JSON.parse(raw) as CoverageAgentResponse;
-            if (parsed && Array.isArray(parsed.coverage)) {
-                return parsed;
-            }
-        } catch {
-            continue;
-        }
-    }
-    return null;
+    return extractJsonFromResponse<CoverageAgentResponse>(
+        text,
+        (obj): obj is CoverageAgentResponse =>
+            obj != null && typeof obj === 'object' && Array.isArray((obj as CoverageAgentResponse).coverage),
+    );
 }

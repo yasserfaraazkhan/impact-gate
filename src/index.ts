@@ -154,3 +154,19 @@ export type {
     ScanResult, ScannedFamily, ScannedFeature, DiscoveredDir,
     EnrichmentResult, ValidationReport, CommitValidation, MergeResult, TrainOptions,
 } from './training/types.js';
+
+// Knowledge graph types and bridge
+export type {KnowledgeGraph, KGNode, KGEdge, KGProject} from './knowledge/kg_types.js';
+export {loadKnowledgeGraph, classifyProjectType, transformKGToFamilies, loadDiffOverlay} from './knowledge/kg_bridge.js';
+export {scanFromKnowledgeGraph} from './training/kg_scanner.js';
+
+// Generation profile
+export type {GenerationProfile} from './prompts/generation_profile.js';
+export {resolveGenerationProfile, isMattermostProfile} from './prompts/generation_profile.js';
+
+// Framework adapter
+export type {RunCommand} from './adapters/framework_adapter.js';
+export {detectFramework, detectTestMode} from './adapters/framework_adapter.js';
+
+// Route families (additional)
+export {serializeManifest} from './knowledge/route_families.js';

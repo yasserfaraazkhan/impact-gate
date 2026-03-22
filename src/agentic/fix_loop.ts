@@ -3,6 +3,7 @@
 
 import type {LLMProvider} from '../provider_interface.js';
 import type {TestFailure} from './types.js';
+import {sanitizeForPrompt} from '../crew/sanitize.js';
 
 export interface FixPromptContext {
     specCode: string;
@@ -16,11 +17,11 @@ export function buildFixPrompt(ctx: FixPromptContext): string {
     const isCompileError = ctx.failures.some((f) => f.testTitle === '(compile)');
 
     const failuresBlock = ctx.failures.map((f) => {
-        const lines = [`  Test: ${f.testTitle}`, `  Error: ${f.error}`];
-        if (f.stack) lines.push(`  Stack: ${f.stack}`);
+        const lines = [`  Test: ${sanitizeForPrompt(f.testTitle)}`, `  Error: ${sanitizeForPrompt(f.error)}`];
+        if (f.stack) lines.push(`  Stack: ${sanitizeForPrompt(f.stack)}`);
         if (f.line) lines.push(`  Line: ${f.line}`);
-        if (f.expected) lines.push(`  Expected: ${f.expected}`);
-        if (f.actual) lines.push(`  Actual: ${f.actual}`);
+        if (f.expected) lines.push(`  Expected: ${sanitizeForPrompt(f.expected)}`);
+        if (f.actual) lines.push(`  Actual: ${sanitizeForPrompt(f.actual)}`);
         return lines.join('\n');
     }).join('\n\n');
 

@@ -9,6 +9,7 @@
 import type {FlowDecision} from '../validation/output_schema.js';
 import type {CrossImpact, RegressionRisk, StrategyEntry} from '../crew/types.js';
 import {sanitizeForPrompt} from '../crew/sanitize.js';
+import {extractJsonFromResponse} from './json_extract.js';
 
 export interface StrategistPromptContext {
     impactedFlows: FlowDecision[];
@@ -91,24 +92,9 @@ export interface StrategistAgentResponse {
 }
 
 export function parseStrategistResponse(text: string): StrategistAgentResponse | null {
-    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-    const candidates = fenced ? [fenced[1], text] : [text];
-
-    for (const candidate of candidates) {
-        const start = candidate.indexOf('{');
-        const end = candidate.lastIndexOf('}');
-        if (start < 0 || end <= start) {
-            continue;
-        }
-        const raw = candidate.slice(start, end + 1);
-        try {
-            const parsed = JSON.parse(raw) as StrategistAgentResponse;
-            if (parsed && Array.isArray(parsed.strategy)) {
-                return parsed;
-            }
-        } catch {
-            continue;
-        }
-    }
-    return null;
+    return extractJsonFromResponse<StrategistAgentResponse>(
+        text,
+        (obj): obj is StrategistAgentResponse =>
+            obj != null && typeof obj === 'object' && Array.isArray((obj as StrategistAgentResponse).strategy),
+    );
 }

@@ -10,6 +10,7 @@ import {resolvePlaywrightBinary, runCommand} from '../agent/process_runner.js';
 import {logger} from '../logger.js';
 import type {FlowDecision, FlowDecisionReport} from '../validation/output_schema.js';
 import type {GeneratedSpec} from './stage3_generation.js';
+import type {GenerationProfile} from '../prompts/generation_profile.js';
 
 export interface HealConfig {
     /** Enable MCP-backed heal via playwright-test-healer agent */
@@ -21,6 +22,7 @@ export interface HealConfig {
     dryRun?: boolean;
     /** Output directory for healed/re-generated specs */
     outputDir?: string;
+    profile?: GenerationProfile;
 }
 
 export interface HealTarget {

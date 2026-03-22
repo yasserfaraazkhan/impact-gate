@@ -8,6 +8,7 @@
 
 import type {KnowledgeGraph} from '../knowledge/kg_types.js';
 import type {TestType} from '../knowledge/route_families.js';
+import {UI_FRAMEWORKS, API_FRAMEWORKS} from '../adapters/framework_adapter.js';
 
 export interface GenerationProfile {
     projectName: string;
@@ -120,12 +121,10 @@ export function isMattermostProfile(profile: GenerationProfile): boolean {
 // ---------------------------------------------------------------------------
 
 function deriveTestMode(frameworks: string[]): TestType {
-    const hasUiFramework = frameworks.some((f) =>
-        ['playwright', '@playwright/test', 'cypress', 'selenium'].includes(f),
-    );
-    const hasApiFramework = frameworks.some((f) =>
-        ['supertest', 'pytest', 'vitest', 'jest'].includes(f),
-    );
+    const uiSet = new Set<string>(UI_FRAMEWORKS);
+    const apiSet = new Set<string>(API_FRAMEWORKS);
+    const hasUiFramework = frameworks.some((f) => uiSet.has(f));
+    const hasApiFramework = frameworks.some((f) => apiSet.has(f));
 
     if (hasUiFramework && hasApiFramework) return 'both';
     if (hasApiFramework && !hasUiFramework) return 'api';

@@ -5,6 +5,7 @@ import {readdirSync, readFileSync, lstatSync, existsSync} from 'fs';
 import {join, relative, basename, resolve} from 'path';
 
 import type {DiscoveredDir, ScannedFamily, ScannedFeature, ScanResult} from './types.js';
+import {normalizeToClusterId} from '../knowledge/cluster_utils.js';
 
 const SOURCE_MAX_DEPTH = 3;
 // One deeper than source to account for test framework wrapper dirs (e2e/, integration/)
@@ -84,13 +85,7 @@ function isSkipped(name: string): boolean {
     return name.startsWith('.') || SKIP_DIRS.has(name);
 }
 
-function normalizeId(name: string): string {
-    return name
-        .replace(/[A-Z]/g, (c, idx) => (idx > 0 ? `_${c.toLowerCase()}` : c.toLowerCase()))
-        .replace(/[^a-z0-9_]/g, '_')
-        .replace(/_+/g, '_')
-        .replace(/^_|_$/g, '');
-}
+const normalizeId = normalizeToClusterId;
 
 function extractFamilyHint(dirPath: string, projectRoot: string): string {
     const rel = relative(projectRoot, dirPath).replace(/\\/g, '/');

@@ -26,11 +26,11 @@ export function buildHealPrompt(ctx: HealPromptContext): string {
         ? [
               '',
               'FLOW CONTEXT (use to understand test intent — do not change test objectives):',
-              `  Flow: ${ctx.decision.flowName}`,
+              `  Flow: ${sanitizeForPrompt(ctx.decision.flowName)}`,
               `  Route Family: ${ctx.decision.routeFamily}${ctx.decision.featureId ? ` / ${ctx.decision.featureId}` : ''}`,
               `  Route: ${ctx.decision.specificRoute || '(family-level)'}`,
-              `  User Actions: ${ctx.decision.userActions.join('; ') || 'not specified'}`,
-              `  Evidence: ${ctx.decision.evidence}`,
+              `  User Actions: ${sanitizeForPrompt(ctx.decision.userActions.join('; ')) || 'not specified'}`,
+              `  Evidence: ${sanitizeForPrompt(ctx.decision.evidence)}`,
           ].join('\n')
         : '';
 

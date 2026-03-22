@@ -11,6 +11,7 @@ import {parseGenerationResponse} from '../prompts/generation.js';
 import {formatApiSurfaceForPrompt} from '../knowledge/api_surface.js';
 import type {ApiSurfaceCatalog} from '../knowledge/api_surface.js';
 import type {GenerationProfile} from '../prompts/generation_profile.js';
+import {sanitizeForPrompt} from '../crew/sanitize.js';
 
 export interface ScenarioInput {
     id: string;
@@ -39,16 +40,16 @@ function buildGeneratePrompt(scenario: ScenarioInput, apiSurfaceHint: string, pr
     const projectName = profile?.projectName || 'Mattermost';
     const importSource = profile?.importStatement || '@mattermost/playwright-lib';
     const scenariosBlock = scenario.scenarios
-        .map((s, i) => `  ${i + 1}. ${s}`)
+        .map((s, i) => `  ${i + 1}. ${sanitizeForPrompt(s)}`)
         .join('\n');
 
     return [
         `Generate a ${projectName} Playwright E2E test file.`,
         '',
-        `FLOW: ${scenario.name}`,
+        `FLOW: ${sanitizeForPrompt(scenario.name)}`,
         `Route Family: ${scenario.routeFamily}`,
         `Priority: ${scenario.priority}`,
-        scenario.evidence ? `Evidence: ${scenario.evidence}` : '',
+        scenario.evidence ? `Evidence: ${sanitizeForPrompt(scenario.evidence)}` : '',
         '',
         'SCENARIOS TO IMPLEMENT:',
         scenariosBlock,

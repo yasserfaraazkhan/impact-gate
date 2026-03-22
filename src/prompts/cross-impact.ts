@@ -8,6 +8,7 @@
 import type {RouteFamily} from '../knowledge/route_families.js';
 import type {CrossImpact} from '../crew/types.js';
 import {sanitizeForPrompt} from '../crew/sanitize.js';
+import {extractJsonFromResponse} from './json_extract.js';
 
 export interface CrossImpactPromptContext {
     changedFiles: string[];
@@ -77,24 +78,9 @@ export interface CrossImpactAgentResponse {
 }
 
 export function parseCrossImpactResponse(text: string): CrossImpactAgentResponse | null {
-    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-    const candidates = fenced ? [fenced[1], text] : [text];
-
-    for (const candidate of candidates) {
-        const start = candidate.indexOf('{');
-        const end = candidate.lastIndexOf('}');
-        if (start < 0 || end <= start) {
-            continue;
-        }
-        const raw = candidate.slice(start, end + 1);
-        try {
-            const parsed = JSON.parse(raw) as CrossImpactAgentResponse;
-            if (parsed && Array.isArray(parsed.crossImpacts)) {
-                return parsed;
-            }
-        } catch {
-            continue;
-        }
-    }
-    return null;
+    return extractJsonFromResponse<CrossImpactAgentResponse>(
+        text,
+        (obj): obj is CrossImpactAgentResponse =>
+            obj != null && typeof obj === 'object' && Array.isArray((obj as CrossImpactAgentResponse).crossImpacts),
+    );
 }

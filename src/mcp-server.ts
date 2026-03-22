@@ -421,8 +421,7 @@ export class E2EAgentsMCPServer {
                 return JSON.stringify({error: 'Invalid git reference format'});
             }
 
-            // SECURITY: Use -- to separate git options from refs
-            const result = spawnSync('git', ['diff', '--name-only', '--', `${since}..HEAD`], {
+            const result = spawnSync('git', ['diff', '--name-only', `${since}..HEAD`], {
                 cwd: this.repoRoot,
                 encoding: 'utf-8',
                 timeout: 30000,
@@ -499,8 +498,7 @@ export class E2EAgentsMCPServer {
                 return [];
             }
 
-            // SECURITY: Use -- separator
-            const result = spawnSync('git', ['diff', '--name-only', '--', `${since}..HEAD`], {
+            const result = spawnSync('git', ['diff', '--name-only', `${since}..HEAD`], {
                 cwd: this.repoRoot,
                 encoding: 'utf-8',
                 timeout: 30000,

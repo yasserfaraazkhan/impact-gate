@@ -7,6 +7,7 @@ import {buildCoveragePrompt, parseCoverageResponse, type CoveragePromptFlow} fro
 import {formatContextForPrompt, loadSpecFileContent, type LoadedContext} from '../knowledge/context_loader.js';
 import {getSpecsForFamily, type SpecIndex} from '../knowledge/spec_index.js';
 import type {FlowDecision, CoverageLevel, FlowAction} from '../validation/output_schema.js';
+import type {GenerationProfile} from '../prompts/generation_profile.js';
 
 export interface CoverageConfig {
     provider?: string;
@@ -14,6 +15,7 @@ export interface CoverageConfig {
     temperature?: number;
     timeout?: number;
     maxSpecContentChars?: number;
+    profile?: GenerationProfile;
 }
 
 export interface CoverageResult {
@@ -107,6 +109,7 @@ export async function runCoverageStage(
             flows,
             specs: specsWithContent,
             contextBlock,
+            profile: config.profile,
         });
 
         try {
