@@ -1,23 +1,11 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {spawnSync} from 'child_process';
+import {runGitRaw} from '../agent/git.js';
 
 const MAX_DIFF_CHARS = 8000;
 const MAX_TOTAL_CHARS = 60000;
 const TRUNCATION_NOTICE = '\n... (diff truncated)';
-
-function runGitRaw(args: string[], cwd: string): string | null {
-    const result = spawnSync('git', args, {
-        cwd,
-        encoding: 'utf-8',
-        timeout: 30000,
-    });
-    if (result.error || result.status !== 0) {
-        return null;
-    }
-    return result.stdout;
-}
 
 /**
  * Loads git diffs for the given changed files relative to the given since ref.

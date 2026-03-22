@@ -10,6 +10,7 @@ import {generateFix} from './fix_loop.js';
 import {parseGenerationResponse} from '../prompts/generation.js';
 import {formatApiSurfaceForPrompt} from '../knowledge/api_surface.js';
 import type {ApiSurfaceCatalog} from '../knowledge/api_surface.js';
+import type {GenerationProfile} from '../prompts/generation_profile.js';
 
 export interface ScenarioInput {
     id: string;
@@ -31,15 +32,18 @@ export interface AgenticRunOptions {
     provider: LLMProvider;
     apiSurfaceHint?: string;
     apiSurface?: ApiSurfaceCatalog;
+    generationProfile?: GenerationProfile;
 }
 
-function buildGeneratePrompt(scenario: ScenarioInput, apiSurfaceHint: string): string {
+function buildGeneratePrompt(scenario: ScenarioInput, apiSurfaceHint: string, profile?: GenerationProfile): string {
+    const projectName = profile?.projectName || 'Mattermost';
+    const importSource = profile?.importStatement || '@mattermost/playwright-lib';
     const scenariosBlock = scenario.scenarios
         .map((s, i) => `  ${i + 1}. ${s}`)
         .join('\n');
 
     return [
-        'Generate a Mattermost Playwright E2E test file.',
+        `Generate a ${projectName} Playwright E2E test file.`,
         '',
         `FLOW: ${scenario.name}`,
         `Route Family: ${scenario.routeFamily}`,
@@ -53,14 +57,14 @@ function buildGeneratePrompt(scenario: ScenarioInput, apiSurfaceHint: string): s
         apiSurfaceHint || 'Use page.getByRole() or page.getByTestId() for selectors.',
         '',
         'MANDATORY RULES:',
-        '1. Import ONLY from "@mattermost/playwright-lib" — no other test framework imports.',
+        `1. Import ONLY from "${importSource}" — no other test framework imports.`,
         '2. Every test must call `await pw.initSetup()` first.',
         '3. Use `await pw.testBrowser.login(user)` to log in — never hardcode credentials.',
         '4. Use ONLY page object methods listed above. Do NOT invent methods.',
         '5. If a method is not available, use `page.getByRole()` or `page.getByTestId()`.',
         `6. Tag every test: {tag: '@${scenario.routeFamily}'}`,
         '7. Write one test per scenario with a descriptive name.',
-        '8. Use `expect` from "@mattermost/playwright-lib".',
+        `8. Use \`expect\` from "${importSource}".`,
         '9. Include the copyright header.',
         '10. NEVER fabricate test IDs (MM-TXXXX). Use descriptive names only.',
         '',
@@ -69,7 +73,7 @@ function buildGeneratePrompt(scenario: ScenarioInput, apiSurfaceHint: string): s
         '// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.',
         '// See LICENSE.txt for license information.',
         '',
-        "import {expect, test} from '@mattermost/playwright-lib';",
+        `import {expect, test} from '${importSource}';`,
         '',
         'test(',
         "    'user can post a message in channel',",
@@ -114,13 +118,14 @@ async function generateInitialSpec(
     scenario: ScenarioInput,
     specPath: string,
     apiSurfaceHint: string,
+    profile?: GenerationProfile,
 ): Promise<string | null> {
-    const prompt = buildGeneratePrompt(scenario, apiSurfaceHint);
+    const prompt = buildGeneratePrompt(scenario, apiSurfaceHint, profile);
     const response = await provider.generateText(prompt, {
         maxTokens: 8000,
         temperature: 0.1,
         timeout: 60000,
-        systemPrompt: 'You are an expert Playwright test writer for Mattermost. Return only TypeScript code.',
+        systemPrompt: `You are an expert Playwright test writer for ${profile?.projectName || 'Mattermost'}. Return only TypeScript code.`,
     });
 
     // Reuse existing parsing logic from prompts/generation.ts
@@ -146,7 +151,7 @@ async function runSingleScenario(
     // Step 1: Generate initial spec
     let specCode: string | null;
     try {
-        specCode = await generateInitialSpec(provider, scenario, specPath, apiHint);
+        specCode = await generateInitialSpec(provider, scenario, specPath, apiHint, options.generationProfile);
     } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
         warnings.push(`Generation failed for ${scenario.id}: ${msg}`);

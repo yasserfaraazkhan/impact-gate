@@ -19,6 +19,14 @@ export interface RouteFeature {
     userFlows?: string[];
 }
 
+export interface ApiEndpoint {
+    method: string;
+    path: string;
+    description?: string;
+}
+
+export type TestType = 'ui' | 'api' | 'both';
+
 export interface RouteFamily {
     id: string;
     routes: string[];
@@ -32,6 +40,8 @@ export interface RouteFamily {
     priority?: FeaturePriority;
     userFlows?: string[];
     features?: RouteFeature[];
+    apiEndpoints?: ApiEndpoint[];
+    testType?: TestType;
 }
 
 export interface RouteFamilyManifest {
@@ -81,6 +91,15 @@ export function matchesAnyPattern(filePath: string, patterns: string[]): boolean
     return patterns.some((pattern) => matchesGlob(filePath, pattern));
 }
 
+function validateApiEndpoint(ep: unknown): ApiEndpoint | null {
+    if (!ep || typeof ep !== 'object') return null;
+    const obj = ep as Record<string, unknown>;
+    if (typeof obj.method !== 'string' || typeof obj.path !== 'string') return null;
+    const result: ApiEndpoint = {method: obj.method, path: obj.path};
+    if (typeof obj.description === 'string') result.description = obj.description;
+    return result;
+}
+
 function validateFamily(family: unknown): RouteFamily | null {
     if (!family || typeof family !== 'object') {
         return null;
@@ -89,6 +108,12 @@ function validateFamily(family: unknown): RouteFamily | null {
     if (typeof obj.id !== 'string' || !obj.id.trim()) {
         return null;
     }
+
+    // When testType is 'api', routes may contain API paths like "GET /api/users"
+    const testType = (obj.testType === 'ui' || obj.testType === 'api' || obj.testType === 'both')
+        ? obj.testType as TestType
+        : undefined;
+
     if (!Array.isArray(obj.routes) || obj.routes.length === 0) {
         return null;
     }
@@ -133,6 +158,15 @@ function validateFamily(family: unknown): RouteFamily | null {
         result.features = obj.features
             .map((f) => validateFeature(f))
             .filter((f): f is RouteFeature => f !== null);
+    }
+    if (Array.isArray(obj.apiEndpoints)) {
+        const endpoints = obj.apiEndpoints
+            .map((ep) => validateApiEndpoint(ep))
+            .filter((ep): ep is ApiEndpoint => ep !== null);
+        if (endpoints.length > 0) result.apiEndpoints = endpoints;
+    }
+    if (testType) {
+        result.testType = testType;
     }
 
     return result;
@@ -402,4 +436,28 @@ export function buildHeuristicFamilies(changedFiles: string[], testsRoot: string
         families,
         source: 'heuristic',
     };
+}
+
+/**
+ * Serialize a RouteFamilyManifest to clean JSON, stripping empty optional fields.
+ */
+export function serializeManifest(manifest: RouteFamilyManifest): string {
+    const output = {
+        families: manifest.families.map((f) => {
+            const cleaned = {...f};
+            const optionalArrays = [
+                'pageObjects', 'components', 'webappPaths', 'serverPaths',
+                'specDirs', 'cypressSpecDirs', 'tags', 'userFlows', 'features', 'apiEndpoints',
+            ] as const;
+            for (const key of optionalArrays) {
+                if (!cleaned[key] || (Array.isArray(cleaned[key]) && (cleaned[key] as unknown[]).length === 0)) {
+                    delete cleaned[key];
+                }
+            }
+            if (!cleaned.priority) delete cleaned.priority;
+            if (!cleaned.testType) delete cleaned.testType;
+            return cleaned;
+        }),
+    };
+    return JSON.stringify(output, null, 2) + '\n';
 }

@@ -7,7 +7,7 @@ import {dirname, resolve} from 'path';
 export type AnalysisMode = 'impact' | 'gap';
 export type FrameworkType = 'auto' | 'playwright' | 'cypress' | 'selenium' | 'unknown';
 export type ArtifactMode = 'commit' | 'keep-local' | 'none';
-export type AnalysisProfile = 'default' | 'mattermost';
+export type AnalysisProfile = 'default' | 'mattermost' | string;
 
 export interface BudgetConfig {
     maxUSD?: number;

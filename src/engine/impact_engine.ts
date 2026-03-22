@@ -19,6 +19,7 @@ import {
     getUserFlowsForBinding,
 } from '../knowledge/route_families.js';
 import type {RouteFamiliesConfig} from '../agent/config.js';
+import {isTestFile} from '../agent/git.js';
 
 export type CoverageStatus = 'covered' | 'partial' | 'uncovered';
 
@@ -184,13 +185,14 @@ function computeCoverageStatus(pwSpecs: string[], cySpecs: string[]): CoverageSt
  * Group file bindings into a deduplicated map of family/feature → changed files.
  */
 function groupBindings(fileBindings: FileBinding[]): Map<string, {familyId: string; featureId?: string; files: string[]}> {
-    const groups = new Map<string, {familyId: string; featureId?: string; files: string[]}>();
+    const groups = new Map<string, {familyId: string; featureId?: string; files: string[]; _seen: Set<string>}>();
     for (const fb of fileBindings) {
         for (const binding of fb.bindings) {
             const key = binding.feature || binding.family;
             const existing = groups.get(key);
             if (existing) {
-                if (!existing.files.includes(fb.file)) {
+                if (!existing._seen.has(fb.file)) {
+                    existing._seen.add(fb.file);
                     existing.files.push(fb.file);
                 }
             } else {
@@ -198,23 +200,12 @@ function groupBindings(fileBindings: FileBinding[]): Map<string, {familyId: stri
                     familyId: binding.family,
                     featureId: binding.feature,
                     files: [fb.file],
+                    _seen: new Set([fb.file]),
                 });
             }
         }
     }
     return groups;
-}
-
-/** Filter out test files that should not be treated as application changes. */
-function isTestFile(file: string): boolean {
-    const normalized = file.replace(/\\/g, '/');
-    return /\.(spec|test)\.(ts|tsx|js|jsx)$/.test(normalized) ||
-           /\.snap$/.test(normalized) ||
-           /_test\.go$/.test(normalized) ||
-           normalized.includes('__tests__/') ||
-           normalized.includes('__snapshots__/') ||
-           normalized.includes('/tests/') ||
-           normalized.includes('/test/');
 }
 
 /** Classify filtered test files by type for downstream decision-making. */

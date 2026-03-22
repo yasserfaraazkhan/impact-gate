@@ -3,7 +3,7 @@
 
 import {existsSync, mkdirSync, writeFileSync} from 'fs';
 import {join} from 'path';
-import {getChangedFiles} from '../agent/git.js';
+import {getChangedFiles, isTestFile} from '../agent/git.js';
 import {logger} from '../logger.js';
 import {preprocess, type PreprocessConfig} from './stage0_preprocess.js';
 import {runImpactStage, type ImpactConfig} from './stage1_impact.js';
@@ -47,15 +47,6 @@ function createRunId(): string {
         return `pipeline-gh-${ciRunId}-${ts}-${entropy}`;
     }
     return `pipeline-local-${ts}-${entropy}`;
-}
-
-function isTestFile(file: string): boolean {
-    const normalized = file.replace(/\\/g, '/');
-    return /\.(spec|test)\.(ts|tsx|js|jsx)$/.test(normalized) ||
-           /_test\.go$/.test(normalized) ||
-           normalized.includes('__tests__/') ||
-           normalized.includes('/tests/') ||
-           normalized.includes('/test/');
 }
 
 export async function runPipeline(config: PipelineConfig): Promise<PipelineResult> {

@@ -8,8 +8,6 @@
  * Generation/reasoning tasks → capable model (Sonnet)
  */
 
-import type {AgentRole} from './crew/types.js';
-
 export type TaskComplexity = 'classification' | 'extraction' | 'generation' | 'reasoning';
 
 export interface ModelRoutingConfig {
@@ -19,7 +17,7 @@ export interface ModelRoutingConfig {
     reasoning?: string;
 }
 
-const AGENT_COMPLEXITY: Record<AgentRole, TaskComplexity> = {
+const AGENT_COMPLEXITY: Record<string, TaskComplexity> = {
     'impact-analyst': 'classification',
     'coverage-evaluator': 'classification',
     'cross-impact': 'extraction',
@@ -60,7 +58,7 @@ export class ModelRouter {
      * Get the recommended model for a given agent role.
      * Returns undefined if no routing recommendation (use provider default).
      */
-    getModel(role: AgentRole): string | undefined {
+    getModel(role: string): string | undefined {
         const complexity = AGENT_COMPLEXITY[role];
         if (!complexity) return undefined;
 
@@ -79,7 +77,7 @@ export class ModelRouter {
     /**
      * Get the task complexity for an agent role.
      */
-    getComplexity(role: AgentRole): TaskComplexity {
+    getComplexity(role: string): TaskComplexity {
         return AGENT_COMPLEXITY[role] || 'generation';
     }
 }

@@ -13,6 +13,7 @@ export interface ImpactPromptContext {
     existingSpecs: SpecEntry[];
     apiSurface: ApiSurfaceCatalog;
     contextBlock: string;
+    projectName?: string;
 }
 
 export function buildImpactPrompt(ctx: ImpactPromptContext): string {
@@ -40,7 +41,7 @@ export function buildImpactPrompt(ctx: ImpactPromptContext): string {
         .join('\n\n');
 
     return [
-        'You are analyzing code changes in Mattermost to identify impacted user-facing flows.',
+        `You are analyzing code changes in ${ctx.projectName || 'Mattermost'} to identify impacted user-facing flows.`,
         '',
         `ROUTE FAMILY: ${ctx.family.id}`,
         `ROUTES: ${familyRoutes}`,

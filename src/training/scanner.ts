@@ -43,10 +43,11 @@ const STRUCTURAL_DIRS = new Set([
 ]);
 
 /**
- * Server Go files that are infrastructure / cross-cutting concerns,
+ * Default server Go files that are infrastructure / cross-cutting concerns,
  * not feature-specific domains.  Matched after stripping _local/_store suffixes.
+ * Override via ScannerConfig.serverInfraFiles.
  */
-const SERVER_INFRA_FILES = new Set([
+const DEFAULT_SERVER_INFRA_FILES = new Set([
     'api', 'apitestlib', 'context', 'helpers', 'params', 'swagger',
     'app', 'server', 'enterprise', 'product_service', 'security_update_check',
     'store', 'adapters', 'errors', 'integrity', 'migrate', 'doc',
@@ -57,17 +58,24 @@ const SERVER_INFRA_FILES = new Set([
 ]);
 
 /**
- * Server tier directories to scan for Go domain files.
+ * Default server tier directories to scan for Go domain files.
  * Each tier represents a layer of the backend architecture.
+ * Override via ScannerConfig.serverTiers.
  */
-const SERVER_TIERS = [
+const DEFAULT_SERVER_TIERS: readonly string[] = [
     'channels/api4',
     'channels/app',
     'channels/store/sqlstore',
     'channels/web',
     'channels/wsapi',
     'public/model',
-] as const;
+];
+
+/** Configurable scanner options. All fields optional — defaults to Mattermost conventions. */
+export interface ScannerConfig {
+    serverInfraFiles?: Set<string>;
+    serverTiers?: readonly string[];
+}
 
 /** Type-safe includes check for readonly arrays */
 const includes = <T>(arr: readonly T[], v: unknown): v is T => (arr as readonly unknown[]).includes(v);
@@ -109,30 +117,24 @@ function walkDirs(
     if (depth > maxDepth || !existsSync(root)) {
         return;
     }
-    let entries: string[];
+    let dirents: import('fs').Dirent[];
     try {
-        entries = readdirSync(root);
+        dirents = readdirSync(root, {withFileTypes: true});
     } catch {
         // ENOENT or EACCES — skip inaccessible entries
         return;
     }
 
-    const hasSourceFiles = entries.some((e) => {
-        const ext = e.slice(e.lastIndexOf('.'));
+    const hasSourceFiles = dirents.some((d) => {
+        if (!d.isFile()) return false;
+        const ext = d.name.slice(d.name.lastIndexOf('.'));
         return ['.ts', '.tsx', '.js', '.jsx', '.go', '.py', '.rs'].includes(ext);
     });
 
-    const subdirs = entries.filter((e) => {
-        if (isSkipped(e)) return false;
-        try {
-            const stat = lstatSync(join(root, e));
-            if (stat.isSymbolicLink()) return false;
-            return stat.isDirectory();
-        } catch {
-            // ENOENT or EACCES — skip inaccessible entries
-            return false;
-        }
-    });
+    const subdirs = dirents.filter((d) => {
+        if (!d.isDirectory() || d.isSymbolicLink()) return false;
+        return !isSkipped(d.name);
+    }).map((d) => d.name);
 
     if (hasSourceFiles && depth >= 1) {
         results.push({
@@ -436,7 +438,11 @@ function findParentDomain(name: string, allDomains: Set<string>): string {
  *
  * Each domain becomes a candidate family with precise serverPaths.
  */
-export function discoverServerDerivedFamilies(serverRoot: string): {multiTierFamilies: ScannedFamily[]; singleTierFamilies: ScannedFamily[]} {
+export function discoverServerDerivedFamilies(
+    serverRoot: string,
+    infraFiles: Set<string> = DEFAULT_SERVER_INFRA_FILES,
+    tiers: readonly string[] = DEFAULT_SERVER_TIERS,
+): {multiTierFamilies: ScannedFamily[]; singleTierFamilies: ScannedFamily[]} {
     const resolved = resolve(serverRoot);
 
     // First pass: collect all raw domain names across tiers
@@ -449,7 +455,7 @@ export function discoverServerDerivedFamilies(serverRoot: string): {multiTierFam
 
         const baseName = entry.replace('.go', '');
         const domain = normalizeServerDomain(baseName);
-        if (!domain || SERVER_INFRA_FILES.has(domain)) return;
+        if (!domain || infraFiles.has(domain)) return;
 
         allRawDomains.add(domain);
         if (!domainTierFiles.has(domain)) domainTierFiles.set(domain, new Map());
@@ -458,7 +464,7 @@ export function discoverServerDerivedFamilies(serverRoot: string): {multiTierFam
         tierMap.get(tierRelPath)!.add(baseName);
     }
 
-    for (const tier of SERVER_TIERS) {
+    for (const tier of tiers) {
         const tierPath = join(resolved, tier);
         if (!existsSync(tierPath)) continue;
 
@@ -491,7 +497,7 @@ export function discoverServerDerivedFamilies(serverRoot: string): {multiTierFam
                 try {
                     if (!lstatSync(jobPath).isDirectory() || isSkipped(entry)) continue;
                     const domain = normalizeId(entry);
-                    if (SERVER_INFRA_FILES.has(domain)) continue;
+                    if (infraFiles.has(domain)) continue;
 
                     allRawDomains.add(domain);
                     const jobFiles = readdirSync(jobPath);
@@ -783,7 +789,11 @@ export function discoverNameMatchedPaths(
     return result;
 }
 
-export function scanProject(projectRoot: string, testsRoot?: string, serverRoot?: string, gitRepoRoot?: string): ScanResult {
+export function scanProject(projectRoot: string, testsRoot?: string, serverRoot?: string, gitRepoRoot?: string, config?: ScannerConfig): ScanResult {
+    // Resolve scanner config for this run (passed to functions, no module-level mutation)
+    const resolvedInfraFiles = config?.serverInfraFiles || DEFAULT_SERVER_INFRA_FILES;
+    const resolvedTiers = config?.serverTiers || DEFAULT_SERVER_TIERS;
+
     const resolved = resolve(projectRoot);
     const resolvedTestsRoot = testsRoot ? resolve(testsRoot) : resolved;
     const sourceDirs = discoverSourceDirs(resolved);
@@ -853,7 +863,7 @@ export function scanProject(projectRoot: string, testsRoot?: string, serverRoot?
     // When a separate serverRoot is provided, discover families from Go source
     // filenames across the three-tier backend (api4, app, store).
     if (serverRoot) {
-        const {multiTierFamilies: serverMulti, singleTierFamilies: serverSingle} = discoverServerDerivedFamilies(resolve(serverRoot));
+        const {multiTierFamilies: serverMulti, singleTierFamilies: serverSingle} = discoverServerDerivedFamilies(resolve(serverRoot), resolvedInfraFiles, resolvedTiers);
         const existingIds = new Set(families.map((f) => f.id));
 
         // Merge ALL server families (multi + single tier) into existing families,

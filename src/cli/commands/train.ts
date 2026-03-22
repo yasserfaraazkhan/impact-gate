@@ -7,17 +7,18 @@ import {dirname, join, resolve} from 'path';
 import * as readline from 'readline';
 
 import {resolveConfig} from '../../agent/config.js';
-import {loadRouteFamilyManifest} from '../../knowledge/route_families.js';
-import type {RouteFamilyManifest} from '../../knowledge/route_families.js';
+import {loadRouteFamilyManifest, serializeManifest} from '../../knowledge/route_families.js';
 import {LLMProviderFactory} from '../../provider_factory.js';
 import {logger, LogLevel} from '../../logger.js';
 
 import type {ParsedArgs} from '../types.js';
 
 import {scanProject} from '../../training/scanner.js';
+import {scanFromKnowledgeGraph} from '../../training/kg_scanner.js';
 import {mergeFamilies, detectStaleFamilies} from '../../training/merger.js';
 import {enrichFamilies} from '../../training/enricher.js';
 import {getCommitFiles, validateCommit, buildValidationReport, formatValidationReport} from '../../training/validator.js';
+import {loadKnowledgeGraph} from '../../knowledge/kg_bridge.js';
 import type {TrainOptions} from '../../training/types.js';
 
 class TrainError extends Error {
@@ -143,24 +144,6 @@ function ask(rl: readline.Interface, question: string, defaultValue?: string): P
     });
 }
 
-function serializeManifest(manifest: RouteFamilyManifest): string {
-    const output = {
-        families: manifest.families.map((f) => {
-            // Remove undefined/empty optional fields for clean JSON
-            const cleaned = {...f};
-            const optionalArrays = ['pageObjects', 'components', 'webappPaths', 'serverPaths', 'specDirs', 'cypressSpecDirs', 'tags', 'userFlows', 'features'] as const;
-            for (const key of optionalArrays) {
-                if (!cleaned[key] || (Array.isArray(cleaned[key]) && (cleaned[key] as unknown[]).length === 0)) {
-                    delete cleaned[key];
-                }
-            }
-            if (!cleaned.priority) delete cleaned.priority;
-            return cleaned;
-        }),
-    };
-    return JSON.stringify(output, null, 2) + '\n';
-}
-
 export async function runTrainCommand(args: ParsedArgs, autoConfig?: string): Promise<void> {
     const opts = resolveTrainOptions(args, autoConfig);
     const totalTimer = logger.timer('train-total');
@@ -174,17 +157,27 @@ export async function runTrainCommand(args: ParsedArgs, autoConfig?: string): Pr
     logger.info('===================');
 
     // ---------- Phase 1: Deterministic scan ----------
+    // Prefer knowledge graph when available
+    const kg = loadKnowledgeGraph(opts.appPath);
+
     logger.info('Scanning project structure...');
     if (opts.serverRoot) {
         logger.info(`Server root: ${opts.serverRoot}`);
     }
     const scanTimer = logger.timer('scan');
-    const scanResult = scanProject(
-        opts.appPath,
-        opts.testsRoot !== opts.appPath ? opts.testsRoot : undefined,
-        opts.serverRoot,
-        opts.gitRepoRoot,
-    );
+    let scanResult;
+    if (kg) {
+        logger.info('Using knowledge graph for scanning (found .understand-anything/knowledge-graph.json)');
+        scanResult = scanFromKnowledgeGraph(kg);
+        logger.info(`KG: ${kg.nodes.length} nodes, ${kg.edges.length} edges`);
+    } else {
+        scanResult = scanProject(
+            opts.appPath,
+            opts.testsRoot !== opts.appPath ? opts.testsRoot : undefined,
+            opts.serverRoot,
+            opts.gitRepoRoot,
+        );
+    }
     timings.scan = scanTimer.end();
     logger.info(`Found ${scanResult.stats.totalSourceFiles} source files, ${scanResult.stats.totalTestFiles} test files`);
     logger.info(`Discovered ${scanResult.families.length} candidate families`);
@@ -381,7 +374,7 @@ export async function runTrainCommand(args: ParsedArgs, autoConfig?: string): Pr
         const reportDir = dirname(opts.outputPath);
         const trainReport = {
             timestamp: new Date().toISOString(),
-            version: '1.7.0',
+            version: '1.9.4',
             timings,
             families: {
                 total: mergeResult.manifest.families.length,

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Route Families Manifest",
-  "description": "Maps Mattermost route families to file patterns, page objects, components, and nested features.",
+  "description": "Maps route families to file patterns, page objects, components, and nested features.",
   "type": "object",
   "required": ["families"],
   "properties": {
@@ -65,6 +65,36 @@
             "$ref": "#/$defs/RouteFeature"
           },
           "description": "Nested features within this family for finer-grained binding"
+        },
+        "apiEndpoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ApiEndpoint"
+          },
+          "description": "API endpoints this family covers (for backend/API testing)"
+        },
+        "testType": {
+          "type": "string",
+          "enum": ["ui", "api", "both"],
+          "description": "Type of tests to generate: UI (browser), API, or both. Defaults to 'ui' for backward compatibility."
+        }
+      }
+    },
+    "ApiEndpoint": {
+      "type": "object",
+      "required": ["method", "path"],
+      "properties": {
+        "method": {
+          "type": "string",
+          "description": "HTTP method (GET, POST, PUT, DELETE, PATCH)"
+        },
+        "path": {
+          "type": "string",
+          "description": "API endpoint path, e.g. '/api/v4/users'"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of the endpoint"
         }
       }
     },

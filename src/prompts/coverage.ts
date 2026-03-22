@@ -2,6 +2,8 @@
 // See LICENSE.txt for license information.
 
 import type {SpecEntry} from '../knowledge/spec_index.js';
+import {sanitizeForPrompt} from '../crew/sanitize.js';
+import type {GenerationProfile} from './generation_profile.js';
 
 export interface CoveragePromptFlow {
     flowId: string;
@@ -20,13 +22,14 @@ export interface CoveragePromptContext {
         testTitles: string[];
     }>;
     contextBlock: string;
+    profile?: GenerationProfile;
 }
 
 export function buildCoveragePrompt(ctx: CoveragePromptContext): string {
     const flowsBlock = ctx.flows
         .map((f) => {
-            const actions = f.userActions.length > 0 ? f.userActions.join('; ') : 'unknown';
-            return `- ${f.flowId} (${f.priority}): ${f.flowName}\n  Route: ${f.route}\n  User actions: ${actions}\n  Evidence: ${f.evidence}`;
+            const actions = f.userActions.length > 0 ? f.userActions.map((a) => sanitizeForPrompt(a)).join('; ') : 'unknown';
+            return `- ${f.flowId} (${f.priority}): ${f.flowName}\n  Route: ${f.route}\n  User actions: ${actions}\n  Evidence: ${sanitizeForPrompt(f.evidence)}`;
         })
         .join('\n\n');
 
@@ -37,7 +40,7 @@ export function buildCoveragePrompt(ctx: CoveragePromptContext): string {
         .join('\n\n');
 
     return [
-        'You are evaluating whether existing Mattermost Playwright E2E tests cover the impacted flows.',
+        `You are evaluating whether existing ${ctx.profile?.projectName || 'Mattermost'} ${ctx.profile?.testFramework || 'Playwright'} E2E tests cover the impacted flows.`,
         '',
         `IMPACTED FLOWS (${ctx.flows.length}):`,
         flowsBlock,
@@ -60,7 +63,7 @@ export function buildCoveragePrompt(ctx: CoveragePromptContext): string {
         '  Wrong: "test the new isEditing state"',
         '  Right: "test editing a scheduled message while it is in pending state"',
         '- For add_scenarios, specify which existing spec file to extend in targetSpec.',
-        '- For create_spec, suggest a path following Mattermost conventions.',
+        `- For create_spec, suggest a path following ${ctx.profile?.projectName || 'Mattermost'} conventions.`,
         '- Prefer adding scenarios to existing specs over creating new spec files.',
     ].join('\n');
 }

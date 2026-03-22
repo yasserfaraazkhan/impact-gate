@@ -8,7 +8,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import type {FrameworkAdapter, RunOptions} from './framework_adapter.js';
+import type {FrameworkAdapter, RunCommand, RunOptions} from './framework_adapter.js';
 
 export class PlaywrightAdapter implements FrameworkAdapter {
     readonly name = 'playwright';
@@ -43,25 +43,25 @@ export class PlaywrightAdapter implements FrameworkAdapter {
         }
     }
 
-    buildRunCommand(specPath: string, options?: RunOptions): string {
-        const parts = ['npx', 'playwright', 'test', specPath];
+    buildRunCommand(specPath: string, options?: RunOptions): RunCommand {
+        const args = ['playwright', 'test', specPath];
 
         if (options?.headed) {
-            parts.push('--headed');
+            args.push('--headed');
         }
 
         if (options?.browser) {
-            parts.push('--browser', options.browser);
+            args.push('--browser', options.browser);
         }
 
         if (options?.project) {
-            parts.push('--project', options.project);
+            args.push('--project', options.project);
         }
 
         if (options?.timeout != null) {
-            parts.push('--timeout', String(options.timeout));
+            args.push('--timeout', String(options.timeout));
         }
 
-        return parts.join(' ');
+        return {executable: 'npx', args};
     }
 }

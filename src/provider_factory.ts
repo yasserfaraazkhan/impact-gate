@@ -345,16 +345,17 @@ class HybridProvider implements LLMProvider {
         const fallbackStats = this.fallback.getUsageStats();
 
         // Combine stats
+        const totalRequests = primaryStats.requestCount + fallbackStats.requestCount;
         return {
-            requestCount: primaryStats.requestCount + fallbackStats.requestCount,
+            requestCount: totalRequests,
             totalInputTokens: primaryStats.totalInputTokens + fallbackStats.totalInputTokens,
             totalOutputTokens: primaryStats.totalOutputTokens + fallbackStats.totalOutputTokens,
             totalTokens: primaryStats.totalTokens + fallbackStats.totalTokens,
             totalCost: primaryStats.totalCost + fallbackStats.totalCost,
-            averageResponseTimeMs:
-                (primaryStats.averageResponseTimeMs * primaryStats.requestCount +
-                    fallbackStats.averageResponseTimeMs * fallbackStats.requestCount) /
-                (primaryStats.requestCount + fallbackStats.requestCount),
+            averageResponseTimeMs: totalRequests > 0
+                ? (primaryStats.averageResponseTimeMs * primaryStats.requestCount +
+                    fallbackStats.averageResponseTimeMs * fallbackStats.requestCount) / totalRequests
+                : 0,
             failedRequests: primaryStats.failedRequests + fallbackStats.failedRequests,
             startTime: new Date(Math.min(primaryStats.startTime.getTime(), fallbackStats.startTime.getTime())),
             lastUpdated: new Date(Math.max(primaryStats.lastUpdated.getTime(), fallbackStats.lastUpdated.getTime())),

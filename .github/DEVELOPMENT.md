@@ -65,7 +65,7 @@ node --test --test-name-pattern="impact" test-dist/*.test.js
 - **Runner**: Node.js built-in test runner (`node:test`) — no Jest, Mocha, or other frameworks
 - **Assertions**: Node.js built-in `node:assert/strict`
 - **Test files**: Live in `test/` as `.test.ts` files, compiled to `test-dist/` as `.test.js`
-- **Count**: 339+ tests across the full suite
+- **Count**: 406+ tests across the full suite
 
 ### Adding a New Test
 

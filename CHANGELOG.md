@@ -2,6 +2,62 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.9.4] - 2026-03-23
+
+### Code Quality & Dead Code Elimination
+
+- **Deduplicated `isTestFile`** — Consolidated 3 diverging copies into single export in `agent/git.ts` with superset patterns (`.snap`, `__snapshots__/`).
+- **Deduplicated `runGitRaw`** — Exported from `agent/git.ts`; `engine/diff_loader.ts` now imports it.
+- **Deduplicated `serializeManifest`** — Extracted superset version to `knowledge/route_families.ts`; both `train` and `bootstrap` commands import it.
+- **Deduplicated `deriveClusterId`** — Extracted to shared `knowledge/cluster_utils.ts`; fixed dead camelCase regex that never matched after `.toLowerCase()`.
+- **Removed module-level mutable state** in `training/scanner.ts` — `activeInfraFiles`/`activeTiers` replaced with function parameters.
+
+### Bug Fixes
+
+- **`detectTestMode` returned `'ui'` for API-only projects** — Projects with only supertest now correctly return `'api'` instead of `'ui'`.
+- **`bootstrap --kg-path` ignored** — `loadKnowledgeGraph` now accepts an optional custom path; the `--kg-path` flag works as documented.
+- **Train report version was hardcoded `'1.7.0'`** — Now tracks the actual package version.
+- **Division-by-zero** in `HybridProvider.getUsageStats()` — Added `totalRequests > 0` guard.
+- **`number-raw` CLI parsing** — Clarified guard logic; NaN/Infinity values properly rejected.
+- **O(n²) file dedup in `groupBindings`** — Replaced `Array.includes()` with `Set` for O(1) lookups.
+
+### Security Hardening
+
+- **`buildRunCommand` returns structured `RunCommand`** — All 4 framework adapters now return `{executable, args}` instead of a joined shell string, preventing potential command injection.
+- **KG node validation** — `loadKnowledgeGraph` now validates individual nodes: rejects path traversal (`..`, absolute paths, null bytes), truncates excessively long strings, filters invalid nodes.
+- **`sanitizeForPrompt` applied across all prompts** — `generation.ts`, `coverage.ts`, `heal.ts` now sanitize user-controlled fields (evidence, userActions, failure details) to defend against prompt injection.
+- **KG `buildGlobFromPath`** — Rejects paths containing `..` or null bytes.
+
+### Generalization (Project-Agnostic)
+
+- **Hardcoded "Mattermost" removed from prompts** — `impact.ts`, `cross-impact.ts`, `agentic/runner.ts` now use configurable `projectName` with Mattermost as default fallback.
+- **`GenerationProfile` system** — New `generation_profile.ts` with profiles for Mattermost, generic Playwright, and API testing (vitest+supertest, pytest).
+- **Prompt builders parameterized** — `test-designer`, `coverage`, `heal`, `generation` prompts accept optional `GenerationProfile`.
+- **`bootstrap` command** — New CLI command that transforms Understand-Anything knowledge graphs into route-families.json.
+- **Pytest and Supertest adapters** — New framework adapters with proper `detect()` implementations.
+
+### Performance
+
+- **Scanner uses `withFileTypes`** — `walkDirs` now uses `readdirSync({withFileTypes: true})` to avoid separate `lstatSync` calls.
+
+### Documentation & Packaging
+
+- **`.npmignore` expanded** — Excludes `docs/`, `docs-site/`, `test/`, `scripts/`, `.claude/`, `.env` from npm tarball.
+- **SECURITY.md** — Replaced placeholder email with GitHub Security Advisories link.
+- **DEVELOPMENT.md** — Updated test count from 339+ to 406+.
+- **comparison.md** — Updated version reference from v1.8.0 to v1.9.4.
+- **`minimatch` added to dependencies** — Was used but only available as transitive dependency of `glob`.
+- **`model_router.ts` decoupled** — No longer imports from `crew/types.ts`; uses `string` for agent role keys.
+- **Unknown CLI flags** now produce a warning instead of being silently ignored.
+
+### Breaking Changes
+
+- `FrameworkAdapter.buildRunCommand()` now returns `RunCommand` (`{executable, args}`) instead of `string`. Consumers using the return value directly as a shell command must update to use the structured form.
+- `loadKnowledgeGraph()` signature changed: now accepts optional `customPath` second parameter.
+- `runBootstrapCommand()` no longer accepts `autoConfig` parameter; throws `BootstrapError` instead of calling `process.exit()`.
+
+Tests: 406 pass, 0 failures.
+
 ## [1.9.3] - 2026-03-19
 
 ### Budget Enforcement (breaking fix)

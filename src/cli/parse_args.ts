@@ -5,6 +5,7 @@ import {existsSync} from 'fs';
 import {dirname, join, resolve} from 'path';
 
 import type {FrameworkType} from '../agent/config.js';
+import {logger} from '../logger.js';
 
 import type {Command, ParsedArgs} from './types.js';
 
@@ -170,6 +171,12 @@ const FLAGS: Record<string, FlagDef> = {
 
     // -- gate command --
     '--threshold':             {key: 'gateThreshold', type: 'number'},
+
+    // -- bootstrap command --
+    '--kg-path':               {key: 'bootstrapKgPath', type: 'string'},
+    '--scaffold-framework':    {key: 'bootstrapScaffoldFramework', type: 'boolean'},
+    '--test-mode':             {key: 'bootstrapTestMode', type: 'enum', enumValues: ['ui', 'api', 'both']},
+    '--max-families':          {key: 'bootstrapMaxFamilies', type: 'number'},
 };
 
 // Build a lookup from alias -> canonical flag name
@@ -188,6 +195,7 @@ const COMMANDS = new Set<Command>([
     'finalize-generated-tests', 'feedback',
     'traceability-capture', 'traceability-ingest',
     'analyze', 'llm-health', 'train', 'crew', 'cost-report', 'gate',
+    'bootstrap',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -214,6 +222,9 @@ export function parseArgs(argv: string[]): ParsedArgs {
         const arg = argv[i];
         const canonical = ALIAS_MAP[arg];
         if (!canonical) {
+            if (arg.startsWith('--')) {
+                logger.warn(`Unknown flag "${arg}" (ignored)`);
+            }
             continue;
         }
 
@@ -248,7 +259,15 @@ export function parseArgs(argv: string[]): ParsedArgs {
 
         case 'number-raw':
             if (next) {
-                setField(parsed, def.key, def.transform ? def.transform(next) : Number(next));
+                const rawValue = def.transform ? def.transform(next) : Number(next);
+                // Allow non-number transforms through; reject NaN/Infinity for numbers
+                if (typeof rawValue === 'number') {
+                    if (Number.isFinite(rawValue)) {
+                        setField(parsed, def.key, rawValue);
+                    }
+                } else {
+                    setField(parsed, def.key, rawValue);
+                }
                 i += 1;
             }
             break;

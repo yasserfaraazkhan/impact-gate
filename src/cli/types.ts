@@ -19,7 +19,8 @@ export type Command =
     | 'train'
     | 'crew'
     | 'cost-report'
-    | 'gate';
+    | 'gate'
+    | 'bootstrap';
 
 export interface ParsedArgs {
     command?: Command;
@@ -102,6 +103,12 @@ export interface ParsedArgs {
 
     // Gate command
     gateThreshold?: number;
+
+    // Bootstrap command
+    bootstrapKgPath?: string;
+    bootstrapScaffoldFramework?: boolean;
+    bootstrapTestMode?: 'ui' | 'api' | 'both';
+    bootstrapMaxFamilies?: number;
 
     // Degraded mode (skip AI, deterministic only)
     degradedMode?: boolean;

@@ -125,7 +125,7 @@ export interface GitChangeOptions {
     includeUncommitted?: boolean;
 }
 
-function runGitRaw(args: string[], cwd: string): string | null {
+export function runGitRaw(args: string[], cwd: string): string | null {
     const result = spawnSync('git', args, {
         cwd,
         encoding: 'utf-8',
@@ -211,8 +211,10 @@ function isCommentOnlyDiff(file: string, repoRoot: string, baseRef: string): boo
 export function isTestFile(file: string): boolean {
     const normalized = file.replace(/\\/g, '/');
     return /\.(spec|test)\.(ts|tsx|js|jsx)$/.test(normalized) ||
+           /\.snap$/.test(normalized) ||
            /_test\.go$/.test(normalized) ||
            normalized.includes('__tests__/') ||
+           normalized.includes('__snapshots__/') ||
            normalized.includes('/tests/') ||
            normalized.includes('/test/');
 }

@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 /**
- * Cypress Adapter — FrameworkAdapter implementation for Cypress.
+ * Supertest + Vitest/Jest adapter for Node.js API testing.
  */
 
 import * as fs from 'node:fs';
@@ -10,14 +10,17 @@ import * as path from 'node:path';
 
 import type {FrameworkAdapter, RunCommand, RunOptions} from './framework_adapter.js';
 
-export class CypressAdapter implements FrameworkAdapter {
-    readonly name = 'cypress';
+export class SupertestAdapter implements FrameworkAdapter {
+    name = 'supertest';
+    specGlob = '**/*.{test,spec}.{ts,js}';
+    extractTestPattern = /(?:it|test)\s*\(\s*(['"`])(.*?)\1/g;
+    configFileNames = ['vitest.config.ts', 'vitest.config.js', 'jest.config.ts', 'jest.config.js'];
 
-    readonly specGlob = '**/*.cy.{ts,js,tsx,jsx}';
+    private runner: 'vitest' | 'jest';
 
-    readonly extractTestPattern = /\b(?:it|describe|context)\s*\(/g;
-
-    readonly configFileNames = ['cypress.config.ts', 'cypress.config.js'];
+    constructor(runner: 'vitest' | 'jest' = 'vitest') {
+        this.runner = runner;
+    }
 
     detect(projectRoot: string): boolean {
         const pkgPath = path.join(projectRoot, 'package.json');
@@ -37,31 +40,25 @@ export class CypressAdapter implements FrameworkAdapter {
                 ...pkg.devDependencies,
             };
 
-            return 'cypress' in allDeps;
+            return 'supertest' in allDeps;
         } catch {
             return false;
         }
     }
 
     buildRunCommand(specPath: string, options?: RunOptions): RunCommand {
-        const args = ['cypress', 'run', '--spec', specPath];
-
-        if (options?.headed) {
-            args.push('--headed');
+        if (this.runner === 'jest') {
+            const args = ['jest', specPath];
+            if (options?.timeout) {
+                args.push(`--testTimeout=${options.timeout}`);
+            }
+            return {executable: 'npx', args};
         }
 
-        if (options?.browser) {
-            args.push('--browser', options.browser);
+        const args = ['vitest', 'run', specPath];
+        if (options?.timeout) {
+            args.push(`--testTimeout=${options.timeout}`);
         }
-
-        if (options?.project) {
-            args.push('--project', options.project);
-        }
-
-        if (options?.timeout != null) {
-            args.push('--config', `defaultCommandTimeout=${options.timeout}`);
-        }
-
         return {executable: 'npx', args};
     }
 }

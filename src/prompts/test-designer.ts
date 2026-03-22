@@ -11,6 +11,7 @@ import {formatApiSurfaceForPrompt, type ApiSurfaceCatalog} from '../knowledge/ap
 import type {SpecEntry} from '../knowledge/spec_index.js';
 import type {StrategyEntry, CrossImpact, TestDesign} from '../crew/types.js';
 import {sanitizeForPrompt} from '../crew/sanitize.js';
+import type {GenerationProfile} from './generation_profile.js';
 
 export interface TestDesignerPromptContext {
     flow: FlowDecision;
@@ -18,6 +19,7 @@ export interface TestDesignerPromptContext {
     apiSurface: ApiSurfaceCatalog;
     existingSpecs: SpecEntry[];
     crossImpacts: CrossImpact[];
+    profile?: GenerationProfile;
 }
 
 export function buildTestDesignerPrompt(ctx: TestDesignerPromptContext): string {
@@ -49,7 +51,7 @@ export function buildTestDesignerPrompt(ctx: TestDesignerPromptContext): string 
     const categories = ctx.strategy.testCategories.join(', ');
 
     return [
-        'You are a senior QA engineer designing comprehensive test cases for a Mattermost user flow.',
+        `You are a senior QA engineer designing comprehensive test cases for a ${ctx.profile?.projectName || 'Mattermost'} user flow.`,
         '',
         `FLOW: ${ctx.flow.flowName}`,
         `Flow ID: ${ctx.flow.flowId}`,

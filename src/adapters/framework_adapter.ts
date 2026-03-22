@@ -11,12 +11,22 @@ import * as path from 'node:path';
 
 import {PlaywrightAdapter} from './playwright.js';
 import {CypressAdapter} from './cypress.js';
+import {SupertestAdapter} from './supertest.js';
+import {PytestAdapter} from './pytest.js';
+import type {KnowledgeGraph} from '../knowledge/kg_types.js';
+
+export type TestMode = 'ui' | 'api' | 'both';
 
 export interface RunOptions {
     headed?: boolean;
     browser?: string;
     project?: string;
     timeout?: number;
+}
+
+export interface RunCommand {
+    executable: string;
+    args: string[];
 }
 
 export interface FrameworkAdapter {
@@ -35,8 +45,8 @@ export interface FrameworkAdapter {
     /** Possible config file names to look for at the project root. */
     configFileNames: string[];
 
-    /** Build a CLI command string to execute a single spec file. */
-    buildRunCommand(specPath: string, options?: RunOptions): string;
+    /** Build a structured command to execute a single spec file. */
+    buildRunCommand(specPath: string, options?: RunOptions): RunCommand;
 }
 
 /**
@@ -67,11 +77,86 @@ export function detectFramework(projectRoot: string): FrameworkAdapter {
             if ('cypress' in allDeps) {
                 return new CypressAdapter();
             }
+
+            // Backend API test frameworks
+            if ('supertest' in allDeps) {
+                const runner = 'vitest' in allDeps ? 'vitest' : 'jest';
+                return new SupertestAdapter(runner);
+            }
         } catch {
             // Malformed package.json — fall through to default.
         }
     }
 
+    // Check for Python project
+    const pyprojectPath = path.join(projectRoot, 'pyproject.toml');
+    if (fs.existsSync(pyprojectPath)) {
+        try {
+            const content = fs.readFileSync(pyprojectPath, 'utf-8');
+            if (content.includes('pytest')) {
+                return new PytestAdapter();
+            }
+        } catch {
+            // fall through
+        }
+    }
+
     // Default to Playwright when we cannot determine the framework.
     return new PlaywrightAdapter();
+}
+
+/**
+ * Detect the test mode for a project: UI testing, API testing, or both.
+ * Uses package.json / pyproject.toml dependencies and optional KG metadata.
+ */
+export function detectTestMode(projectRoot: string, kg?: KnowledgeGraph | null): TestMode {
+    // If KG provides framework hints, use them
+    if (kg) {
+        const frameworks = kg.project.frameworks.map((f) => f.toLowerCase());
+        const hasUi = frameworks.some((f) =>
+            ['playwright', '@playwright/test', 'cypress', 'selenium'].includes(f),
+        );
+        const hasApi = frameworks.some((f) =>
+            ['supertest', 'pytest', 'requests'].includes(f),
+        );
+        if (hasUi && hasApi) return 'both';
+        if (hasApi) return 'api';
+        if (hasUi) return 'ui';
+    }
+
+    // Fall back to package.json inspection
+    const pkgPath = path.join(projectRoot, 'package.json');
+    if (fs.existsSync(pkgPath)) {
+        try {
+            const raw = fs.readFileSync(pkgPath, 'utf-8');
+            const pkg = JSON.parse(raw) as {
+                dependencies?: Record<string, string>;
+                devDependencies?: Record<string, string>;
+            };
+            const allDeps = {...pkg.dependencies, ...pkg.devDependencies};
+
+            const hasUi = '@playwright/test' in allDeps || 'cypress' in allDeps;
+            const hasApi = 'supertest' in allDeps;
+
+            if (hasUi && hasApi) return 'both';
+            if (hasApi) return 'api'; // supertest alone means API-only when no UI framework is present
+        } catch {
+            // fall through
+        }
+    }
+
+    // Check for Python API testing
+    const pyprojectPath = path.join(projectRoot, 'pyproject.toml');
+    if (fs.existsSync(pyprojectPath)) {
+        try {
+            const content = fs.readFileSync(pyprojectPath, 'utf-8');
+            if (content.includes('pytest') && !fs.existsSync(path.join(projectRoot, 'package.json'))) {
+                return 'api';
+            }
+        } catch {
+            // fall through
+        }
+    }
+
+    return 'ui';
 }
