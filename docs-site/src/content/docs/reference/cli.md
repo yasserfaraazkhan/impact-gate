@@ -79,6 +79,32 @@ Stage generated tests, commit, and optionally open a PR.
 npx e2e-ai-agents finalize-generated-tests --path . --create-pr --pr-title "Add E2E tests"
 ```
 
+## Bootstrap
+
+### `bootstrap`
+
+Generate a route-families manifest from an Understand-Anything knowledge graph. This is the fastest way to onboard a new (non-Mattermost) project: point the tool at an existing knowledge graph and it produces the mapping file that powers impact analysis.
+
+```bash
+# Default: reads .understand-anything/knowledge-graph.json
+npx e2e-ai-agents bootstrap --path .
+
+# Custom knowledge graph location
+npx e2e-ai-agents bootstrap --kg-path ./my-kg.json
+
+# API-only tests, limit to 30 families, preview first
+npx e2e-ai-agents bootstrap --test-mode api --max-families 30 --dry-run
+```
+
+Key flags:
+
+| Flag | Description |
+|------|-------------|
+| `--kg-path` | Path to a knowledge-graph JSON file (default: `.understand-anything/knowledge-graph.json`) |
+| `--test-mode` | Test mode: `ui`, `api`, or `both` (auto-detected from the knowledge graph if omitted) |
+| `--max-families` | Maximum number of route families to generate (default: 50) |
+| `--dry-run` | Print the proposed manifest without writing files |
+
 ## Training & Knowledge
 
 ### `train`
@@ -158,7 +184,7 @@ npx e2e-ai-agents init
 |------|-------------|
 | `--path` | Project root directory |
 | `--tests-root` | Path to test directory |
-| `--framework` | Test framework (`playwright`, `cypress`, `auto`) |
+| `--framework` | Test framework (`playwright`, `cypress`, `pytest`, `supertest`, `auto`) |
 | `--since` | Git ref for diff base |
 | `--config` | Path to config file |
 | `--budget-usd` | Max LLM spend in USD |

@@ -50,10 +50,11 @@ Create `e2e-ai-agents.config.json` (or `.e2e-ai-agents.config.json`) in your pro
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `path` | string | `.` | Project root directory |
-| `profile` | string | `default` | Analysis profile (`default` or `mattermost`) |
+| `profile` | string | `default` | Analysis profile: `default`, `mattermost`, or auto-detected from knowledge graph (see below) |
 | `testsRoot` | string | auto-detected | Path to tests directory |
 | `mode` | string | `impact` | Default analysis mode |
-| `framework` | string | `auto` | Test framework (`playwright`, `cypress`, `auto`) |
+| `testMode` | string | auto-detected | Test mode: `ui`, `api`, or `both`. Controls whether generated tests target the browser, API endpoints, or a mix. Auto-detected from the project structure or knowledge graph when omitted. |
+| `framework` | string | `auto` | Test framework (`playwright`, `cypress`, `pytest`, `supertest`, `auto`) |
 
 ### `git`
 
@@ -91,6 +92,7 @@ Create `e2e-ai-agents.config.json` (or `.e2e-ai-agents.config.json`) in your pro
 
 - **`default`** -- standard analysis with configurable strictness
 - **`mattermost`** -- strict mode with escalation for heuristic-only mappings, tuned for Mattermost's codebase structure
+- **auto-detected** -- when a knowledge graph is present (via `bootstrap`), the profile is inferred from the project's frameworks and structure. The resolved profile name appears in the bootstrap output.
 
 ## Precedence
 

@@ -29,10 +29,22 @@ Multi-agent orchestration layer. The orchestrator manages agent registration, wo
 
 Static and computed knowledge about the target codebase:
 
-- **route_families** -- loads and queries the manifest
+- **route_families** -- loads and queries the route-family manifest
 - **api_surface** -- discovers Playwright page-object methods
 - **spec_index** -- indexes existing test specs
 - **context_loader** -- aggregates knowledge sources for agents
+- **cluster_utils** -- derives cluster IDs from knowledge-graph nodes and file paths for family grouping
+- **kg_bridge** -- bridge between Understand-Anything knowledge graphs and route families; loads the KG, classifies project type (frontend/backend/fullstack), and transforms nodes/edges into a `RouteFamilyManifest`
+- **kg_types** -- TypeScript interfaces for the Understand-Anything knowledge-graph schema (`KnowledgeGraph`, `KGNode`, `KGEdge`, `DiffOverlay`, etc.)
+
+### Adapters (`src/adapters/`)
+
+Framework-specific adapters implementing the `FrameworkAdapter` interface. Each adapter provides detection, spec-glob patterns, and run-command construction:
+
+- **playwright** -- Playwright/`@playwright/test` projects
+- **cypress** -- Cypress projects
+- **pytest** -- Python pytest projects (detects `conftest.py`, `pytest.ini`, `pyproject.toml`)
+- **supertest** -- Node.js API testing with supertest (runs via Vitest or Jest)
 
 ### Providers (`src/*_provider.ts`)
 
@@ -69,7 +81,7 @@ All artifacts are written to `<testsRoot>/.e2e-ai-agents/`.
 
 **`AgentPlugin`** -- extends `Agent` with `phase` and `runAfter` for external plugin registration
 
-**`FrameworkAdapter`** -- abstracts test framework specifics: `detect()`, `specGlob`, `buildRunCommand()`
+**`FrameworkAdapter`** -- abstracts test framework specifics: `detect()`, `specGlob`, `buildRunCommand()`. Four adapters ship built-in (Playwright, Cypress, pytest, supertest).
 
 **`Reporter`** -- output format plugin: `name`, `extension`, `format(results)`
 

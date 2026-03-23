@@ -67,10 +67,13 @@ The original 5-stage test generation and healing pipeline, predating the crew sy
 
 Static and computed knowledge about the target codebase:
 
-- `route_families.ts` — loads and queries the `route-families.json` manifest (the primary mapping from files to features)
+- `route_families.ts` — loads, validates, and queries the `route-families.json` manifest (the primary mapping from files to features). Includes `serializeManifest()` for clean JSON output.
 - `api_surface.ts` — discovers Playwright page-object methods and custom helpers available in the target project
 - `spec_index.ts` — indexes existing test spec files for deduplication and coverage analysis
 - `context_loader.ts` — aggregates knowledge sources into a single context object for agents
+- `kg_bridge.ts` — bridge between Understand-Anything knowledge graphs and route families. Transforms KG nodes/edges into `RouteFamilyManifest`. Validates node fields (rejects path traversal, null bytes, truncates long strings).
+- `kg_types.ts` — TypeScript interfaces matching the Understand-Anything `knowledge-graph.json` schema
+- `cluster_utils.ts` — shared cluster ID derivation (camelCase→snake_case normalization, path-based grouping). Used by both `kg_bridge.ts` and `training/kg_scanner.ts`.
 
 ### Providers (`src/*_provider.ts`)
 
@@ -89,7 +92,8 @@ LLM provider abstraction layer. Four concrete providers plus shared infrastructu
 
 Builds the `route-families.json` knowledge manifest:
 
-- `scanner.ts` — four strategies: directory matching, test-derived, server-derived, name-matched
+- `scanner.ts` — four strategies: directory matching, test-derived, server-derived, name-matched. Configurable server infra files and tiers via `ScannerConfig`.
+- `kg_scanner.ts` — knowledge-graph-based scanning. Converts Understand-Anything KG into the same `ScanResult` format as the filesystem scanner, so the merge/enrich/validate pipeline works unchanged.
 - `enricher.ts` — LLM pass adding routes, priorities, user flows, and component names
 - `merger.ts` — merges scanner output with enrichment results and existing manifests
 - `validator.ts` — measures manifest accuracy against real git history
@@ -109,13 +113,23 @@ Response caching to avoid redundant LLM calls:
 - `response_cache.ts` — content-addressed cache with TTL, stored on disk under `.e2e-ai-agents/cache/`
 - `cached_provider.ts` — wraps any `LLMProvider` with transparent caching
 
+### Prompts (`src/prompts/`)
+
+Prompt construction for each LLM agent. Each prompt builder accepts an optional `GenerationProfile` for project-agnostic output:
+
+- `impact.ts`, `coverage.ts`, `generation.ts`, `heal.ts`, `test-designer.ts`, `strategist.ts`, `cross-impact.ts` — prompt builders with `sanitizeForPrompt()` applied to all user-controlled fields
+- `generation_profile.ts` — `GenerationProfile` system for project-agnostic test generation. Profiles for Mattermost, generic Playwright, pytest, and supertest/vitest. Auto-derives profile from KG metadata.
+- `json_extract.ts` — shared `extractJsonFromResponse<T>()` for parsing JSON from LLM text responses
+
 ### Adapters (`src/adapters/`)
 
-Framework-specific logic behind a uniform contract:
+Framework-specific logic behind a uniform contract. All adapters return structured `RunCommand {executable, args}` (no shell strings):
 
-- `framework_adapter.ts` — `FrameworkAdapter` interface and `detectFramework()` auto-detection
+- `framework_adapter.ts` — `FrameworkAdapter` interface, `RunCommand` type, `detectFramework()` and `detectTestMode()` auto-detection. Exports shared `UI_FRAMEWORKS` and `API_FRAMEWORKS` constants.
 - `playwright.ts` — Playwright adapter (spec glob, config file names, run command builder)
 - `cypress.ts` — Cypress adapter
+- `pytest.ts` — Python pytest adapter with detection via pyproject.toml/conftest.py
+- `supertest.ts` — Node.js API testing adapter (vitest or jest runner) with detection via package.json
 
 ### Reporters (`src/reporters/`)
 

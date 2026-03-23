@@ -36,6 +36,7 @@ This produces:
 ## What Next?
 
 - Run `train --no-enrich` to build the route-families manifest for better accuracy
+- **Non-Mattermost projects**: if you have an Understand-Anything knowledge graph, run `bootstrap` instead of `train` to auto-generate route families from the graph. See [Zero Config -- Bootstrap](/getting-started/zero-config/#bootstrap-alternative-setup-with-a-knowledge-graph) for details.
 - Try `crew --workflow quick-check` for AI-powered strategy recommendations
 - Add a [CI integration](/guides/ci-integration) to gate PRs on coverage
 - Set up [cost controls](/guides/cost-management) before enabling AI features

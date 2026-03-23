@@ -9,9 +9,11 @@ The CLI auto-detects most settings so you can run commands without any configura
 
 ### Test Framework
 
-The CLI reads your `package.json` dependencies and detects:
+The CLI reads your project files and `package.json` dependencies to detect:
 - **Playwright** if `@playwright/test` or `playwright` is present
 - **Cypress** if `cypress` is present
+- **pytest** if `conftest.py`, `pytest.ini`, or pytest config in `pyproject.toml` / `setup.cfg` is present
+- **supertest** if `supertest` is in your npm dependencies (runs via Vitest or Jest)
 - **Selenium** if `selenium-webdriver` or `webdriverio` is present
 
 ### Tests Root
@@ -45,6 +47,18 @@ Create `e2e-ai-agents.config.json` in your project root when you need to:
 - Override framework or tests-root detection
 
 The CLI searches for `e2e-ai-agents.config.json` or `.e2e-ai-agents.config.json` starting from the current directory and walking upward.
+
+## Bootstrap: Alternative Setup with a Knowledge Graph
+
+If your project already has an [Understand-Anything](https://github.com/nicholasgriffintn/understand-anything) knowledge graph, the `bootstrap` command can generate your route-families manifest automatically instead of running `train`:
+
+```bash
+npx e2e-ai-agents bootstrap --path .
+```
+
+Bootstrap reads the knowledge graph, classifies your project (frontend, backend, or fullstack), and produces `.e2e-ai-agents/route-families.json` with prioritized families derived from the graph's nodes and edges. It also auto-detects your test framework and test mode (`ui`, `api`, or `both`).
+
+Use `--dry-run` to preview the manifest before writing, or `--max-families 30` to limit the output. See the [CLI reference](/reference/cli/#bootstrap) for all flags.
 
 ## Explicit Flags Always Win
 

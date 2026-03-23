@@ -1,6 +1,6 @@
 # @yasserkhanorg/e2e-agents
 
-AI-powered E2E test impact analysis, generation, healing, and autonomous QA for frontend repositories.
+AI-powered E2E test impact analysis, generation, healing, and autonomous QA for any project with route families — not just Mattermost.
 
 [![npm](https://img.shields.io/npm/v/%40yasserkhanorg%2Fe2e-agents)](https://www.npmjs.com/package/@yasserkhanorg/e2e-agents)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
@@ -8,10 +8,10 @@ AI-powered E2E test impact analysis, generation, healing, and autonomous QA for 
 
 ## What It Does
 
-Given a git diff, `e2e-ai-agents` determines which E2E test flows are impacted, identifies coverage gaps, and can generate or heal Playwright tests — all from the CLI. The companion `e2e-qa-agent` goes further: it opens a real browser, explores your app autonomously, and produces a QA report with findings and a release-readiness verdict.
+Given a git diff, `e2e-ai-agents` determines which E2E test flows are impacted, identifies coverage gaps, and can generate or heal tests for Playwright, Cypress, pytest (Python), or supertest/vitest (Node.js API) — all from the CLI. The tool is project-agnostic: any codebase with a `route-families.json` manifest works out of the box. The companion `e2e-qa-agent` goes further: it opens a real browser, explores your app autonomously, and produces a QA report with findings and a release-readiness verdict.
 
 **Pipeline:** `impact` → `plan` → `generate` → `heal` → `finalize`
-**Crew (v1.8.0):** `impact` + `cross-impact` + `regression-advisor` → `strategist` → `test-designer` → `generator` → `executor` → `healer`
+**Multi-Agent Crew:** `impact` + `cross-impact` + `regression-advisor` → `strategist` → `test-designer` → `generator` → `executor` → `healer`
 
 > **How does this compare to other tools?** See [docs/comparison.md](docs/comparison.md) for a detailed analysis against Launchable, Codecov ATS, Qodo, Testsigma, mabl, GitHub Copilot, and others.
 
@@ -24,6 +24,8 @@ These commands work with **zero LLM cost** — no API key required:
 | `impact` | Deterministic impact analysis from git diff |
 | `plan` | Coverage gap detection and test recommendations |
 | `train --no-enrich` | Build route-families manifest (scanner only) |
+| `bootstrap` | Generate route-families.json from a knowledge graph (deterministic) |
+| `gate` | CI coverage gate — exit 1 if coverage is below threshold |
 | `traceability-capture` | Extract test-file relationships from Playwright JSON |
 | `traceability-ingest` | Merge traceability mappings into rolling manifest |
 | `feedback` | Ingest recommendation outcomes for calibration |
@@ -54,6 +56,12 @@ npx e2e-ai-agents plan --path /path/to/project
 # Generate tests for uncovered gaps (requires plan output)
 npx e2e-ai-agents generate --path /path/to/project
 
+# Bootstrap route-families.json from an Understand-Anything knowledge graph
+npx e2e-ai-agents bootstrap --path <project-root> [--kg-path <path>] [--test-mode ui|api|both] [--max-families <n>] [--dry-run]
+
+# CI coverage gate — fails with exit code 1 if coverage is below threshold
+npx e2e-ai-agents gate --path <project-root> [--threshold <0-100>]
+
 # Heal flaky/failing specs from a Playwright report
 npx e2e-ai-agents heal --path /path/to/project --traceability-report ./playwright-report.json
 
@@ -73,7 +81,7 @@ npx e2e-ai-agents llm-health
 
 `plan` and `suggest` are aliases. `analyze` is a convenience wrapper that runs impact + plan and optionally generation/healing in one invocation. Use `--help` for all available flags.
 
-## Multi-Agent Crew (v1.8.0)
+## Multi-Agent Crew
 
 The Crew orchestrates 10 specialized agents for deep test analysis. While the standard pipeline gives a fast pass/fail gate, the Crew produces structured test designs, cross-family impact maps, and prioritized test strategies.
 
@@ -297,10 +305,23 @@ Create `e2e-ai-agents.config.json` in your project (auto-discovered):
 }
 ```
 
-Key options:
+### Generation Profiles
+
+The tool auto-detects your project type and generates tests following the appropriate conventions. Use the `--profile` flag (or the `profile` config key) to select a profile explicitly:
+
+| Profile | Description |
+|---------|-------------|
+| `mattermost` | Mattermost-specific conventions (strict mode, escalation for heuristic-only mappings) |
+| `generic` | Generic Playwright project |
+| `pytest` | Python projects using pytest + requests/httpx |
+| `supertest` | Node.js API projects using supertest/vitest |
+
+When `--profile` is omitted, the tool inspects `package.json`, `pyproject.toml`, and test directory structure to pick the best match automatically.
+
+### Key options
 
 - **`testsRoot`** — path to tests when they live outside the app root
-- **`profile`** — `default` or `mattermost` (strict mode with escalation for heuristic-only mappings)
+- **`profile`** — `mattermost`, `generic`, `pytest`, or `supertest` (auto-detected when omitted)
 - **`impact.dependencyGraph`** — static reverse dependency graph for transitive impact
 - **`impact.traceability`** — file-to-test mapping from CI execution data
 - **`impact.aiFlow`** — LLM-powered flow mapping (requires `ANTHROPIC_API_KEY`)
@@ -336,7 +357,7 @@ See [examples/github-actions/pr-impact.yml](examples/github-actions/pr-impact.ym
 
 ### Package Native (default)
 
-Strategy-based Playwright test templates with quality guardrails (no `test.describe`, single tag) and iterative heal attempts.
+Strategy-based test templates for Playwright, Cypress, pytest, or supertest/vitest with quality guardrails and iterative heal attempts.
 
 ### MCP Mode (`--pipeline-mcp`)
 
@@ -466,7 +487,7 @@ Requires `agent-browser` CLI (`npm install -g agent-browser`) and `ANTHROPIC_API
 
 ## Production Usage
 
-Used by [Mattermost](https://github.com/mattermost/mattermost) for CI-integrated E2E coverage gating, test generation, and spec healing. See the [Mattermost Playwright integration](https://github.com/mattermost/mattermost/tree/master/e2e-tests/playwright) for a real-world example.
+The tool works with any project that has a `route-families.json` manifest — frontend, backend, or full-stack. Used in production by [Mattermost](https://github.com/mattermost/mattermost) for CI-integrated E2E coverage gating, test generation, and spec healing. See the [Mattermost Playwright integration](https://github.com/mattermost/mattermost/tree/master/e2e-tests/playwright) for a real-world example.
 
 ## License
 
