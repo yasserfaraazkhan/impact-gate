@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.1] - 2026-03-28
+
+### Fix
+
+- **Security** — Update `minimatch` from ^10.0.0 to ^10.2.3 to resolve ReDoS vulnerabilities (GHSA-3ppc-4f35-3m26, GHSA-7r86-cg39-jmmj, GHSA-23c5-xmqv-rm74).
+
 ## [2.1.0] - 2026-03-28
 
 ### QA Agent: Health Scoring, Fix Loop, and Regression Baselines
