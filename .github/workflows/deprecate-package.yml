@@ -1,0 +1,36 @@
+name: Deprecate npm package
+
+on:
+  workflow_dispatch:
+    inputs:
+      package_name:
+        description: npm package name to deprecate
+        required: true
+        type: string
+      version_range:
+        description: Semver range to deprecate
+        required: true
+        default: "*"
+        type: string
+      message:
+        description: Deprecation message shown to installers
+        required: true
+        type: string
+
+jobs:
+  deprecate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          registry-url: https://registry.npmjs.org/
+      - name: Deprecate package
+        run: npm deprecate "${PACKAGE_NAME}@${VERSION_RANGE}" "${DEPRECATION_MESSAGE}"
+        env:
+          PACKAGE_NAME: ${{ inputs.package_name }}
+          VERSION_RANGE: ${{ inputs.version_range }}
+          DEPRECATION_MESSAGE: ${{ inputs.message }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
