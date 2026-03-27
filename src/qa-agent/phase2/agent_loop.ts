@@ -21,6 +21,7 @@ import {
     compressActionsLog,
 } from './exploration_state.js';
 import {analyzeScreenshot} from './vision.js';
+import {computeHealthScore} from '../health_score.js';
 
 const MAX_ITERATIONS = 200;
 const COMPRESS_EVERY = 20;
@@ -63,11 +64,21 @@ For each flow, pick 3-4 of the most relevant dimensions based on what the flow d
 
 Pick dimensions that matter for THIS flow. Example: for "channel settings" → permissions + edge cases + state persistence. For "messaging" → happy path + error recovery + console health. Do NOT mechanically follow all 7.
 
+## Finding Categories
+When reporting findings, use the most specific category:
+- **visual** — Layout breaks, broken images, z-index issues, alignment, animation glitches, dark mode problems
+- **functional** — Broken links, dead buttons, form validation failures, incorrect redirects, race conditions, state not persisting
+- **ux** — Confusing navigation, missing loading indicators, slow interactions (>500ms), unclear error messages, no confirmation before destructive actions
+- **content** — Typos, grammar errors, placeholder/lorem ipsum left in, truncated text, wrong labels
+- **performance** — Slow page loads (>3s), janky scrolling, layout shifts (CLS), excessive network requests
+- **console** — JavaScript exceptions, failed network requests (4xx/5xx), CORS errors, mixed content warnings
+- **accessibility** — Missing alt text, unlabeled inputs, broken keyboard navigation, focus traps, insufficient contrast
+
 ## Rules
 1. Use the accessibility snapshot (provided after each action) to understand the page.
 2. Use click/fill/press_key to interact. References look like @e1, @e2, etc.
 3. Use wait_for to wait for elements to appear/disappear or for the page to settle after actions.
-4. Report findings immediately with report_finding — include severity, expected vs actual behavior, and repro steps.
+4. Report findings immediately with report_finding — use the specific category above, include severity, expected vs actual behavior, and repro steps.
 5. When you find a bug: take a screenshot BEFORE triggering the action and AFTER. Include expected vs actual behavior in the finding.
 6. Mark flows done with mark_flow_done when you've tested them thoroughly.
 7. Use take_screenshot sparingly — only for evidence of bugs or new flow entry.
@@ -378,6 +389,7 @@ export async function runAgentLoop(
         tokensUsed: state.tokensUsed,
         costUSD: state.costUSD,
         durationMs: Date.now() - state.startTime,
+        healthScore: computeHealthScore(state.findings),
     };
 }
 

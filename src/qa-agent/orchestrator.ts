@@ -5,13 +5,17 @@ import {execFileSync} from 'child_process';
 import {mkdirSync} from 'fs';
 
 import {logger} from '../logger.js';
-import type {Phase1Result, Phase2Result, Phase3Result, QAConfig, QAReport} from './types.js';
+import type {Phase1Result, Phase2Result, Phase25Result, Phase3Result, QAConfig, QAReport, HealthScore, RegressionComparison} from './types.js';
 import {runPhase1} from './phase1/runner.js';
 import {runAgentLoop} from './phase2/agent_loop.js';
+import {AgentBrowser} from './phase2/agent_browser.js';
 import {computeVerdict} from './phase3/verdict.js';
 import {generateReport} from './phase3/reporter.js';
 import {generateSpecsForFindings} from './phase3/spec_generator.js';
 import {submitFeedback} from './phase3/feedback.js';
+import {computeHealthScore} from './health_score.js';
+import {runFixLoop} from './phase25/fix_loop.js';
+import {saveBaseline, loadBaseline, compareBaselines} from './regression/baseline.js';
 
 function emptyPhase2Result(): Phase2Result {
     return {findings: [], flowsExplored: [], actionsCount: 0, tokensUsed: 0, costUSD: 0, durationMs: 0};
@@ -90,6 +94,58 @@ export async function runQAAgent(inputConfig: QAConfig): Promise<QAReport> {
     }
 
     // -----------------------------------------------------------------------
+    // Phase 2.5: Fix Loop (optional)
+    // -----------------------------------------------------------------------
+    let phase25: Phase25Result | undefined;
+    let healthScore: HealthScore = phase2.healthScore || computeHealthScore(phase2.findings);
+
+    if (config.fixEnabled !== false && phase2.findings.length > 0) {
+        logger.info('=== Phase 2.5: Fix Loop ===');
+
+        // Create a browser instance for the fix loop to verify fixes
+        const fixBrowser = new AgentBrowser({session: config.headed ? 'qa-fix-headed' : undefined});
+        try {
+            const projectRoot = execFileSync('git', ['rev-parse', '--show-toplevel'], {encoding: 'utf-8'}).trim();
+            phase25 = await runFixLoop(config, phase2.findings, fixBrowser, projectRoot);
+            healthScore = phase25.healthScoreAfter;
+
+            logger.info('Phase 2.5 complete', {
+                attempted: phase25.fixesAttempted,
+                verified: phase25.fixesVerified,
+                reverted: phase25.fixesReverted,
+                scoreDelta: `${phase25.healthScoreBefore.overall} → ${phase25.healthScoreAfter.overall}`,
+            });
+        } catch (err) {
+            logger.warn('Phase 2.5 failed, continuing without fixes', {error: String(err)});
+        } finally {
+            if (!config.headed) {
+                fixBrowser.close();
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Regression comparison (optional)
+    // -----------------------------------------------------------------------
+    let regressionComparison: RegressionComparison | undefined;
+    if (config.regression) {
+        const baseline = loadBaseline(outputDir);
+        if (baseline) {
+            regressionComparison = compareBaselines(healthScore, phase2.findings, baseline);
+            logger.info('Regression comparison', {
+                scoreDelta: regressionComparison.scoreDelta,
+                fixedIssues: regressionComparison.fixedIssues.length,
+                newIssues: regressionComparison.newIssues.length,
+            });
+        } else {
+            logger.info('No baseline found — saving current run as baseline');
+        }
+    }
+
+    // Always save baseline for future comparisons
+    saveBaseline(outputDir, healthScore, phase2.findings, config.baseUrl);
+
+    // -----------------------------------------------------------------------
     // Phase 3: Report + Spec Generation + Verdict
     // -----------------------------------------------------------------------
     logger.info('=== Phase 3: Report & Verdict ===');
@@ -97,11 +153,11 @@ export async function runQAAgent(inputConfig: QAConfig): Promise<QAReport> {
     // Generate specs for discovered bugs
     const generatedSpecs = generateSpecsForFindings(phase2.findings, config);
 
-    // Compute verdict
-    const verdict = computeVerdict(phase1, phase2);
+    // Compute verdict (now with health score)
+    const verdict = computeVerdict(phase1, phase2, healthScore, phase25);
 
     // Generate report
-    const phase3 = generateReport(config, phase1, phase2, verdict, generatedSpecs);
+    const phase3 = generateReport(config, phase1, phase2, verdict, generatedSpecs, phase25, healthScore, regressionComparison);
 
     // Submit feedback
     try {
@@ -113,14 +169,15 @@ export async function runQAAgent(inputConfig: QAConfig): Promise<QAReport> {
     logger.info(`=== QA Agent Complete: ${verdict.decision.toUpperCase()} ===`);
     logger.info(verdict.reason);
 
-    return buildQAReport(config, phase1, phase2, phase3, verdict);
+    return buildQAReport(config, phase1, phase2, phase3, verdict, phase25, healthScore, regressionComparison);
 }
 
 function earlyReturn(config: QAConfig, phase1: Phase1Result, phase2?: Phase2Result): QAReport {
     const p2 = phase2 || emptyPhase2Result();
-    const verdict = computeVerdict(phase1, p2);
-    const phase3 = generateReport(config, phase1, p2, verdict, []);
-    return buildQAReport(config, phase1, p2, phase3, verdict);
+    const healthScore = computeHealthScore(p2.findings);
+    const verdict = computeVerdict(phase1, p2, healthScore);
+    const phase3 = generateReport(config, phase1, p2, verdict, [], undefined, healthScore);
+    return buildQAReport(config, phase1, p2, phase3, verdict, undefined, healthScore);
 }
 
 function buildQAReport(
@@ -129,19 +186,26 @@ function buildQAReport(
     phase2: Phase2Result,
     phase3: Phase3Result,
     verdict: Phase3Result['verdict'],
+    phase25?: Phase25Result,
+    healthScore?: HealthScore,
+    regressionComparison?: RegressionComparison,
 ): QAReport {
     return {
-        schemaVersion: '1.0.0',
+        schemaVersion: '1.1.0',
         generatedAt: new Date().toISOString(),
         mode: config.mode,
         config: {
             baseUrl: config.baseUrl,
             timeLimitMinutes: config.timeLimitMinutes,
             budgetUSD: config.budgetUSD,
+            fixTier: config.fixTier,
         },
         phase1,
         phase2,
+        phase25,
         phase3,
         verdict,
+        healthScore,
+        regressionComparison,
     };
 }

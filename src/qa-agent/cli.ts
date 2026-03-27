@@ -4,13 +4,14 @@
 
 import {resolve, sep} from 'path';
 
-import type {QAConfig, RunMode} from './types.js';
+import type {FixTier, QAConfig, RunMode} from './types.js';
 import {runQAAgent} from './orchestrator.js';
 
 const MODES = new Set<RunMode>(['pr', 'hunt', 'fix', 'release']);
 const KNOWN_FLAGS = new Set([
     '--base-url', '--since', '--phase', '--time', '--budget',
     '--headed', '--tests-root', '--project', '--output', '--help', '-h',
+    '--fix-tier', '--no-fix', '--regression',
 ]);
 
 function printUsage(): void {
@@ -33,6 +34,9 @@ Options:
   --tests-root <path>   Path to tests directory
   --project <name>      Playwright project name
   --output <dir>        Output directory (default: .e2e-ai-agents)
+  --fix-tier <tier>     Fix tier: quick (critical+high), standard (+medium), exhaustive (+low) (default: standard)
+  --no-fix              Skip the fix loop (Phase 2.5)
+  --regression          Compare against previous baseline
   --help                Show this help
 
 Examples:
@@ -67,6 +71,9 @@ function parseCliArgs(argv: string[]): QAConfig | null {
     let testsRoot: string | undefined;
     let project: string | undefined;
     let outputDir: string | undefined;
+    let fixTier: FixTier = 'standard';
+    let fixEnabled = true;
+    let regression = false;
 
     // For hunt mode, the second positional arg is the target
     let startFlags = 1;
@@ -133,6 +140,22 @@ function parseCliArgs(argv: string[]): QAConfig | null {
             outputDir = next;
             i++;
             break;
+        case '--fix-tier': {
+            const validTiers = new Set<FixTier>(['quick', 'standard', 'exhaustive']);
+            if (!validTiers.has(next as FixTier)) {
+                console.error(`Error: --fix-tier must be quick, standard, or exhaustive (got "${next}")`);
+                process.exit(1);
+            }
+            fixTier = next as FixTier;
+            i++;
+            break;
+        }
+        case '--no-fix':
+            fixEnabled = false;
+            break;
+        case '--regression':
+            regression = true;
+            break;
         default:
             if (arg.startsWith('--') && !KNOWN_FLAGS.has(arg)) {
                 console.error(`Warning: unknown flag "${arg}" (ignored)`);
@@ -193,6 +216,9 @@ function parseCliArgs(argv: string[]): QAConfig | null {
         testsRoot,
         project,
         outputDir,
+        fixTier,
+        fixEnabled,
+        regression,
     };
 }
 

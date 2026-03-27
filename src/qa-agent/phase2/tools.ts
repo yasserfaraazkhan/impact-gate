@@ -5,6 +5,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 
 import type {AgentBrowser} from './agent_browser.js';
 import type {Finding, FindingSeverity, FindingType} from '../types.js';
+import {normalizeFindingType} from '../finding_taxonomy.js';
 
 // ---------------------------------------------------------------------------
 // Tool definitions (Anthropic tool_use schema)
@@ -101,11 +102,11 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
     },
     {
         name: 'report_finding',
-        description: 'Report a bug, visual issue, UX problem, or gap you discovered. Include expected/actual behavior and repro steps. Take before/after screenshots before calling this.',
+        description: 'Report a finding. Categories: visual (layout/images/alignment), functional (broken links/buttons/forms/state), ux (navigation/loading/error messages), content (typos/placeholder text/labels), performance (slow loads/layout shifts), console (JS errors/network failures), accessibility (alt text/keyboard nav/ARIA/contrast). Legacy types (bug, visual-regression, ux-issue, gap) are also accepted.',
         input_schema: {
             type: 'object' as const,
             properties: {
-                type: {type: 'string', enum: ['bug', 'visual-regression', 'ux-issue', 'gap']},
+                type: {type: 'string', enum: ['visual', 'functional', 'ux', 'content', 'performance', 'console', 'accessibility', 'bug', 'visual-regression', 'ux-issue', 'gap']},
                 severity: {type: 'string', enum: ['critical', 'high', 'medium', 'low', 'info']},
                 summary: {type: 'string', description: 'What you found'},
                 repro_steps: {
@@ -256,13 +257,18 @@ export function executeTool(
     }
 
     case 'report_finding': {
-        const VALID_TYPES = new Set<FindingType>(['bug', 'visual-regression', 'ux-issue', 'gap']);
+        const VALID_TYPES = new Set<string>([
+            'visual', 'functional', 'ux', 'content', 'performance', 'console', 'accessibility',
+            'bug', 'visual-regression', 'ux-issue', 'gap',
+        ]);
         const VALID_SEVERITIES = new Set<FindingSeverity>(['critical', 'high', 'medium', 'low', 'info']);
         const rawType = String(input.type);
         const rawSeverity = String(input.severity);
-        if (!VALID_TYPES.has(rawType as FindingType)) {
+        if (!VALID_TYPES.has(rawType)) {
             return {output: `Invalid finding type "${rawType}". Must be one of: ${[...VALID_TYPES].join(', ')}.`};
         }
+        // Normalize legacy types to canonical categories for health scoring
+        const canonicalType = normalizeFindingType(rawType);
         if (!VALID_SEVERITIES.has(rawSeverity as FindingSeverity)) {
             return {output: `Invalid severity "${rawSeverity}". Must be one of: ${[...VALID_SEVERITIES].join(', ')}.`};
         }
@@ -302,7 +308,7 @@ export function executeTool(
 
         const finding: Finding = {
             id: `f-${crypto.randomUUID()}`,
-            type: rawType as FindingType,
+            type: canonicalType as FindingType,
             severity: rawSeverity as FindingSeverity,
             summary: String(input.summary),
             flow: ctx.currentFlow,

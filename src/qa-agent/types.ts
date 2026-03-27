@@ -27,6 +27,9 @@ export interface QAConfig {
     users?: UserCredentials[];
     screenshotDir?: string;
     outputDir?: string;
+    fixTier?: FixTier;
+    fixEnabled?: boolean;
+    regression?: boolean;
 }
 
 export interface UserCredentials {
@@ -73,8 +76,85 @@ export interface BrowserAction {
 // Findings
 // ---------------------------------------------------------------------------
 
-export type FindingType = 'bug' | 'visual-regression' | 'ux-issue' | 'gap' | 'verified-ok';
+/** Canonical finding categories (v1.1) */
+export type FindingCategory = 'visual' | 'functional' | 'ux' | 'content' | 'performance' | 'console' | 'accessibility';
+
+/** Legacy finding types kept for backward compatibility */
+export type LegacyFindingType = 'bug' | 'visual-regression' | 'ux-issue' | 'gap' | 'verified-ok';
+
+/** Accepts both canonical categories and legacy type names */
+export type FindingType = FindingCategory | LegacyFindingType;
+
 export type FindingSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info';
+
+// ---------------------------------------------------------------------------
+// Health score
+// ---------------------------------------------------------------------------
+
+export type HealthScoreCategory = 'console' | 'links' | 'visual' | 'functional' | 'ux' | 'performance' | 'content' | 'accessibility';
+
+export interface CategoryScore {
+    category: HealthScoreCategory;
+    score: number;
+    weight: number;
+    findings: string[];
+}
+
+export interface HealthScore {
+    overall: number;
+    categories: CategoryScore[];
+    computedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Fix loop (Phase 2.5)
+// ---------------------------------------------------------------------------
+
+export type FixTier = 'quick' | 'standard' | 'exhaustive';
+export type FixStatus = 'verified' | 'best-effort' | 'reverted' | 'skipped';
+
+export interface FixResult {
+    findingId: string;
+    status: FixStatus;
+    commitHash?: string;
+    filesChanged?: string[];
+    beforeScreenshot?: string;
+    afterScreenshot?: string;
+}
+
+export interface Phase25Result {
+    fixes: FixResult[];
+    fixesAttempted: number;
+    fixesVerified: number;
+    fixesBestEffort: number;
+    fixesReverted: number;
+    fixesSkipped: number;
+    healthScoreBefore: HealthScore;
+    healthScoreAfter: HealthScore;
+    durationMs: number;
+    tokensUsed: number;
+    costUSD: number;
+}
+
+// ---------------------------------------------------------------------------
+// Regression baselines
+// ---------------------------------------------------------------------------
+
+export interface RegressionBaseline {
+    date: string;
+    url: string;
+    healthScore: HealthScore;
+    issues: Pick<Finding, 'id' | 'type' | 'severity' | 'summary' | 'flow'>[];
+    commitHash?: string;
+}
+
+export interface RegressionComparison {
+    baselineDate: string;
+    scoreDelta: number;
+    categoryDeltas: Partial<Record<HealthScoreCategory, number>>;
+    fixedIssues: string[];
+    newIssues: string[];
+}
 
 export interface Finding {
     id: string;
@@ -151,6 +231,7 @@ export interface Phase2Result {
     tokensUsed: number;
     costUSD: number;
     durationMs: number;
+    healthScore?: HealthScore;
 }
 
 export interface Phase3Result {
@@ -181,6 +262,7 @@ export interface ReleaseVerdict {
     highFindings: number;
     mediumFindings: number;
     lowFindings: number;
+    healthScore?: HealthScore;
 }
 
 // ---------------------------------------------------------------------------
@@ -188,16 +270,20 @@ export interface ReleaseVerdict {
 // ---------------------------------------------------------------------------
 
 export interface QAReport {
-    schemaVersion: '1.0.0';
+    schemaVersion: '1.0.0' | '1.1.0';
     generatedAt: string;
     mode: RunMode;
     config: {
         baseUrl: string;
         timeLimitMinutes: number;
         budgetUSD: number;
+        fixTier?: FixTier;
     };
     phase1: Phase1Result;
     phase2: Phase2Result;
+    phase25?: Phase25Result;
     phase3: Phase3Result;
     verdict: ReleaseVerdict;
+    healthScore?: HealthScore;
+    regressionComparison?: RegressionComparison;
 }

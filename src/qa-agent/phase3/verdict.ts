@@ -1,11 +1,13 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type {Finding, Phase1Result, Phase2Result, ReleaseVerdict, TargetFlow, FlowSignoff} from '../types.js';
+import type {HealthScore, Phase1Result, Phase2Result, Phase25Result, ReleaseVerdict, TargetFlow, FlowSignoff} from '../types.js';
 
 export function computeVerdict(
     phase1: Phase1Result,
     phase2: Phase2Result,
+    healthScore?: HealthScore,
+    phase25?: Phase25Result,
 ): ReleaseVerdict {
     const findings = phase2.findings;
 
@@ -17,7 +19,7 @@ export function computeVerdict(
     // Flow sign-offs
     const flowSignoffs = buildFlowSignoffs(phase1.flows, phase2);
 
-    // Decision logic
+    // Decision logic — start with finding-based verdict
     let decision: ReleaseVerdict['decision'];
     let reason: string;
 
@@ -35,6 +37,30 @@ export function computeVerdict(
         reason = findings.length === 0
             ? 'No issues found across all tested flows.'
             : `Only low/info findings (${low}). Safe to proceed.`;
+    }
+
+    // Factor in health score if available
+    if (healthScore) {
+        if (healthScore.overall < 50 && decision === 'go') {
+            decision = 'conditional';
+            reason += ` Health score is low (${healthScore.overall}/100).`;
+        }
+    }
+
+    // If Phase 2.5 ran and fixed all critical/high findings, potentially upgrade verdict
+    if (phase25 && phase25.fixesVerified > 0) {
+        const unfixedCritical = critical - phase25.fixes.filter(
+            (f) => f.status === 'verified' && findings.find((fi) => fi.id === f.findingId && fi.severity === 'critical'),
+        ).length;
+        const unfixedHigh = high - phase25.fixes.filter(
+            (f) => f.status === 'verified' && findings.find((fi) => fi.id === f.findingId && fi.severity === 'high'),
+        ).length;
+
+        if (unfixedCritical === 0 && unfixedHigh === 0 && decision === 'no-go') {
+            decision = medium > 0 ? 'conditional' : 'go';
+            reason = `All critical/high findings were fixed and verified (${phase25.fixesVerified} fixes). ` +
+                (medium > 0 ? `${medium} medium finding(s) remain.` : 'Safe to proceed.');
+        }
     }
 
     // Check for untested flows (P0/P1 not tested → downgrade to conditional)
@@ -61,6 +87,7 @@ export function computeVerdict(
         highFindings: high,
         mediumFindings: medium,
         lowFindings: low,
+        healthScore,
     };
 }
 
@@ -68,7 +95,7 @@ function buildFlowSignoffs(flows: TargetFlow[], phase2: Phase2Result): FlowSigno
     return flows.map((flow) => {
         const explored = phase2.flowsExplored.includes(flow.id);
         const flowFindings = phase2.findings.filter((f) => f.flow === flow.id);
-        const hasIssues = flowFindings.some((f) => f.type === 'bug' || f.severity === 'critical' || f.severity === 'high');
+        const hasIssues = flowFindings.some((f) => f.severity === 'critical' || f.severity === 'high');
 
         return {
             flowId: flow.id,
