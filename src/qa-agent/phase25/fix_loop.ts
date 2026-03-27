@@ -115,6 +115,7 @@ export async function runFixLoop(
         screenshotDir,
         screenshotCounter: 100, // Start at 100 to avoid collisions with Phase 2 screenshots
         qaCommitHashes: new Set(),
+        pendingWrittenFiles: new Set(),
     };
 
     for (const finding of fixable) {

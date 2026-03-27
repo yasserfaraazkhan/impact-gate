@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.4] - 2026-03-28
+
+### Fix
+
+- **[P0] git_restore scoped to agent files only** — `git_restore` now only discards files the fix agent wrote (`pendingWrittenFiles`), not the entire working tree. Prevents accidental loss of unrelated user work on dirty branches.
+
 ## [2.1.3] - 2026-03-28
 
 ### Fixes (from Codex review round 2)

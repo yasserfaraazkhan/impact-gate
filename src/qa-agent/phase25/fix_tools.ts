@@ -123,6 +123,8 @@ export interface FixToolContext {
     screenshotCounter: number;
     /** Commit hashes created by the fix loop. Only these can be reverted. */
     qaCommitHashes: Set<string>;
+    /** Files written by the current fix attempt. Only these are restored on failure. */
+    pendingWrittenFiles: Set<string>;
 }
 
 export interface FixToolResult {
@@ -206,6 +208,7 @@ export function executeFixTool(
         }
         const fullPath = resolve(ctx.projectRoot, filePath);
         writeFileSync(fullPath, String(input.content), 'utf-8');
+        ctx.pendingWrittenFiles.add(filePath);
         return {output: `Written: ${filePath}`, filesChanged: [filePath]};
     }
 
@@ -273,6 +276,7 @@ export function executeFixTool(
             execFileSync('git', ['commit', '-m', message], {cwd: ctx.projectRoot, encoding: 'utf-8'});
             const hash = execFileSync('git', ['rev-parse', '--short', 'HEAD'], {cwd: ctx.projectRoot, encoding: 'utf-8'}).trim();
             ctx.qaCommitHashes.add(hash);
+            ctx.pendingWrittenFiles.clear();
             return {output: `Committed: ${hash} — ${message}`, commitHash: hash, filesChanged: files};
         } catch (err: unknown) {
             const error = err as {stderr?: string};
@@ -298,9 +302,14 @@ export function executeFixTool(
     }
 
     case 'git_restore': {
+        const filesToRestore = [...ctx.pendingWrittenFiles];
+        if (filesToRestore.length === 0) {
+            return {output: 'No pending edits to restore.'};
+        }
         try {
-            execFileSync('git', ['checkout', '--', '.'], {cwd: ctx.projectRoot, encoding: 'utf-8'});
-            return {output: 'Restored working tree to last commit state. All uncommitted edits discarded.'};
+            execFileSync('git', ['checkout', '--', ...filesToRestore], {cwd: ctx.projectRoot, encoding: 'utf-8'});
+            ctx.pendingWrittenFiles.clear();
+            return {output: `Restored ${filesToRestore.length} file(s): ${filesToRestore.join(', ')}`};
         } catch (err: unknown) {
             const error = err as {stderr?: string};
             return {output: `Git restore failed: ${error.stderr || String(err)}`};

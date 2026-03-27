@@ -1,6 +1,6 @@
 {
   "name": "@yasserkhanorg/impact-gate",
-  "version": "2.1.3",
+  "version": "2.1.4",
   "description": "Diff-aware E2E impact analysis and coverage gating for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
