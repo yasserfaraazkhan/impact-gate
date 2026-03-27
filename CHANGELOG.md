@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0] - 2026-03-28
+
+### QA Agent: Health Scoring, Fix Loop, and Regression Baselines
+
+The autonomous QA agent (`impact-gate-qa`) now includes gstack-inspired quality features.
+
+#### New Features
+
+- **Health score engine** — weighted 0-100 score across 8 categories (console, links, visual, functional, UX, performance, content, accessibility). Deductions per finding severity.
+- **Expanded finding taxonomy** — 7 canonical categories replace the original 4 types. Legacy types (`bug`, `visual-regression`, `ux-issue`, `gap`) are mapped automatically.
+- **Fix loop (Phase 2.5)** — LLM-driven bug fixing with atomic commits, browser verification, and self-regulation (WTF heuristic stops when quality degrades).
+- **Regression baselines** — save/load/compare health scores across runs with `--regression`.
+- **Enhanced reports** — health score breakdown, fix results table, regression comparison, ship readiness summary.
+- **Verdict upgrades** — verdict now factors in health score and verified fixes. All critical/high fixed = verdict can upgrade from no-go.
+- **`install-skill` CLI command** — `npx impact-gate install-skill qa` copies the `/qa` Claude Code skill into your project.
+
+#### New CLI Flags (`impact-gate-qa`)
+
+- `--fix-tier <quick|standard|exhaustive>` — control which findings get fixed
+- `--no-fix` — skip the fix loop entirely
+- `--regression` — compare against the previous baseline
+
+#### Schema
+
+- Report schema bumped to `1.1.0` (backward compatible with 1.0.0 consumers)
+
 ## [2.0.0] - 2026-03-27
 
 ### Release Focus
