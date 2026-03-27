@@ -112,6 +112,7 @@ export async function runFixLoop(
         baseUrl: config.baseUrl,
         screenshotDir,
         screenshotCounter: 100, // Start at 100 to avoid collisions with Phase 2 screenshots
+        qaCommitHashes: new Set(),
     };
 
     for (const finding of fixable) {
@@ -138,7 +139,10 @@ export async function runFixLoop(
         wtf.recordAttempt(result.fix.status, result.fix.filesChanged?.length || 0);
     }
 
-    const healthScoreAfter = computeHealthScore(findings);
+    // Exclude verified fixes from the post-fix score so it reflects actual remaining issues
+    const verifiedIds = new Set(fixes.filter((f) => f.status === 'verified').map((f) => f.findingId));
+    const remainingFindings = findings.filter((f) => !verifiedIds.has(f.id));
+    const healthScoreAfter = computeHealthScore(remainingFindings);
 
     return {
         fixes,
@@ -169,6 +173,7 @@ async function fixSingleFinding(
     let filesChanged: string[] = [];
     let beforeScreenshot: string | undefined;
     let afterScreenshot: string | undefined;
+    let verifiedFixed = false;
     let status: FixStatus = 'skipped';
 
     // Take "before" screenshot
@@ -215,9 +220,10 @@ async function fixSingleFinding(
         // If no tool use, the agent is done
         const toolUseBlocks = assistantContent.filter((b) => b.type === 'tool_use');
         if (toolUseBlocks.length === 0) {
-            // Determine status from what happened
+            // Determine status: 'verified' requires both a commit and explicit confirmation
+            // from verify_in_browser that the bug is gone. A screenshot alone is not proof.
             if (commitHash) {
-                status = afterScreenshot ? 'verified' : 'best-effort';
+                status = verifiedFixed ? 'verified' : 'best-effort';
             }
             break;
         }
@@ -235,8 +241,13 @@ async function fixSingleFinding(
             if (result.filesChanged) {
                 filesChanged = [...filesChanged, ...result.filesChanged];
             }
-            if (result.screenshotPath && block.name === 'verify_in_browser') {
-                afterScreenshot = result.screenshotPath;
+            if (block.name === 'verify_in_browser') {
+                if (result.screenshotPath) {
+                    afterScreenshot = result.screenshotPath;
+                }
+                if (result.verifiedFixed === true) {
+                    verifiedFixed = true;
+                }
             }
             if (block.name === 'git_revert') {
                 status = 'reverted';

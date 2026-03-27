@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.2] - 2026-03-28
+
+### Fixes (from Codex review)
+
+- **[P0] git_revert safety** — Fix loop now tracks which commits it created. `git_revert` refuses to revert commits not created by the QA fix loop, preventing accidental rollback of user history.
+- **[P1] Post-fix health score** — Verified fixes are now excluded from the post-fix health score computation, so the score accurately reflects remaining issues.
+- **[P1] Verification requires explicit confirmation** — `verify_in_browser` now requires a `fixed` boolean parameter. A screenshot alone no longer counts as proof. Verdict upgrades require the LLM to explicitly confirm the bug is gone.
+- **[P2] Links health bucket reachable** — Added `links` as a canonical finding category so broken links contribute to the links health score (10% weight) instead of being absorbed into functional.
+- **[P2] Baseline comparison fingerprinting** — Regression diffing now uses `flow|type|summary` as the fingerprint instead of summary alone, preventing unrelated issues with generic descriptions from being collapsed.
+
 ## [2.1.1] - 2026-03-28
 
 ### Fix

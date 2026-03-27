@@ -15,7 +15,7 @@ const LEGACY_TO_CATEGORY: Record<string, FindingCategory> = {
 };
 
 const CANONICAL_CATEGORIES = new Set<string>([
-    'visual', 'functional', 'ux', 'content', 'performance', 'console', 'accessibility',
+    'visual', 'functional', 'ux', 'content', 'performance', 'console', 'accessibility', 'links',
 ]);
 
 /**
@@ -57,6 +57,11 @@ export const SEVERITY_DEFINITIONS: Record<FindingSeverity, string> = {
 // ---------------------------------------------------------------------------
 
 export const CATEGORY_DEFINITIONS: Record<FindingCategory, {label: string; description: string; examples: string[]}> = {
+    links: {
+        label: 'Links',
+        description: 'Broken links (404), wrong destinations, dead anchors, external links that fail.',
+        examples: ['404 on nav link', 'Link goes to wrong page', 'Anchor target missing', 'External link returns 500'],
+    },
     visual: {
         label: 'Visual/UI',
         description: 'Layout breaks, broken images, z-index issues, font/color inconsistencies, animation glitches, alignment issues, dark mode problems.',

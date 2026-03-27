@@ -68,26 +68,34 @@ export function loadBaseline(outputDir: string): RegressionBaseline | null {
 /**
  * Compare current findings against a saved baseline.
  */
+/**
+ * Build a fingerprint for a finding that includes flow, type, and summary
+ * to avoid collapsing distinct issues with the same generic summary.
+ */
+function issueFingerprint(issue: {type: string; summary: string; flow: string}): string {
+    return `${issue.flow}|${issue.type}|${issue.summary}`.toLowerCase();
+}
+
 export function compareBaselines(
     currentScore: HealthScore,
     currentFindings: Finding[],
     baseline: RegressionBaseline,
 ): RegressionComparison {
-    const baselineIssueIds = new Set(baseline.issues.map((i) => i.summary.toLowerCase()));
-    const currentIssueIds = new Set(
+    const baselineFingerprints = new Set(baseline.issues.map((i) => issueFingerprint(i)));
+    const currentFingerprints = new Set(
         currentFindings
             .filter((f) => f.type !== 'verified-ok')
-            .map((f) => f.summary.toLowerCase()),
+            .map((f) => issueFingerprint(f)),
     );
 
     // Issues in baseline but not in current = fixed
     const fixedIssues = baseline.issues
-        .filter((i) => !currentIssueIds.has(i.summary.toLowerCase()))
+        .filter((i) => !currentFingerprints.has(issueFingerprint(i)))
         .map((i) => `${i.id}: ${i.summary}`);
 
     // Issues in current but not in baseline = new
     const newIssues = currentFindings
-        .filter((f) => f.type !== 'verified-ok' && !baselineIssueIds.has(f.summary.toLowerCase()))
+        .filter((f) => f.type !== 'verified-ok' && !baselineFingerprints.has(issueFingerprint(f)))
         .map((f) => `${f.id}: ${f.summary}`);
 
     // Category deltas

@@ -77,7 +77,7 @@ export interface BrowserAction {
 // ---------------------------------------------------------------------------
 
 /** Canonical finding categories (v1.1) */
-export type FindingCategory = 'visual' | 'functional' | 'ux' | 'content' | 'performance' | 'console' | 'accessibility';
+export type FindingCategory = 'visual' | 'functional' | 'ux' | 'content' | 'performance' | 'console' | 'accessibility' | 'links';
 
 /** Legacy finding types kept for backward compatibility */
 export type LegacyFindingType = 'bug' | 'visual-regression' | 'ux-issue' | 'gap' | 'verified-ok';

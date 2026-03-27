@@ -67,7 +67,8 @@ Pick dimensions that matter for THIS flow. Example: for "channel settings" → p
 ## Finding Categories
 When reporting findings, use the most specific category:
 - **visual** — Layout breaks, broken images, z-index issues, alignment, animation glitches, dark mode problems
-- **functional** — Broken links, dead buttons, form validation failures, incorrect redirects, race conditions, state not persisting
+- **links** — Broken links (404), wrong destinations, dead anchors, external links that fail
+- **functional** — Dead buttons, form validation failures, incorrect redirects, race conditions, state not persisting
 - **ux** — Confusing navigation, missing loading indicators, slow interactions (>500ms), unclear error messages, no confirmation before destructive actions
 - **content** — Typos, grammar errors, placeholder/lorem ipsum left in, truncated text, wrong labels
 - **performance** — Slow page loads (>3s), janky scrolling, layout shifts (CLS), excessive network requests

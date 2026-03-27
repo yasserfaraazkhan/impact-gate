@@ -106,7 +106,7 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
         input_schema: {
             type: 'object' as const,
             properties: {
-                type: {type: 'string', enum: ['visual', 'functional', 'ux', 'content', 'performance', 'console', 'accessibility', 'bug', 'visual-regression', 'ux-issue', 'gap']},
+                type: {type: 'string', enum: ['visual', 'functional', 'ux', 'content', 'performance', 'console', 'accessibility', 'links', 'bug', 'visual-regression', 'ux-issue', 'gap']},
                 severity: {type: 'string', enum: ['critical', 'high', 'medium', 'low', 'info']},
                 summary: {type: 'string', description: 'What you found'},
                 repro_steps: {
@@ -258,7 +258,7 @@ export function executeTool(
 
     case 'report_finding': {
         const VALID_TYPES = new Set<string>([
-            'visual', 'functional', 'ux', 'content', 'performance', 'console', 'accessibility',
+            'visual', 'functional', 'ux', 'content', 'performance', 'console', 'accessibility', 'links',
             'bug', 'visual-regression', 'ux-issue', 'gap',
         ]);
         const VALID_SEVERITIES = new Set<FindingSeverity>(['critical', 'high', 'medium', 'low', 'info']);

@@ -89,14 +89,15 @@ export const FIX_TOOL_DEFINITIONS: Anthropic.Tool[] = [
     },
     {
         name: 'verify_in_browser',
-        description: 'Navigate to a URL and take a screenshot to verify a fix. Returns the screenshot path and any console errors.',
+        description: 'Navigate to a URL, take a screenshot, and report whether the fix resolved the issue. You MUST set fixed=true only if the original bug is no longer present. Set fixed=false if the bug still reproduces or if you cannot confirm.',
         input_schema: {
             type: 'object' as const,
             properties: {
                 url: {type: 'string', description: 'URL to navigate to for verification'},
                 label: {type: 'string', description: 'Label for the screenshot (e.g. "after-fix-001")'},
+                fixed: {type: 'boolean', description: 'true if the original bug is gone, false if it still reproduces or uncertain'},
             },
-            required: ['url', 'label'],
+            required: ['url', 'label', 'fixed'],
         },
     },
 ];
@@ -111,6 +112,8 @@ export interface FixToolContext {
     baseUrl: string;
     screenshotDir: string;
     screenshotCounter: number;
+    /** Commit hashes created by the fix loop. Only these can be reverted. */
+    qaCommitHashes: Set<string>;
 }
 
 export interface FixToolResult {
@@ -118,6 +121,8 @@ export interface FixToolResult {
     filesChanged?: string[];
     commitHash?: string;
     screenshotPath?: string;
+    /** Explicit verification signal from verify_in_browser */
+    verifiedFixed?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -258,6 +263,7 @@ export function executeFixTool(
             execFileSync('git', ['add', ...files], {cwd: ctx.projectRoot, encoding: 'utf-8'});
             execFileSync('git', ['commit', '-m', message], {cwd: ctx.projectRoot, encoding: 'utf-8'});
             const hash = execFileSync('git', ['rev-parse', '--short', 'HEAD'], {cwd: ctx.projectRoot, encoding: 'utf-8'}).trim();
+            ctx.qaCommitHashes.add(hash);
             return {output: `Committed: ${hash} — ${message}`, commitHash: hash, filesChanged: files};
         } catch (err: unknown) {
             const error = err as {stderr?: string};
@@ -266,10 +272,16 @@ export function executeFixTool(
     }
 
     case 'git_revert': {
+        // Safety: only revert commits created by the fix loop
+        const currentHead = execFileSync('git', ['rev-parse', '--short', 'HEAD'], {cwd: ctx.projectRoot, encoding: 'utf-8'}).trim();
+        if (!ctx.qaCommitHashes.has(currentHead)) {
+            return {output: `Blocked: HEAD (${currentHead}) was not created by the fix loop. Refusing to revert a user commit.`};
+        }
         try {
             execFileSync('git', ['revert', '--no-edit', 'HEAD'], {cwd: ctx.projectRoot, encoding: 'utf-8'});
-            const hash = execFileSync('git', ['rev-parse', '--short', 'HEAD'], {cwd: ctx.projectRoot, encoding: 'utf-8'}).trim();
-            return {output: `Reverted HEAD. New HEAD: ${hash}`, commitHash: hash};
+            ctx.qaCommitHashes.delete(currentHead);
+            const newHash = execFileSync('git', ['rev-parse', '--short', 'HEAD'], {cwd: ctx.projectRoot, encoding: 'utf-8'}).trim();
+            return {output: `Reverted ${currentHead}. New HEAD: ${newHash}`, commitHash: newHash};
         } catch (err: unknown) {
             const error = err as {stderr?: string};
             return {output: `Git revert failed: ${error.stderr || String(err)}`};
@@ -298,7 +310,9 @@ export function executeFixTool(
             // Not available
         }
 
-        return {output: `Screenshot saved: ${screenshotPath}${consoleErrors}`, screenshotPath};
+        const fixed = input.fixed === true;
+        const verdict = fixed ? 'Bug appears resolved.' : 'Bug still reproduces or unconfirmed.';
+        return {output: `Screenshot saved: ${screenshotPath}. ${verdict}${consoleErrors}`, screenshotPath, verifiedFixed: fixed};
     }
 
     default:
