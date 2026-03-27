@@ -1,6 +1,6 @@
-# How e2e-agents Compares to Other Tools
+# How impact-gate Compares to Other Tools
 
-> Last updated: March 2026 | e2e-agents v1.10.2
+> Last updated: March 2026 | impact-gate v1.10.2
 
 ## The Problem Space
 
@@ -10,11 +10,11 @@ When a developer opens a pull request, three questions need answering:
 2. **Do tests already cover those features?** (coverage assessment)
 3. **If not, what exactly should be tested?** (test design)
 
-The market offers many tools for pieces of this problem. e2e-agents is aimed at teams that want these three questions answered from a code diff inside one workflow.
+The market offers many tools for pieces of this problem. impact-gate is aimed at teams that want these three questions answered from a code diff inside one workflow.
 
 ## The Oracle Problem
 
-Every AI testing tool faces the same fundamental challenge: **knowing what correct behavior looks like** (the oracle problem). Most tools sidestep it by generating shallow assertions (`toBeVisible()`, "page didn't crash"). e2e-agents solves it through a **constraint-based oracle**:
+Every AI testing tool faces the same fundamental challenge: **knowing what correct behavior looks like** (the oracle problem). Most tools sidestep it by generating shallow assertions (`toBeVisible()`, "page didn't crash"). impact-gate solves it through a **constraint-based oracle**:
 
 ```
 Route Families Manifest (human-curated source of truth)
@@ -83,11 +83,11 @@ These tools start from a URL and explore the page. They don't know what code cha
 | EvoMaster | API tests (REST/GraphQL/gRPC) | Evolutionary algorithm, not LLM |
 | Keploy | API tests from traffic | Captures prod/staging calls |
 
-## What e2e-agents Does Differently
+## What impact-gate Does Differently
 
 ### The Constraint-Based Oracle
 
-| Capability | e2e-agents | Octomind | Momentic | Midscene | Shortest | Others |
+| Capability | impact-gate | Octomind | Momentic | Midscene | Shortest | Others |
 |-----------|-----------|----------|----------|----------|----------|--------|
 | Knows which features are affected by a code change | **Yes** (manifest + git diff) | No | No | No | No | No |
 | Maps existing tests to user flows | **Yes** (spec index + coverage eval) | No | No | No | No | No |
@@ -135,21 +135,21 @@ When a PR changes a shared component, the Crew's Cross-Impact Agent finds ripple
 
 | Area | Stronger competitor | Gap |
 |------|-------------------|-----|
-| ML-based test selection from large suites | Launchable (~90% recall on ~20% of tests) | e2e-agents identifies gaps but doesn't predict which existing tests will fail |
-| Vision-based testing (no selectors at all) | Midscene.js, TestDriver.ai | e2e-agents uses DOM/selectors; vision would eliminate selector issues entirely |
-| Intent-based runtime assertions | Momentic, Harness AI | e2e-agents defines assertions at generation time, not runtime |
-| Visual regression testing | Applitools (10+ years of visual AI) | e2e-agents has no visual testing |
-| Low-code test creation | mabl, Testsigma, Katalon | e2e-agents requires Playwright/TypeScript familiarity |
-| Managed QA service | QA Wolf (human-verified tests) | e2e-agents is fully automated, no human verification loop |
-| Enterprise maturity | Launchable (CloudBees), Copilot (Microsoft) | e2e-agents is a focused open-source project |
-| Broad language support | Qodo (30+), Copilot (all) | e2e-agents is strongest today in TypeScript/Playwright and Cypress; pytest/supertest adapters exist but are less battle-tested |
+| ML-based test selection from large suites | Launchable (~90% recall on ~20% of tests) | impact-gate identifies gaps but doesn't predict which existing tests will fail |
+| Vision-based testing (no selectors at all) | Midscene.js, TestDriver.ai | impact-gate uses DOM/selectors; vision would eliminate selector issues entirely |
+| Intent-based runtime assertions | Momentic, Harness AI | impact-gate defines assertions at generation time, not runtime |
+| Visual regression testing | Applitools (10+ years of visual AI) | impact-gate has no visual testing |
+| Low-code test creation | mabl, Testsigma, Katalon | impact-gate requires Playwright/TypeScript familiarity |
+| Managed QA service | QA Wolf (human-verified tests) | impact-gate is fully automated, no human verification loop |
+| Enterprise maturity | Launchable (CloudBees), Copilot (Microsoft) | impact-gate is a focused open-source project |
+| Broad language support | Qodo (30+), Copilot (all) | impact-gate is strongest today in TypeScript/Playwright and Cypress; pytest/supertest adapters exist but are less battle-tested |
 
 ## Cost Comparison
 
 | Tool | Pricing model | Typical cost |
 |------|-------------|-------------|
-| e2e-agents CI gate | Free (deterministic mode) | ~$0.02/PR |
-| e2e-agents Crew | Pay-per-use LLM | ~$0.50-2.00/run |
+| impact-gate CI gate | Free (deterministic mode) | ~$0.02/PR |
+| impact-gate Crew | Pay-per-use LLM | ~$0.50-2.00/run |
 | Octomind | Free tier + custom paid | Unknown |
 | Momentic | Custom ($15M raised) | Unknown |
 | QA Wolf | Managed service | ~$90K/year |
@@ -159,12 +159,12 @@ When a PR changes a shared component, the Crew's Cross-Impact Agent finds ripple
 | Applitools | From ~$969/month | ~$11,600/year |
 | testRigor | Free to ~$900/month | ~$0-10,800/year |
 
-e2e-agents has no per-seat pricing. The only cost is LLM API usage, and the deterministic pipeline (impact + plan + gate) works without any LLM key at all.
+impact-gate has no per-seat pricing. The only cost is LLM API usage, and the deterministic pipeline (impact + plan + gate) works without any LLM key at all.
 
 ## Summary
 
-e2e-agents occupies an unusual position: it is one of the few tools that combines a **constraint-based oracle** (manifest + assertion patterns + TypeScript AST surface + historical failure correlation), **diff-driven impact analysis**, **semantic coverage evaluation**, and **executable test generation** in a single open-source pipeline.
+impact-gate occupies an unusual position: it is one of the few tools that combines a **constraint-based oracle** (manifest + assertion patterns + TypeScript AST surface + historical failure correlation), **diff-driven impact analysis**, **semantic coverage evaluation**, and **executable test generation** in a single open-source pipeline.
 
 The tradeoff is narrower scope (TypeScript/Playwright focus) and less enterprise maturity compared to well-funded competitors. The vision-based testing approach (Midscene, TestDriver) eliminates selector issues entirely but adds runtime cost and non-determinism — a different tradeoff that may be worth adopting for specific use cases.
 
-For teams that want change-driven test planning and optional generation with business-logic assertions — without vendor lock-in or per-seat pricing — e2e-agents is a distinctive open-source option, especially when the route-families manifest is well maintained.
+For teams that want change-driven test planning and optional generation with business-logic assertions — without vendor lock-in or per-seat pricing — impact-gate is a distinctive open-source option, especially when the route-families manifest is well maintained.

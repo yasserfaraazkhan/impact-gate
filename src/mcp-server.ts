@@ -3,7 +3,7 @@
 // See LICENSE.txt for license information.
 
 /**
- * MCP Server for E2E Agents - SECURITY HARDENED
+ * MCP Server for Impact Gate - SECURITY HARDENED
  * Exposes tools for Claude and Playwright agents to discover, generate, and heal tests
  */
 
@@ -608,7 +608,7 @@ export async function handleJsonRpcMessage(
             result: {
                 protocolVersion: typeof params?.protocolVersion === 'string' ? params.protocolVersion : '2024-11-05',
                 capabilities: {tools: {}, resources: {}, prompts: {}},
-                serverInfo: {name: 'e2e-agents-mcp', version},
+                serverInfo: {name: 'impact-gate-mcp', version},
             },
         };
     }

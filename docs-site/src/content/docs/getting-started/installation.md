@@ -1,6 +1,6 @@
 ---
 title: "Installation"
-description: "Install @yasserkhanorg/e2e-agents and verify your setup"
+description: "Install @yasserkhanorg/impact-gate and verify your setup"
 ---
 
 ## Requirements
@@ -14,13 +14,13 @@ description: "Install @yasserkhanorg/e2e-agents and verify your setup"
 Add the package to your project:
 
 ```bash
-npm install @yasserkhanorg/e2e-agents
+npm install @yasserkhanorg/impact-gate
 ```
 
 Or install globally for CLI access anywhere:
 
 ```bash
-npm install -g @yasserkhanorg/e2e-agents
+npm install -g @yasserkhanorg/impact-gate
 ```
 
 ## Verify
@@ -28,7 +28,7 @@ npm install -g @yasserkhanorg/e2e-agents
 Confirm the CLI is available:
 
 ```bash
-npx e2e-ai-agents --help
+npx impact-gate --help
 ```
 
 You should see the list of available commands including `impact`, `plan`, `crew`, `train`, and others.
@@ -54,7 +54,7 @@ The core CI commands (`impact`, `plan`, `gate`, `train --no-enrich`, `cost-repor
 ## Verify Provider Connectivity
 
 ```bash
-npx e2e-ai-agents llm-health
+npx impact-gate llm-health
 ```
 
 This probes the configured provider, or the auto-detected provider if you rely on environment discovery, and reports whether it can accept requests and return responses.

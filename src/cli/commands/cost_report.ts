@@ -67,7 +67,7 @@ export function runCostReportCommand(args: ParsedArgs): void {
         if (!existsSync(metricsPath)) {
             console.log(`Metrics file not found at: ${metricsPath}`);
         } else {
-            console.log('Run `e2e-ai-agents crew` to generate cost data.');
+            console.log('Run `impact-gate crew` to generate cost data.');
         }
         return;
     }
@@ -83,7 +83,7 @@ export function runCostReportCommand(args: ParsedArgs): void {
     const totalCost = events.reduce((sum, e) => sum + e.totalCost, 0);
     const totalRuns = events.length;
 
-    console.log(`E2E Agents Cost Report (last ${days} days)`);
+    console.log(`Impact Gate Cost Report (last ${days} days)`);
     console.log('='.repeat(45));
     console.log(`\nTotal: $${totalCost.toFixed(2)} across ${totalRuns} runs\n`);
 

@@ -1,11 +1,11 @@
 {
-  "name": "e2e-agents-example-playwright",
+  "name": "impact-gate-example-playwright",
   "private": true,
   "scripts": {
     "demo": "node demo.js",
-    "demo:impact": "npx e2e-ai-agents impact --path . --tests-root e2e --since HEAD~1",
-    "demo:plan": "npx e2e-ai-agents plan --path . --tests-root e2e --since HEAD~1",
-    "demo:dry-run": "npx e2e-ai-agents crew --workflow quick-check --dry-run --path . --tests-root e2e --since HEAD~1"
+    "demo:impact": "npx impact-gate impact --path . --tests-root e2e --since HEAD~1",
+    "demo:plan": "npx impact-gate plan --path . --tests-root e2e --since HEAD~1",
+    "demo:dry-run": "npx impact-gate crew --workflow quick-check --dry-run --path . --tests-root e2e --since HEAD~1"
   },
   "devDependencies": {
     "@playwright/test": "^1.45.0",

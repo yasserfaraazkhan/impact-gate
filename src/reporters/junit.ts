@@ -95,7 +95,7 @@ export const junitReporter: Reporter = {
         const totalFailures = highFindings.length;
 
         return `<?xml version="1.0" encoding="UTF-8"?>\n` +
-               `<testsuites name="e2e-agents: ${escapeXml(results.workflow)}" ` +
+               `<testsuites name="impact-gate: ${escapeXml(results.workflow)}" ` +
                `tests="${totalTests}" failures="${totalFailures}" ` +
                `time="0">\n` +
                `  <properties>\n` +

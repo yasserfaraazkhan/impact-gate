@@ -1,6 +1,6 @@
 # Development Guide
 
-This guide covers the practical setup and workflow for contributing to `@yasserkhanorg/e2e-agents`. For architecture and module descriptions, see [ARCHITECTURE.md](../ARCHITECTURE.md). For contribution guidelines and code standards, see [CONTRIBUTING.md](../CONTRIBUTING.md).
+This guide covers the practical setup and workflow for contributing to `@yasserkhanorg/impact-gate`. For architecture and module descriptions, see [ARCHITECTURE.md](../ARCHITECTURE.md). For contribution guidelines and code standards, see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## Prerequisites
 
@@ -15,8 +15,8 @@ Optional for testing LLM features:
 ## Setup
 
 ```bash
-git clone https://github.com/yasserfaraazkhan/e2e-agents.git
-cd e2e-agents
+git clone https://github.com/yasserfaraazkhan/impact-gate.git
+cd impact-gate
 npm install
 npm run build
 ```
@@ -39,7 +39,7 @@ The project ships both CommonJS and ESM builds from a single TypeScript source. 
 
 ### Why Dual Build
 
-- **CJS (`dist/`)**: The `e2e-ai-agents` CLI binary uses `require()`. Node.js resolves the `"main"` field in `package.json` to `dist/index.js`.
+- **CJS (`dist/`)**: The `impact-gate` CLI binary uses `require()`. Node.js resolves the `"main"` field in `package.json` to `dist/index.js`.
 - **ESM (`dist/esm/`)**: Library consumers using `import` get the `"module"` entry at `dist/esm/index.js`, enabling tree-shaking and native ES module support.
 
 Both builds are generated from the same source; the only difference is the `module` and `moduleResolution` settings in the respective tsconfig files.

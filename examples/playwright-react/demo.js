@@ -3,7 +3,7 @@
 const { execFileSync } = require('child_process');
 
 console.log('='.repeat(60));
-console.log('  E2E Agents Demo - Playwright + React');
+console.log('  Impact Gate Demo - Playwright + React');
 console.log('='.repeat(60));
 console.log();
 
@@ -12,7 +12,7 @@ try {
 
   const output = execFileSync(
     'npx',
-    ['e2e-ai-agents', 'impact', '--path', '.', '--tests-root', 'e2e', '--since', 'HEAD~1', '--json'],
+    ['impact-gate', 'impact', '--path', '.', '--tests-root', 'e2e', '--since', 'HEAD~1', '--json'],
     { cwd: __dirname, encoding: 'utf-8', timeout: 60_000 }
   );
 
@@ -46,7 +46,7 @@ try {
     console.log('Raw output:', err.stdout);
   }
   console.error('Error running impact analysis:', err.message);
-  console.log('\nTip: Make sure you have @yasserkhanorg/e2e-agents installed:');
-  console.log('  npm install -g @yasserkhanorg/e2e-agents');
+  console.log('\nTip: Make sure you have @yasserkhanorg/impact-gate installed:');
+  console.log('  npm install -g @yasserkhanorg/impact-gate');
   process.exitCode = 1;
 }

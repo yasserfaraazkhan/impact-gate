@@ -8,7 +8,7 @@ Go from zero to impact analysis in under a minute. All three steps below are fre
 ## Step 1: Install
 
 ```bash
-npm install @yasserkhanorg/e2e-agents
+npm install @yasserkhanorg/impact-gate
 ```
 
 ## Step 2: Run Impact Analysis
@@ -16,7 +16,7 @@ npm install @yasserkhanorg/e2e-agents
 Point the tool at your project and diff against your base branch:
 
 ```bash
-npx e2e-ai-agents impact --path . --since origin/main
+npx impact-gate impact --path . --since origin/main
 ```
 
 This parses the git diff, maps changed files to route families, and reports which E2E test flows are impacted.
@@ -26,7 +26,7 @@ This parses the git diff, maps changed files to route families, and reports whic
 The `impact` command prints a deterministic summary to stdout. To write coverage artifacts with gap analysis, run `plan`:
 
 ```bash
-npx e2e-ai-agents plan --path . --since origin/main
+npx impact-gate plan --path . --since origin/main
 ```
 
 This produces:

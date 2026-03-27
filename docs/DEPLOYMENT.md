@@ -1,41 +1,41 @@
 # Deployment Guide
 
-This document covers installation, upgrades, rollback procedures, degraded-mode operation, CI integration, and monitoring for `@yasserkhanorg/e2e-agents`.
+This document covers installation, upgrades, rollback procedures, degraded-mode operation, CI integration, and monitoring for `@yasserkhanorg/impact-gate`.
 
 ## Installation
 
 ```bash
-npm install @yasserkhanorg/e2e-agents
+npm install @yasserkhanorg/impact-gate
 ```
 
-Requires Node.js >= 20. The package ships both CommonJS and ESM builds and exposes three CLI binaries: `e2e-ai-agents`, `e2e-qa-agent`, and `e2e-agents-mcp`.
+Requires Node.js >= 20. The package ships both CommonJS and ESM builds and exposes three CLI binaries: `impact-gate`, `impact-gate-qa`, and `impact-gate-mcp`.
 
 After installation, verify the CLI is available:
 
 ```bash
-npx e2e-ai-agents --help
+npx impact-gate --help
 ```
 
 For first-time setup, run the init command to generate a config file:
 
 ```bash
-npx e2e-ai-agents init
+npx impact-gate init
 ```
 
 ## Compatibility Matrix
 
-| e2e-agents | Node.js   | Playwright | Cypress  |
+| impact-gate | Node.js   | Playwright | Cypress  |
 |------------|-----------|------------|----------|
 | 1.10.x     | >= 20.0.0 | >= 1.40.0  | >= 13.0  |
 
-**LLM providers:** Anthropic SDK ^0.73.0, OpenAI SDK ^4.73.0, or any local Ollama instance. The `agent-browser` peer dependency (>= 0.18.0) is optional and only required for the autonomous QA agent (`e2e-qa-agent`).
+**LLM providers:** Anthropic SDK ^0.73.0, OpenAI SDK ^4.73.0, or any local Ollama instance. The `agent-browser` peer dependency (>= 0.18.0) is optional and only required for the autonomous QA agent (`impact-gate-qa`).
 
 ## Upgrading
 
 1. Install the latest version:
 
 ```bash
-npm install @yasserkhanorg/e2e-agents@latest
+npm install @yasserkhanorg/impact-gate@latest
 ```
 
 2. Run your project's test suite to verify compatibility:
@@ -49,7 +49,7 @@ npm test
 4. If you use the crew workflow, run a quick dry-run to confirm orchestration still works:
 
 ```bash
-npx e2e-ai-agents crew --workflow quick-check --dry-run --path /path/to/project --tests-root ./e2e-tests --since origin/master
+npx impact-gate crew --workflow quick-check --dry-run --path /path/to/project --tests-root ./e2e-tests --since origin/master
 ```
 
 ## Rollback
@@ -57,7 +57,7 @@ npx e2e-ai-agents crew --workflow quick-check --dry-run --path /path/to/project 
 If an upgrade introduces issues, revert to the previous working version:
 
 ```bash
-npm install @yasserkhanorg/e2e-agents@<previous-version>
+npm install @yasserkhanorg/impact-gate@<previous-version>
 ```
 
 Optionally clear cached analysis artifacts to avoid stale data from the newer version:
@@ -73,8 +73,8 @@ Route families (`route-families.json`), traceability data, calibration metrics, 
 When LLM providers are unavailable — during outages, in air-gapped environments, or when no API keys are configured — you can run in degraded mode:
 
 ```bash
-npx e2e-ai-agents impact --path /path/to/project
-npx e2e-ai-agents plan --path /path/to/project
+npx impact-gate impact --path /path/to/project
+npx impact-gate plan --path /path/to/project
 ```
 
 In degraded mode:
@@ -112,7 +112,7 @@ jobs:
 
       - name: Run impact analysis
         run: |
-          npx e2e-ai-agents plan \
+          npx impact-gate plan \
             --path . \
             --since origin/${{ github.base_ref }} \
             --fail-on-must-add-tests \
@@ -123,7 +123,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          npx e2e-ai-agents crew \
+          npx impact-gate crew \
             --workflow quick-check \
             --path . \
             --tests-root ./e2e-tests \
@@ -151,7 +151,7 @@ Artifacts are written to `.e2e-ai-agents/` and can be uploaded for later inspect
 Track LLM spending across runs:
 
 ```bash
-npx e2e-ai-agents cost-report --path /path/to/project
+npx impact-gate cost-report --path /path/to/project
 ```
 
 This reads the append-only `metrics.jsonl` log and summarizes token usage, cost per agent, and cost per provider. Use `--json` for machine-readable output suitable for dashboards.
@@ -161,7 +161,7 @@ This reads the append-only `metrics.jsonl` log and summarizes token usage, cost 
 Verify that configured LLM providers are reachable:
 
 ```bash
-npx e2e-ai-agents llm-health
+npx impact-gate llm-health
 ```
 
 This sends a minimal probe to the configured provider, or the auto-detected provider if you rely on environment discovery, and reports availability. It does not measure latency.

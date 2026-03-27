@@ -1,9 +1,9 @@
 ---
 title: "CLI Commands"
-description: "Complete reference for all e2e-ai-agents CLI commands"
+description: "Complete reference for all impact-gate CLI commands"
 ---
 
-All commands are invoked via `npx e2e-ai-agents <command>`. Start with the core CI workflow first, then layer in optional AI features if the deterministic plan is already useful.
+All commands are invoked via `npx impact-gate <command>`. Start with the core CI workflow first, then layer in optional AI features if the deterministic plan is already useful.
 
 ## Core CI Workflow
 
@@ -12,7 +12,7 @@ All commands are invoked via `npx e2e-ai-agents <command>`. Start with the core 
 Map changed files to impacted route families using deterministic analysis. Free tier.
 
 ```bash
-npx e2e-ai-agents impact --path . --since origin/main
+npx impact-gate impact --path . --since origin/main
 ```
 
 ### `plan` (alias: `suggest`)
@@ -20,7 +20,7 @@ npx e2e-ai-agents impact --path . --since origin/main
 Generate a coverage plan with gap analysis, run sets, and confidence scores. Free tier.
 
 ```bash
-npx e2e-ai-agents plan --path . --since origin/main --fail-on-must-add-tests
+npx impact-gate plan --path . --since origin/main --fail-on-must-add-tests
 ```
 
 Key flags: `--fail-on-must-add-tests`, `--github-output`, `--ci-comment-path`, `--json`
@@ -30,7 +30,7 @@ Key flags: `--fail-on-must-add-tests`, `--github-output`, `--ci-comment-path`, `
 Pass/fail check against a coverage threshold. Exits non-zero on failure.
 
 ```bash
-npx e2e-ai-agents gate --threshold 80 --path .
+npx impact-gate gate --threshold 80 --path .
 ```
 
 `--threshold` is percentage-style (`0-100`). For example, `80` means 80%.
@@ -42,7 +42,7 @@ npx e2e-ai-agents gate --threshold 80 --path .
 Convenience wrapper that runs impact + plan, and optionally generation and healing.
 
 ```bash
-npx e2e-ai-agents analyze --path . --generate --heal
+npx impact-gate analyze --path . --generate --heal
 ```
 
 ### `generate`
@@ -50,7 +50,7 @@ npx e2e-ai-agents analyze --path . --generate --heal
 LLM-powered spec generation with iterative run-fix loops.
 
 ```bash
-npx e2e-ai-agents generate --path . --max-attempts 3
+npx impact-gate generate --path . --max-attempts 3
 ```
 
 ### `heal`
@@ -58,7 +58,7 @@ npx e2e-ai-agents generate --path . --max-attempts 3
 Repair flaky or failing specs from Playwright report data.
 
 ```bash
-npx e2e-ai-agents heal --path . --traceability-report ./playwright-report.json
+npx impact-gate heal --path . --traceability-report ./playwright-report.json
 ```
 
 ### `finalize-generated-tests`
@@ -66,7 +66,7 @@ npx e2e-ai-agents heal --path . --traceability-report ./playwright-report.json
 Stage generated tests, commit, and optionally open a PR.
 
 ```bash
-npx e2e-ai-agents finalize-generated-tests --path . --create-pr --pr-title "Add E2E tests"
+npx impact-gate finalize-generated-tests --path . --create-pr --pr-title "Add E2E tests"
 ```
 
 ## Setup And Calibration
@@ -76,7 +76,7 @@ npx e2e-ai-agents finalize-generated-tests --path . --create-pr --pr-title "Add 
 Initialize a new configuration file interactively.
 
 ```bash
-npx e2e-ai-agents init
+npx impact-gate init
 ```
 
 ### `train`
@@ -85,13 +85,13 @@ Build the route-families manifest by scanning your codebase.
 
 ```bash
 # Offline (free)
-npx e2e-ai-agents train --no-enrich --path .
+npx impact-gate train --no-enrich --path .
 
 # With LLM enrichment
-npx e2e-ai-agents train --path . --budget-usd 0.50
+npx impact-gate train --path . --budget-usd 0.50
 
 # Validate accuracy
-npx e2e-ai-agents train --validate --since HEAD~50 --path .
+npx impact-gate train --validate --since HEAD~50 --path .
 ```
 
 Key flags: `--no-enrich`, `--validate`, `--server-path`, `--budget-usd`, `--verbose`
@@ -102,13 +102,13 @@ Generate a route-families manifest from an Understand-Anything knowledge graph. 
 
 ```bash
 # Default: reads .understand-anything/knowledge-graph.json
-npx e2e-ai-agents bootstrap --path .
+npx impact-gate bootstrap --path .
 
 # Custom knowledge graph location
-npx e2e-ai-agents bootstrap --kg-path ./my-kg.json
+npx impact-gate bootstrap --kg-path ./my-kg.json
 
 # API-only tests, limit to 30 families, preview first
-npx e2e-ai-agents bootstrap --test-mode api --max-families 30 --dry-run
+npx impact-gate bootstrap --test-mode api --max-families 30 --dry-run
 ```
 
 Key flags:
@@ -127,7 +127,7 @@ Key flags:
 Extract test-file relationships from Playwright JSON reports.
 
 ```bash
-npx e2e-ai-agents traceability-capture --path . --traceability-report ./report.json
+npx impact-gate traceability-capture --path . --traceability-report ./report.json
 ```
 
 ### `traceability-ingest`
@@ -135,7 +135,7 @@ npx e2e-ai-agents traceability-capture --path . --traceability-report ./report.j
 Merge captured mappings into the rolling traceability manifest.
 
 ```bash
-npx e2e-ai-agents traceability-ingest --path . --traceability-input ./input.json
+npx impact-gate traceability-ingest --path . --traceability-input ./input.json
 ```
 
 Key flags: `--traceability-min-hits`, `--traceability-max-files-per-test`, `--traceability-max-age-days`
@@ -147,7 +147,7 @@ Key flags: `--traceability-min-hits`, `--traceability-max-files-per-test`, `--tr
 Ingest recommendation outcomes for calibration. Free tier.
 
 ```bash
-npx e2e-ai-agents feedback --path . --feedback-input ./feedback.json
+npx impact-gate feedback --path . --feedback-input ./feedback.json
 ```
 
 ### `cost-report`
@@ -155,7 +155,7 @@ npx e2e-ai-agents feedback --path . --feedback-input ./feedback.json
 View LLM cost breakdown from past runs. Free tier.
 
 ```bash
-npx e2e-ai-agents cost-report --path .
+npx impact-gate cost-report --path .
 ```
 
 ### `llm-health`
@@ -163,7 +163,7 @@ npx e2e-ai-agents cost-report --path .
 Test LLM provider connectivity.
 
 ```bash
-npx e2e-ai-agents llm-health
+npx impact-gate llm-health
 ```
 
 `llm-health` checks the configured provider, or the auto-detected provider if you rely on environment discovery.
@@ -175,7 +175,7 @@ npx e2e-ai-agents llm-health
 Run multi-agent workflows when you want richer strategy output or design artifacts on top of the core plan.
 
 ```bash
-npx e2e-ai-agents crew --workflow quick-check --path . --tests-root ./e2e --since origin/main
+npx impact-gate crew --workflow quick-check --path . --tests-root ./e2e --since origin/main
 ```
 
 Key flags: `--workflow` (`quick-check`, `design-only`, `full-qa`), `--budget-usd`, `--dry-run`, `--json`, `--plugins`

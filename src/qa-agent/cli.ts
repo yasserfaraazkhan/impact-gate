@@ -15,7 +15,7 @@ const KNOWN_FLAGS = new Set([
 
 function printUsage(): void {
     console.log(`
-Usage: e2e-qa-agent <mode> [options]
+Usage: impact-gate-qa <mode> [options]
 
 Modes:
   pr        Test changed features from a PR
@@ -36,10 +36,10 @@ Options:
   --help                Show this help
 
 Examples:
-  e2e-qa-agent pr --since origin/main --base-url http://localhost:8065
-  e2e-qa-agent hunt "channel settings" --base-url http://localhost:8065
-  e2e-qa-agent release --base-url http://localhost:8065 --time 30
-  e2e-qa-agent fix --base-url http://localhost:8065
+  impact-gate-qa pr --since origin/main --base-url http://localhost:8065
+  impact-gate-qa hunt "channel settings" --base-url http://localhost:8065
+  impact-gate-qa release --base-url http://localhost:8065 --time 30
+  impact-gate-qa fix --base-url http://localhost:8065
 `);
 }
 

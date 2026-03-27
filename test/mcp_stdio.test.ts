@@ -106,7 +106,7 @@ describe('handleJsonRpcMessage', () => {
         const result = response.result as Record<string, unknown>;
         assert.ok(result);
         const info = result.serverInfo as {name: string; version: string};
-        assert.equal(info.name, 'e2e-agents-mcp');
+        assert.equal(info.name, 'impact-gate-mcp');
         // Version should not be hardcoded 1.0.0
         assert.ok(info.version);
         assert.notEqual(info.version, '1.0.0');
@@ -151,7 +151,7 @@ describe('handleJsonRpcMessage', () => {
         assert.ok(response);
         const result = response.result as {content: Array<{text: string}>; isError: boolean};
         assert.ok(!result.isError);
-        assert.ok(result.content[0].text.includes('e2e-agents'));
+        assert.ok(result.content[0].text.includes('impact-gate'));
     });
 
     it('should return empty resources list', async () => {

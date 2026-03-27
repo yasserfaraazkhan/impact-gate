@@ -72,4 +72,4 @@ Analyzes test failures from the executor, diagnoses root causes (selector change
 
 ### Explorer
 
-Autonomous browser agent that navigates the application, tries edge cases, and records findings. Used by the `e2e-qa-agent` for browser-based exploratory testing.
+Autonomous browser agent that navigates the application, tries edge cases, and records findings. Used by the `impact-gate-qa` for browser-based exploratory testing.

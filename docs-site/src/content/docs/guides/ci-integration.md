@@ -25,12 +25,12 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install e2e-agents
-        run: npm install @yasserkhanorg/e2e-agents
+      - name: Install impact-gate
+        run: npm install @yasserkhanorg/impact-gate
 
       - name: Run coverage check
         run: |
-          npx e2e-ai-agents plan \
+          npx impact-gate plan \
             --since origin/${{ github.base_ref }} \
             --fail-on-must-add-tests \
             --github-output "$GITHUB_OUTPUT"
@@ -41,7 +41,7 @@ jobs:
 The `gate` command provides a pass/fail check based on a confidence threshold:
 
 ```bash
-npx e2e-ai-agents gate --threshold 80 --path .
+npx impact-gate gate --threshold 80 --path .
 ```
 
 This exits non-zero if overall coverage falls below the threshold, making it suitable as a required status check. `--threshold` uses percentage-style values (`0-100`).
@@ -62,7 +62,7 @@ Every run produces files under `.e2e-ai-agents/`:
 Use `--json` to get structured log output suitable for CI pipelines:
 
 ```bash
-npx e2e-ai-agents plan --json --path . --since origin/main
+npx impact-gate plan --json --path . --since origin/main
 ```
 
 ## Free-Tier CI
@@ -70,8 +70,8 @@ npx e2e-ai-agents plan --json --path . --since origin/main
 For zero-cost CI runs, skip AI enrichment:
 
 ```bash
-npx e2e-ai-agents impact --path . --since origin/${{ github.base_ref }}
-npx e2e-ai-agents plan --path . --since origin/${{ github.base_ref }}
+npx impact-gate impact --path . --since origin/${{ github.base_ref }}
+npx impact-gate plan --path . --since origin/${{ github.base_ref }}
 ```
 
 These commands use deterministic analysis only and require no API key. Add provider env vars only when you intentionally want AI enrichment on top of this baseline.

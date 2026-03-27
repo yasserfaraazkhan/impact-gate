@@ -1,13 +1,13 @@
 # Example: Playwright + React
 
-This example demonstrates the full `e2e-ai-agents` workflow on a minimal Playwright + React project. It includes a pre-trained route-families manifest, sample source components, and E2E test specs so you can run impact analysis, coverage planning, and crew dry-runs out of the box.
+This example demonstrates the full `impact-gate` workflow on a minimal Playwright + React project. It includes a pre-trained route-families manifest, sample source components, and E2E test specs so you can run impact analysis, coverage planning, and crew dry-runs out of the box.
 
 ## What's Included
 
 - **3 route families** (`auth`, `channels`, `settings`) pre-configured in `.e2e-ai-agents/route-families.json`
 - **Source placeholders** in `src/components/` mapped to each family
 - **Playwright specs** in `e2e/` covering login, channel listing, and profile settings
-- **Config file** (`e2e-ai-agents.config.json`) pointing to the local project structure
+- **Config file** (`impact-gate.config.json`) pointing to the local project structure
 
 ## How to Run
 
@@ -25,7 +25,7 @@ Determine which test families are affected by recent code changes:
 npm run demo:impact
 ```
 
-This runs `e2e-ai-agents impact` against the last commit. It reads the route-families manifest, compares it to the git diff, and reports which families and specs are impacted. No API key needed.
+This runs `impact-gate impact` against the last commit. It reads the route-families manifest, compares it to the git diff, and reports which families and specs are impacted. No API key needed.
 
 ### 2. Coverage Plan
 
@@ -68,7 +68,7 @@ This feedback loop is the core workflow: change code, run impact, see which test
 
 ```
 playwright-react/
-  e2e-ai-agents.config.json    # CLI configuration
+  impact-gate.config.json    # CLI configuration
   .e2e-ai-agents/
     route-families.json         # Pre-trained family manifest
   src/components/
@@ -84,5 +84,5 @@ playwright-react/
 ## Next Steps
 
 - See the [main README](../../README.md) for full CLI reference and CI integration
-- Try `e2e-ai-agents train --path . --no-enrich` to rebuild the manifest from scratch
+- Try `impact-gate train --path . --no-enrich` to rebuild the manifest from scratch
 - Add an `ANTHROPIC_API_KEY` and run `npm run demo:plan` for AI-enriched recommendations

@@ -12,8 +12,8 @@ description: "Dev setup, build system, testing, and common pitfalls"
 ## Setup
 
 ```bash
-git clone https://github.com/yasserfaraazkhan/e2e-agents.git
-cd e2e-agents
+git clone https://github.com/yasserfaraazkhan/impact-gate.git
+cd impact-gate
 npm install
 npm run build
 ```

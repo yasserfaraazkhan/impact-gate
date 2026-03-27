@@ -4,10 +4,10 @@ import starlight from '@astrojs/starlight';
 export default defineConfig({
   integrations: [
     starlight({
-      title: 'E2E Agents',
+      title: 'Impact Gate',
       description: 'Diff-aware E2E impact analysis and coverage gating for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.',
       social: {
-        github: 'https://github.com/yasserfaraazkhan/e2e-agents',
+        github: 'https://github.com/yasserfaraazkhan/impact-gate',
       },
       sidebar: [
         {

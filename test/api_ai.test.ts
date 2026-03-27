@@ -14,7 +14,7 @@ let tmpDir;
 let savedApiKey;
 
 before(() => {
-    tmpDir = join(os.tmpdir(), `e2e-agents-api-ai-test-${Date.now()}`);
+    tmpDir = join(os.tmpdir(), `impact-gate-api-ai-test-${Date.now()}`);
     mkdirSync(tmpDir, {recursive: true});
     // Save and unset any real API key to avoid actual network calls
     savedApiKey = process.env.ANTHROPIC_API_KEY;

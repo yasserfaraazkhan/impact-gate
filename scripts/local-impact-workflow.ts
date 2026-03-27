@@ -32,7 +32,7 @@ function usage() {
         '  status      Print current local impact/approval status',
         '',
         'Common options:',
-        '  --config <path>      Path to e2e-ai-agents config JSON',
+        '  --config <path>      Path to impact-gate config JSON',
         '  --tests-root <path>  Tests root (where .e2e-ai-agents lives)',
         '  --review <path>      Override review markdown output path',
         '  --approval <path>    Override approval JSON path',
@@ -46,13 +46,13 @@ function usage() {
         '  --force              Ignore runId mismatch between approval and plan',
         '',
         'Pass-through:',
-        '  Additional flags are passed to e2e-ai-agents suggest/approve-and-generate.',
+        '  Additional flags are passed to impact-gate suggest/approve-and-generate.',
         '',
         'Examples:',
-        '  node scripts/local-impact-workflow.js suggest --config ./e2e-ai-agents.config.json --since master',
-        '  node scripts/local-impact-workflow.js approve --config ./e2e-ai-agents.config.json --decision approve --note "LGTM for generation"',
-        '  node scripts/local-impact-workflow.js generate --config ./e2e-ai-agents.config.json --since master --pipeline-dry-run',
-        '  node scripts/local-impact-workflow.js status --config ./e2e-ai-agents.config.json',
+        '  node scripts/local-impact-workflow.js suggest --config ./impact-gate.config.json --since master',
+        '  node scripts/local-impact-workflow.js approve --config ./impact-gate.config.json --decision approve --note "LGTM for generation"',
+        '  node scripts/local-impact-workflow.js generate --config ./impact-gate.config.json --since master --pipeline-dry-run',
+        '  node scripts/local-impact-workflow.js status --config ./impact-gate.config.json',
     ].join('\n'));
 }
 

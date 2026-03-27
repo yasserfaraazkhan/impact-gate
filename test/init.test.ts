@@ -21,7 +21,7 @@ test('init --yes creates config with defaults', () => {
             encoding: 'utf-8',
             stdio: ['pipe', 'pipe', 'pipe'],
         });
-        const configPath = join(dir, 'e2e-ai-agents.config.json');
+        const configPath = join(dir, 'impact-gate.config.json');
         assert(existsSync(configPath), 'config file should be created');
 
         const config = JSON.parse(readFileSync(configPath, 'utf-8'));
@@ -49,7 +49,7 @@ test('init --yes detects playwright from package.json', () => {
             encoding: 'utf-8',
             stdio: ['pipe', 'pipe', 'pipe'],
         });
-        const config = JSON.parse(readFileSync(join(dir, 'e2e-ai-agents.config.json'), 'utf-8'));
+        const config = JSON.parse(readFileSync(join(dir, 'impact-gate.config.json'), 'utf-8'));
         assert.strictEqual(config.framework, 'playwright');
     } finally {
         rmSync(dir, {recursive: true, force: true});
@@ -67,7 +67,7 @@ test('init --yes detects cypress from package.json', () => {
             encoding: 'utf-8',
             stdio: ['pipe', 'pipe', 'pipe'],
         });
-        const config = JSON.parse(readFileSync(join(dir, 'e2e-ai-agents.config.json'), 'utf-8'));
+        const config = JSON.parse(readFileSync(join(dir, 'impact-gate.config.json'), 'utf-8'));
         assert.strictEqual(config.framework, 'cypress');
     } finally {
         rmSync(dir, {recursive: true, force: true});
@@ -83,7 +83,7 @@ test('init --yes detects tests root directory', () => {
             encoding: 'utf-8',
             stdio: ['pipe', 'pipe', 'pipe'],
         });
-        const config = JSON.parse(readFileSync(join(dir, 'e2e-ai-agents.config.json'), 'utf-8'));
+        const config = JSON.parse(readFileSync(join(dir, 'impact-gate.config.json'), 'utf-8'));
         assert.strictEqual(config.testsRoot, 'e2e');
     } finally {
         rmSync(dir, {recursive: true, force: true});
@@ -93,7 +93,7 @@ test('init --yes detects tests root directory', () => {
 test('init refuses if config already exists', () => {
     const dir = makeTmpDir();
     try {
-        writeFileSync(join(dir, 'e2e-ai-agents.config.json'), '{}');
+        writeFileSync(join(dir, 'impact-gate.config.json'), '{}');
         assert.throws(() => {
             execFileSync(process.execPath, [CLI_PATH, 'init', '--yes'], {
                 cwd: dir,
@@ -114,7 +114,7 @@ test('init -y is alias for --yes', () => {
             encoding: 'utf-8',
             stdio: ['pipe', 'pipe', 'pipe'],
         });
-        assert(existsSync(join(dir, 'e2e-ai-agents.config.json')), 'config should be created with -y');
+        assert(existsSync(join(dir, 'impact-gate.config.json')), 'config should be created with -y');
     } finally {
         rmSync(dir, {recursive: true, force: true});
     }

@@ -3,7 +3,7 @@
 
 /**
  * Dynamic generation profile — replaces hardcoded Mattermost references with
- * project-specific configuration. Enables e2e-agents to generate tests for any project.
+ * project-specific configuration. Enables impact-gate to generate tests for any project.
  */
 
 import type {KnowledgeGraph} from '../knowledge/kg_types.js';

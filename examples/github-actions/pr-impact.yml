@@ -38,7 +38,7 @@ jobs:
         id: plan
         continue-on-error: true
         run: |
-          npx e2e-ai-agents suggest \
+          npx impact-gate suggest \
             --path ./webapp \
             --tests-root ./e2e-tests/playwright \
             --since origin/master \
@@ -91,7 +91,7 @@ jobs:
         if: always()
         run: |
           if [ -f ./.e2e-ai-agents/playwright-report.json ]; then
-            npx e2e-ai-agents traceability-capture \
+            npx impact-gate traceability-capture \
               --path ./webapp \
               --tests-root ./e2e-tests/playwright \
               --traceability-report ./.e2e-ai-agents/playwright-report.json \
@@ -104,7 +104,7 @@ jobs:
         if: always()
         run: |
           if [ -f ./e2e-tests/playwright/.e2e-ai-agents/traceability-input.json ]; then
-            npx e2e-ai-agents traceability-ingest \
+            npx impact-gate traceability-ingest \
               --path ./webapp \
               --tests-root ./e2e-tests/playwright \
               --traceability-input ./e2e-tests/playwright/.e2e-ai-agents/traceability-input.json \

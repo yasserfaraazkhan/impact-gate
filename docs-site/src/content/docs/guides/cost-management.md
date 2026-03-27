@@ -24,7 +24,7 @@ These commands run without any LLM calls or API keys:
 Cap LLM spending per run with `--budget-usd`:
 
 ```bash
-npx e2e-ai-agents crew --workflow design-only --budget-usd 2.00 --path .
+npx impact-gate crew --workflow design-only --budget-usd 2.00 --path .
 ```
 
 When the budget is exhausted, further LLM calls are rejected and the run completes with whatever results it has so far. The default budget for `train` is $0.50 with a max of $10.
@@ -34,7 +34,7 @@ When the budget is exhausted, further LLM calls are rejected and the run complet
 View a breakdown of LLM costs from past runs:
 
 ```bash
-npx e2e-ai-agents cost-report --path .
+npx impact-gate cost-report --path .
 ```
 
 This reads the cost tracking data stored in `.e2e-ai-agents/` and reports per-agent and per-model spend.
@@ -52,7 +52,7 @@ This happens automatically when using the default provider configuration.
 For zero-cost operation that skips all AI calls:
 
 ```bash
-npx e2e-ai-agents crew --workflow quick-check --degraded-mode --path .
+npx impact-gate crew --workflow quick-check --degraded-mode --path .
 ```
 
 In degraded mode, agents that require LLM calls are skipped. Deterministic analysis (impact mapping, gap detection) still runs, so you get partial results at no cost.

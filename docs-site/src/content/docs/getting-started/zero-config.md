@@ -37,7 +37,7 @@ Walks up from the current directory until it finds `package.json` or `.git`.
 
 ## When You Need a Config File
 
-Create `e2e-ai-agents.config.json` in your project root when you need to:
+Create `impact-gate.config.json` in your project root when you need to:
 
 - Set a **profile** (e.g., `mattermost` for strict mode)
 - Configure **dependency graph** depth or traceability settings
@@ -48,14 +48,14 @@ Create `e2e-ai-agents.config.json` in your project root when you need to:
 
 If auto-detection gets it wrong, prefer explicit flags or a config file over guessing.
 
-The CLI searches for `e2e-ai-agents.config.json` or `.e2e-ai-agents.config.json` starting from the current directory and walking upward.
+The CLI searches for `impact-gate.config.json` or `.impact-gate.config.json` starting from the current directory and walking upward.
 
 ## Bootstrap: Alternative Setup with a Knowledge Graph
 
 If your project already has an [Understand-Anything](https://github.com/nicholasgriffintn/understand-anything) knowledge graph, the `bootstrap` command can generate your route-families manifest automatically instead of running `train`:
 
 ```bash
-npx e2e-ai-agents bootstrap --path .
+npx impact-gate bootstrap --path .
 ```
 
 Bootstrap reads the knowledge graph, classifies your project (frontend, backend, or fullstack), and produces `.e2e-ai-agents/route-families.json` with prioritized families derived from the graph's nodes and edges. It also auto-detects your test framework and test mode (`ui`, `api`, or `both`).
@@ -67,7 +67,7 @@ Use `--dry-run` to preview the manifest before writing, or `--max-families 30` t
 Any CLI flag overrides both auto-detected values and config file settings:
 
 ```bash
-npx e2e-ai-agents impact \
+npx impact-gate impact \
   --path ./webapp \
   --tests-root ./e2e-tests/playwright \
   --framework playwright \

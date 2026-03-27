@@ -1,4 +1,4 @@
-# Contributing to e2e-ai-agents
+# Contributing to impact-gate
 
 Thank you for your interest in contributing! This document provides guidelines and instructions for contributing to the project.
 
@@ -13,8 +13,8 @@ Thank you for your interest in contributing! This document provides guidelines a
 ### Setup for Development
 
 ```bash
-git clone https://github.com/yasserfaraazkhan/e2e-agents
-cd e2e-agents
+git clone https://github.com/yasserfaraazkhan/impact-gate
+cd impact-gate
 npm install
 npm run build
 ```

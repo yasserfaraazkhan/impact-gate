@@ -25,7 +25,7 @@ channel.go changed
 ## Running Impact Analysis
 
 ```bash
-npx e2e-ai-agents impact --path . --since origin/main
+npx impact-gate impact --path . --since origin/main
 ```
 
 The `impact` command prints a deterministic summary to stdout. Use `plan` when you want `.e2e-ai-agents/plan.json` and `.e2e-ai-agents/ci-summary.md` artifacts with `impactedFamilies`, `runSet`, `confidence`, and `decision`.
@@ -36,10 +36,10 @@ For accurate results, build a manifest that maps your codebase to features:
 
 ```bash
 # Offline scan (free, no API key)
-npx e2e-ai-agents train --no-enrich --path .
+npx impact-gate train --no-enrich --path .
 
 # With LLM enrichment for better metadata
-npx e2e-ai-agents train --path .
+npx impact-gate train --path .
 ```
 
 The scanner uses directory matching, test-derived discovery, server-derived grouping, and name matching to build file-to-family mappings. LLM enrichment adds URL routes, priority levels, and human-readable flow descriptions.

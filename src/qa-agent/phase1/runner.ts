@@ -19,7 +19,7 @@ export function runPhase1(config: QAConfig): Phase1Result {
         mode: config.mode,
     });
 
-    // Run e2e-agents CLI for impact/plan if we have a since ref
+    // Run impact-gate CLI for impact/plan if we have a since ref
     if (config.since && config.mode !== 'release') {
         runE2eAgentsCli(config);
     }
@@ -37,7 +37,7 @@ export function runPhase1(config: QAConfig): Phase1Result {
 }
 
 function runE2eAgentsCli(config: QAConfig): void {
-    const args = ['e2e-ai-agents'];
+    const args = ['impact-gate'];
 
     switch (config.mode) {
     case 'pr':
@@ -60,7 +60,7 @@ function runE2eAgentsCli(config: QAConfig): void {
         args.push('--tests-root', config.testsRoot);
     }
 
-    logger.info('Running e2e-ai-agents', {args: args.slice(1)});
+    logger.info('Running impact-gate', {args: args.slice(1)});
 
     const result = spawnSync('npx', args, {
         cwd: config.testsRoot || process.cwd(),
@@ -70,9 +70,9 @@ function runE2eAgentsCli(config: QAConfig): void {
         env: safeEnv(),
     });
 
-    // Exit code 2 = "no changes detected" from e2e-agents CLI, not an error
+    // Exit code 2 = "no changes detected" from impact-gate CLI, not an error
     if (result.status !== 0 && result.status !== 2) {
-        logger.warn('e2e-agents exited with non-zero status', {
+        logger.warn('impact-gate exited with non-zero status', {
             status: result.status,
             stderr: (result.stderr || '').slice(0, 500),
         });

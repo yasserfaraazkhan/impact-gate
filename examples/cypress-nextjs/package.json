@@ -1,10 +1,10 @@
 {
-  "name": "e2e-agents-example-cypress",
+  "name": "impact-gate-example-cypress",
   "private": true,
   "scripts": {
-    "demo:impact": "npx e2e-ai-agents impact --path . --tests-root cypress --since HEAD~1",
-    "demo:plan": "npx e2e-ai-agents plan --path . --tests-root cypress --since HEAD~1",
-    "demo:dry-run": "npx e2e-ai-agents crew --workflow quick-check --dry-run --path . --tests-root cypress --since HEAD~1"
+    "demo:impact": "npx impact-gate impact --path . --tests-root cypress --since HEAD~1",
+    "demo:plan": "npx impact-gate plan --path . --tests-root cypress --since HEAD~1",
+    "demo:dry-run": "npx impact-gate crew --workflow quick-check --dry-run --path . --tests-root cypress --since HEAD~1"
   },
   "devDependencies": {
     "cypress": "^13.13.0",

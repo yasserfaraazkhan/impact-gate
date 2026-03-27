@@ -249,7 +249,7 @@ export function analyzeImpact(
         manifest = buildHeuristicFamilies(changedFiles, testsRoot);
         warnings.push(
             'Route family manifest not found. Using directory-based heuristics (lower accuracy).',
-            'Tip: Run `e2e-ai-agents train` to generate a proper manifest.',
+            'Tip: Run `impact-gate train` to generate a proper manifest.',
         );
     }
 

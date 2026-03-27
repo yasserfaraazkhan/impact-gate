@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 /**
- * Prometheus-compatible metrics exporter for e2e-agents.
+ * Prometheus-compatible metrics exporter for impact-gate.
  *
  * Exports metrics in Prometheus text exposition format.
  * Can be served via HTTP or written to a file for node_exporter textfile collector.

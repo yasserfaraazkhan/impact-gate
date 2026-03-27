@@ -94,7 +94,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           mkdir -p .e2e-ai-agents
-          npx e2e-ai-agents plan \
+          npx impact-gate plan \
             --since "${{ inputs.base_ref }}" \
             --llm-provider "${{ inputs.llm_provider }}" \
             --budget-usd "${{ inputs.budget_usd }}" \
@@ -110,7 +110,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          npx e2e-ai-agents generate \
+          npx impact-gate generate \
             --llm-provider "${{ inputs.llm_provider }}" \
             --budget-usd "${{ inputs.budget_usd }}"
 
@@ -277,6 +277,6 @@ jobs:
             echo "No Playwright report found; skipping heal."
             exit 0
           fi
-          npx e2e-ai-agents heal \
+          npx impact-gate heal \
             --llm-provider "${{ inputs.llm_provider }}" \
             --budget-usd "${{ inputs.budget_usd }}"

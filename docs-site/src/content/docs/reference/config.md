@@ -3,7 +3,7 @@ title: "Configuration"
 description: "Config file format and all available fields"
 ---
 
-Create `e2e-ai-agents.config.json` (or `.e2e-ai-agents.config.json`) in your project root. The CLI auto-discovers it by walking upward from the current directory.
+Create `impact-gate.config.json` (or `.impact-gate.config.json`) in your project root. The CLI auto-discovers it by walking upward from the current directory.
 
 ## Full Config Example
 

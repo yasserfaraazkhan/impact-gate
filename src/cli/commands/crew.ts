@@ -242,7 +242,7 @@ function printDryRunOutput(result: CrewResult, workflowName: WorkflowName, jsonO
     }
 
     if (ctx.manifest?.source === 'heuristic') {
-        console.log('\n  Note: Using directory-based heuristics. Run `e2e-ai-agents train` for better accuracy.');
+        console.log('\n  Note: Using directory-based heuristics. Run `impact-gate train` for better accuracy.');
     }
 
     console.log(`\nWorkflow: ${workflowName}`);

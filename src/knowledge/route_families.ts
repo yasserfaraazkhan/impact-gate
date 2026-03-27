@@ -475,7 +475,7 @@ export function buildHeuristicFamilies(changedFiles: string[], testsRoot: string
     }
 
     logger.info(`Built ${families.length} heuristic families from ${changedFiles.length} changed files (no route-families.json found)`);
-    logger.info('Tip: Run `e2e-ai-agents train` to generate a proper route-families manifest for better accuracy.');
+    logger.info('Tip: Run `impact-gate train` to generate a proper route-families manifest for better accuracy.');
 
     return {
         families,

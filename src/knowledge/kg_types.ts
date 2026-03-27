@@ -3,7 +3,7 @@
 
 /**
  * TypeScript interfaces matching Understand-Anything's knowledge-graph.json schema.
- * These types enable the bridge between UA's knowledge graph and e2e-agents' route families.
+ * These types enable the bridge between UA's knowledge graph and impact-gate' route families.
  */
 
 export type KGNodeKind = 'file' | 'function' | 'class' | 'module' | 'concept' | 'component' | 'route' | 'hook' | 'type' | 'variable';

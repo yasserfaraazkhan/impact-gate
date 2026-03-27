@@ -9,11 +9,11 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in e2e-agents, please report it responsibly.
+If you discover a security vulnerability in impact-gate, please report it responsibly.
 
 **Do NOT open a public GitHub issue for security vulnerabilities.**
 
-Instead, please use [GitHub Security Advisories](https://github.com/yasserkhanorg/e2e-agents/security/advisories/new) to report the vulnerability, or email security concerns to the repository maintainer with:
+Instead, please use [GitHub Security Advisories](https://github.com/yasserfaraazkhan/impact-gate/security/advisories/new) to report the vulnerability, or email security concerns to the repository maintainer with:
 
 1. Description of the vulnerability
 2. Steps to reproduce

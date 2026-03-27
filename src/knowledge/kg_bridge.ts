@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 /**
- * Bridge between Understand-Anything's knowledge graph and e2e-agents' route families.
+ * Bridge between Understand-Anything's knowledge graph and impact-gate' route families.
  * Transforms KG nodes/edges into RouteFamilyManifest so existing pipeline works unchanged.
  */
 

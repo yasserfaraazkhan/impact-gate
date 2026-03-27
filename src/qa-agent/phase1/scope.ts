@@ -26,7 +26,7 @@ export function resolveScope(config: QAConfig): {flows: TargetFlow[]; specPaths:
     const testsRoot = config.testsRoot || process.cwd();
     const planPath = join(testsRoot, '.e2e-ai-agents', 'plan.json');
 
-    // Try to read plan.json (written by e2e-agents plan command)
+    // Try to read plan.json (written by impact-gate plan command)
     const plan = readPlan(planPath);
     const manifest = loadRouteFamilyManifest(testsRoot, {});
 

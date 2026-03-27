@@ -35,7 +35,7 @@ This patch release tightens the product around its clearest promise: **Diff-awar
 
 ### CLI & Behavior
 
-- **`--help` now exits successfully** — `npx e2e-ai-agents --help` returns exit code `0`; invoking the CLI without a command still returns exit code `1`.
+- **`--help` now exits successfully** — `npx impact-gate --help` returns exit code `0`; invoking the CLI without a command still returns exit code `1`.
 - **Help output now reflects the product shape** — commands are grouped into Core CI Workflow, Optional AI Workflow, Setup and Calibration, and Advanced / Experimental sections.
 - **`llm-health` now checks the configured or auto-detected provider** — this command no longer implies “probe everything”; it reports the health of the provider path the package would actually use.
 - **Crew plugins are exposed through the CLI** — added `--plugins` to the `crew` command so the plugin system is documented and wired end-to-end.

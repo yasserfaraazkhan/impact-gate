@@ -17,7 +17,7 @@ export function getVersion(): string {
         for (let d = __dirname, prev = ''; d !== prev; prev = d, d = dirname(d)) {
             try {
                 const pkg = JSON.parse(readFileSync(join(d, 'package.json'), 'utf-8')) as {name?: string; version?: string};
-                if (pkg.name === '@yasserkhanorg/e2e-agents' && pkg.version) {
+                if ((pkg.name === '@yasserkhanorg/impact-gate' || pkg.name === '@yasserkhanorg/e2e-agents') && pkg.version) {
                     _version = pkg.version;
                     return _version;
                 }

@@ -14,7 +14,7 @@ export ANTHROPIC_API_KEY=sk-ant-...
 Supports vision (image analysis) and prompt caching. Used for complex tasks like test generation and code analysis by default.
 
 ```typescript
-import { AnthropicProvider } from '@yasserkhanorg/e2e-agents';
+import { AnthropicProvider } from '@yasserkhanorg/impact-gate';
 
 const provider = new AnthropicProvider({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -30,7 +30,7 @@ export OPENAI_API_KEY=sk-...
 Supports GPT models. Configure as the primary provider when you prefer OpenAI's model family.
 
 ```typescript
-import { OpenAIProvider } from '@yasserkhanorg/e2e-agents';
+import { OpenAIProvider } from '@yasserkhanorg/impact-gate';
 
 const provider = new OpenAIProvider({
   apiKey: process.env.OPENAI_API_KEY,
@@ -55,7 +55,7 @@ Any OpenAI-compatible endpoint works as a custom provider. Useful for self-hoste
 The factory detects which provider to use based on environment variables:
 
 ```typescript
-import { LLMProviderFactory } from '@yasserkhanorg/e2e-agents';
+import { LLMProviderFactory } from '@yasserkhanorg/impact-gate';
 
 // Checks ANTHROPIC_API_KEY, OPENAI_API_KEY, OLLAMA_BASE_URL in order
 const provider = LLMProviderFactory.createFromEnv();

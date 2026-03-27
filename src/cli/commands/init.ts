@@ -7,7 +7,8 @@ import * as readline from 'readline';
 
 import {detectFramework, detectTestsRoot, detectGitDefaultBranch} from '../defaults.js';
 
-const CONFIG_FILENAME = 'e2e-ai-agents.config.json';
+const CONFIG_FILENAME = 'impact-gate.config.json';
+const LEGACY_CONFIG_FILENAMES = ['e2e-ai-agents.config.json', '.e2e-ai-agents.config.json'];
 
 interface InitAnswers {
     path: string;
@@ -64,19 +65,21 @@ function buildConfig(answers: InitAnswers): Record<string, unknown> {
 function printNextSteps(): void {
     console.log('');
     console.log('  Next steps:');
-    console.log('    1. Start with impact analysis:  npx e2e-ai-agents impact --path .');
-    console.log('    2. Build a coverage plan:      npx e2e-ai-agents plan --path .');
+    console.log('    1. Start with impact analysis:  npx impact-gate impact --path .');
+    console.log('    2. Build a coverage plan:      npx impact-gate plan --path .');
     console.log('    3. Optional AI setup:          export ANTHROPIC_API_KEY=sk-ant-...');
-    console.log('    4. Verify provider health:     npx e2e-ai-agents llm-health');
+    console.log('    4. Verify provider health:     npx impact-gate llm-health');
     console.log('');
 }
 
 export async function runInitCommand(yes = false): Promise<void> {
     const targetDir = process.cwd();
     const configPath = join(targetDir, CONFIG_FILENAME);
+    const existingLegacyConfig = LEGACY_CONFIG_FILENAMES.find((filename) => existsSync(join(targetDir, filename)));
 
-    if (existsSync(configPath)) {
-        console.error(`${CONFIG_FILENAME} already exists in this directory.`);
+    if (existsSync(configPath) || existingLegacyConfig) {
+        const existingName = existsSync(configPath) ? CONFIG_FILENAME : existingLegacyConfig;
+        console.error(`${existingName} already exists in this directory.`);
         console.error('Remove it first if you want to re-initialize.');
         process.exit(1);
     }
@@ -103,10 +106,11 @@ export async function runInitCommand(yes = false): Promise<void> {
     }
 
     console.log('');
-    console.log('  e2e-ai-agents init');
+    console.log('  impact-gate init');
     console.log('  ==================');
     console.log('');
-    console.log('  This will create an e2e-ai-agents.config.json in the current directory.');
+    console.log('  This will create an impact-gate.config.json in the current directory.');
+    console.log('  Legacy e2e-ai-agents config filenames are still supported during migration.');
     console.log('');
 
     const rl = createInterface();

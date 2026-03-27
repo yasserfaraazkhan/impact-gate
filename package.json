@@ -1,5 +1,5 @@
 {
-  "name": "@yasserkhanorg/e2e-agents",
+  "name": "@yasserkhanorg/impact-gate",
   "version": "1.10.2",
   "description": "Diff-aware E2E impact analysis and coverage gating for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.",
   "main": "dist/index.js",
@@ -27,8 +27,11 @@
     "./package.json": "./package.json"
   },
   "bin": {
+    "impact-gate": "./dist/cli.js",
     "e2e-ai-agents": "./dist/cli.js",
+    "impact-gate-qa": "./dist/qa-agent/cli.js",
     "e2e-qa-agent": "./dist/qa-agent/cli.js",
+    "impact-gate-mcp": "./dist/mcp-server.js",
     "e2e-agents-mcp": "./dist/mcp-server.js"
   },
   "files": [
@@ -74,18 +77,22 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yasserfaraazkhan/e2e-agents.git"
+    "url": "https://github.com/yasserfaraazkhan/impact-gate.git"
   },
   "keywords": [
+    "impact-gate",
+    "impact-analysis",
+    "coverage-gating",
+    "ci-gating",
     "llm",
     "ai",
     "testing",
     "test-automation",
     "e2e",
     "playwright",
-    "jest",
-    "mocha",
     "cypress",
+    "pytest",
+    "supertest",
     "anthropic",
     "claude",
     "ollama",
@@ -96,16 +103,11 @@
     "ai-testing",
     "autonomous-testing",
     "test-generation",
-    "ai-agents",
     "provider-abstraction",
-    "framework-agnostic",
     "cost-tracking",
     "hybrid-mode",
-    "vision-analysis",
-    "screenshot-analysis",
     "test-discovery",
     "test-healing",
-    "impact-analysis",
     "coverage",
     "qa",
     "ci-cd"
@@ -114,7 +116,10 @@
     "node": ">=20.0.0"
   },
   "author": "Yasser Khan",
-  "homepage": "https://github.com/yasserfaraazkhan/e2e-agents",
+  "homepage": "https://github.com/yasserfaraazkhan/impact-gate",
+  "bugs": {
+    "url": "https://github.com/yasserfaraazkhan/impact-gate/issues"
+  },
   "publishConfig": {
     "access": "public"
   }

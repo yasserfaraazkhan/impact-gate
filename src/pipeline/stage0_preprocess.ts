@@ -73,7 +73,7 @@ export function preprocess(changedFiles: string[], config: PreprocessConfig): Pr
         manifest = buildHeuristicFamilies(changedFiles, config.testsRoot);
         warnings.push(
             'Route family manifest not found. Using directory-based heuristics (lower accuracy).',
-            'Tip: Run `e2e-ai-agents train` to generate a proper manifest.',
+            'Tip: Run `impact-gate train` to generate a proper manifest.',
         );
     }
 

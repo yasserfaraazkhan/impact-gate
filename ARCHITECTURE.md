@@ -1,6 +1,6 @@
 # Architecture
 
-This document describes the internal structure of `@yasserkhanorg/e2e-agents` for contributors and integrators. For usage instructions, see the [README](README.md). For development setup, see [.github/DEVELOPMENT.md](.github/DEVELOPMENT.md).
+This document describes the internal structure of `@yasserkhanorg/impact-gate` for contributors and integrators. For usage instructions, see the [README](README.md). For development setup, see [.github/DEVELOPMENT.md](.github/DEVELOPMENT.md).
 
 ## High-Level Module Map
 
@@ -8,7 +8,7 @@ The codebase lives under `src/` and is organized into focused modules. Each modu
 
 ### CLI (`src/cli/`)
 
-Entry point for all user interaction. `src/cli.ts` is the binary entry (`e2e-ai-agents`). Argument parsing lives in `parse_args.ts`, and each command has its own file under `commands/` (e.g., `impact.ts`, `crew.ts`, `train.ts`, `cost_report.ts`). The CLI layer resolves defaults from `defaults.ts`, validates inputs, and dispatches to the appropriate engine or crew command. It never contains business logic itself.
+Entry point for all user interaction. `src/cli.ts` is the binary entry (`impact-gate`). Argument parsing lives in `parse_args.ts`, and each command has its own file under `commands/` (e.g., `impact.ts`, `crew.ts`, `train.ts`, `cost_report.ts`). The CLI layer resolves defaults from `defaults.ts`, validates inputs, and dispatches to the appropriate engine or crew command. It never contains business logic itself.
 
 ### Engine (`src/engine/`)
 

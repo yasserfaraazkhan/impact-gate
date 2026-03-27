@@ -5,7 +5,7 @@ export function printUsage(): void {
     console.log(
         [
             'Usage:',
-            '  e2e-ai-agents <command> [options]',
+            '  impact-gate <command> [options]',
             '',
             'Core CI workflow:',
             '  impact --path <app-root> [options]',
@@ -33,7 +33,7 @@ export function printUsage(): void {
             '  crew --path <app-root> [--crew-workflow <name>] [--plugins <paths>]',
             '',
             'Options:',
-            '  --config <path>       Path to e2e-ai-agents.config.json (auto-discovered if present)',
+            '  --config <path>       Path to impact-gate.config.json (auto-discovered if present)',
             '  --path <project-root> Path to the project root (scans both frontend and backend)',
             '  --profile <name>     default | mattermost',
             '  --mattermost         Shortcut for --profile mattermost',

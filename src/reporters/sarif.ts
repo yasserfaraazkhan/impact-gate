@@ -7,6 +7,7 @@
  */
 
 import type {CrewResults, Reporter} from './reporter.js';
+import {getVersion} from '../version.js';
 
 type SarifLevel = 'error' | 'warning' | 'note' | 'none';
 
@@ -149,9 +150,9 @@ export const sarifReporter: Reporter = {
         const run: SarifRun = {
             tool: {
                 driver: {
-                    name: 'e2e-agents',
-                    version: '1.8.5',
-                    informationUri: 'https://github.com/mattermost/e2e-agents',
+                    name: 'impact-gate',
+                    version: getVersion(),
+                    informationUri: 'https://github.com/yasserfaraazkhan/impact-gate',
                     rules,
                 },
             },

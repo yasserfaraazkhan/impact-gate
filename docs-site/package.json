@@ -1,5 +1,5 @@
 {
-  "name": "e2e-agents-docs",
+  "name": "impact-gate-docs",
   "private": true,
   "scripts": {
     "dev": "astro dev",

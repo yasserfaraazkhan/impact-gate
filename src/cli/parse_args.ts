@@ -9,7 +9,12 @@ import {logger} from '../logger.js';
 
 import type {Command, ParsedArgs} from './types.js';
 
-export const CONFIG_CANDIDATES = ['e2e-ai-agents.config.json', '.e2e-ai-agents.config.json'];
+export const CONFIG_CANDIDATES = [
+    'impact-gate.config.json',
+    '.impact-gate.config.json',
+    'e2e-ai-agents.config.json',
+    '.e2e-ai-agents.config.json',
+];
 
 export function findConfigUpwards(startDir: string | undefined): string | undefined {
     if (!startDir) {

@@ -1,13 +1,13 @@
 # Example: Cypress + Next.js
 
-This example demonstrates the `e2e-ai-agents` workflow on a minimal Cypress + Next.js project. It includes a pre-trained route-families manifest, sample page components, and Cypress test specs so you can run impact analysis and coverage planning immediately.
+This example demonstrates the `impact-gate` workflow on a minimal Cypress + Next.js project. It includes a pre-trained route-families manifest, sample page components, and Cypress test specs so you can run impact analysis and coverage planning immediately.
 
 ## What's Included
 
 - **2 route families** (`dashboard`, `profile`) pre-configured in `.e2e-ai-agents/route-families.json`
 - **Next.js page placeholders** in `src/pages/` mapped to each family
 - **Cypress specs** in `cypress/e2e/` covering dashboard overview and profile editing
-- **Config file** (`e2e-ai-agents.config.json`) with `framework: "cypress"`
+- **Config file** (`impact-gate.config.json`) with `framework: "cypress"`
 
 ## How to Run
 
@@ -25,7 +25,7 @@ Determine which test families are affected by recent code changes:
 npm run demo:impact
 ```
 
-This runs `e2e-ai-agents impact` against the last commit. It reads the route-families manifest, compares it to the git diff, and reports which families and specs are impacted. No API key needed.
+This runs `impact-gate impact` against the last commit. It reads the route-families manifest, compares it to the git diff, and reports which families and specs are impacted. No API key needed.
 
 ### 2. Coverage Plan
 
@@ -58,7 +58,7 @@ This simulates the `quick-check` workflow, showing which agents would run and wh
 
 ```
 cypress-nextjs/
-  e2e-ai-agents.config.json     # CLI configuration
+  impact-gate.config.json     # CLI configuration
   .e2e-ai-agents/
     route-families.json          # Pre-trained family manifest
   src/pages/
@@ -72,5 +72,5 @@ cypress-nextjs/
 ## Next Steps
 
 - See the [main README](../../README.md) for full CLI reference and CI integration
-- Try `e2e-ai-agents train --path . --no-enrich` to rebuild the manifest from scratch
+- Try `impact-gate train --path . --no-enrich` to rebuild the manifest from scratch
 - Compare with the [Playwright + React example](../playwright-react/) for a different framework setup

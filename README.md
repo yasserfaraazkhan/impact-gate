@@ -1,20 +1,26 @@
-# @yasserkhanorg/e2e-agents
+# @yasserkhanorg/impact-gate
 
 Diff-aware E2E impact analysis and coverage gating for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.
 
-[![npm](https://img.shields.io/npm/v/%40yasserkhanorg%2Fe2e-agents)](https://www.npmjs.com/package/@yasserkhanorg/e2e-agents)
+[![npm](https://img.shields.io/npm/v/%40yasserkhanorg%2Fimpact-gate)](https://www.npmjs.com/package/@yasserkhanorg/impact-gate)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
-[![GitHub](https://img.shields.io/badge/github-yasserfaraazkhan%2Fe2e--agents-blue?logo=github)](https://github.com/yasserfaraazkhan/e2e-agents)
+[![GitHub](https://img.shields.io/badge/github-repo-blue?logo=github)](https://github.com/yasserfaraazkhan/impact-gate)
 
 ## What It Does
 
-`e2e-agents` is built first for one painful CI job: given a git diff, tell us which E2E surface changed and whether the current suite already covers it.
+`impact-gate` is built first for one painful CI job: given a git diff, tell us which E2E surface changed and whether the current suite already covers it.
 
 - **Primary**: diff-aware E2E impact analysis and coverage gating
 - **Secondary**: optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest
 - **Tertiary**: crew workflows, MCP integrations, plugins, and the autonomous QA agent
 
 The clearest path today is a Playwright or Cypress repository with a maintained `route-families.json` manifest. That is the path this package is optimized to make unusually clear and useful.
+
+Transition note:
+- The package and primary CLI are being renamed to `impact-gate`.
+- Legacy CLI aliases (`e2e-ai-agents`, `e2e-qa-agent`, `e2e-agents-mcp`) still work during migration.
+- Legacy config filenames are still supported.
+- The `.e2e-ai-agents/` artifact directory remains unchanged for compatibility.
 
 ## Product Shape
 
@@ -23,7 +29,7 @@ The clearest path today is a Playwright or Cypress repository with a maintained 
 | Core CI Workflow | `impact`, `plan`, `gate` | Decide what changed, what is covered, and whether a PR should pass |
 | Optional AI Workflow | `generate`, `heal`, `analyze`, `finalize-generated-tests` | Suggest, create, or repair tests after impact analysis |
 | Setup and Calibration | `train`, `bootstrap`, `traceability-*`, `feedback`, `cost-report`, `llm-health` | Build the manifest, feed execution data back in, and inspect cost/provider health |
-| Advanced / Experimental | `crew`, MCP mode, plugins, `e2e-qa-agent` | Deeper orchestration and browser-driven workflows beyond the core CI loop |
+| Advanced / Experimental | `crew`, MCP mode, plugins, `impact-gate-qa` | Deeper orchestration and browser-driven workflows beyond the core CI loop |
 
 ## Known Limitations
 
@@ -57,7 +63,7 @@ The fastest way to evaluate the package is the deterministic CI path. These comm
 Install the package:
 
 ```bash
-npm install @yasserkhanorg/e2e-agents
+npm install @yasserkhanorg/impact-gate
 ```
 
 Requires Node.js >= 20. Ships both CommonJS and ESM builds.
@@ -65,20 +71,20 @@ Requires Node.js >= 20. Ships both CommonJS and ESM builds.
 Verify the CLI:
 
 ```bash
-npx e2e-ai-agents --help
+npx impact-gate --help
 ```
 
 Then run the core CI workflow:
 
 ```bash
 # 1. See what changed
-npx e2e-ai-agents impact --path /path/to/project --since origin/main
+npx impact-gate impact --path /path/to/project --since origin/main
 
 # 2. Build a coverage plan and CI summary artifacts
-npx e2e-ai-agents plan --path /path/to/project --since origin/main
+npx impact-gate plan --path /path/to/project --since origin/main
 
 # 3. Fail the job if coverage is below a threshold
-npx e2e-ai-agents gate --path /path/to/project --threshold 80
+npx impact-gate gate --path /path/to/project --threshold 80
 ```
 
 Notes:
@@ -94,19 +100,19 @@ These commands help the core CI workflow become accurate and project-aware.
 
 ```bash
 # Build the manifest from the repo structure
-npx e2e-ai-agents train --path /path/to/project --no-enrich
+npx impact-gate train --path /path/to/project --no-enrich
 
 # Or bootstrap it from an Understand-Anything knowledge graph
-npx e2e-ai-agents bootstrap --path /path/to/project [--kg-path ./knowledge-graph.json]
+npx impact-gate bootstrap --path /path/to/project [--kg-path ./knowledge-graph.json]
 
 # Feed execution data back into the manifest
-npx e2e-ai-agents traceability-capture --path /path/to/project --traceability-report ./playwright-report.json
-npx e2e-ai-agents traceability-ingest --path /path/to/project --traceability-input ./traceability-input.json
+npx impact-gate traceability-capture --path /path/to/project --traceability-report ./playwright-report.json
+npx impact-gate traceability-ingest --path /path/to/project --traceability-input ./traceability-input.json
 
 # Calibration and diagnostics
-npx e2e-ai-agents feedback --path /path/to/project --feedback-input ./feedback.json
-npx e2e-ai-agents cost-report --path /path/to/project
-npx e2e-ai-agents llm-health
+npx impact-gate feedback --path /path/to/project --feedback-input ./feedback.json
+npx impact-gate cost-report --path /path/to/project
+npx impact-gate llm-health
 ```
 
 ## Optional AI Workflow
@@ -115,16 +121,16 @@ Once impact analysis is useful and the manifest is in place, you can layer on AI
 
 ```bash
 # All-in-one wrapper: impact + coverage + optional generation/healing
-npx e2e-ai-agents analyze --path /path/to/project [--generate] [--heal]
+npx impact-gate analyze --path /path/to/project [--generate] [--heal]
 
 # Generate tests for uncovered gaps
-npx e2e-ai-agents generate --path /path/to/project
+npx impact-gate generate --path /path/to/project
 
 # Heal flaky or failing specs from a Playwright report
-npx e2e-ai-agents heal --path /path/to/project --traceability-report ./playwright-report.json
+npx impact-gate heal --path /path/to/project --traceability-report ./playwright-report.json
 
 # Stage generated tests, commit, and optionally open a PR
-npx e2e-ai-agents finalize-generated-tests --path /path/to/project --create-pr
+npx impact-gate finalize-generated-tests --path /path/to/project --create-pr
 ```
 
 `plan` and `suggest` are aliases. `analyze` is the convenience wrapper when you want the full path in one invocation.
@@ -139,13 +145,13 @@ The Crew orchestrates deeper multi-agent workflows on top of the same impact-ana
 
 ```bash
 # Quick strategy recommendations
-npx e2e-ai-agents crew --workflow quick-check --path /path/to/project --tests-root ./e2e-tests --since origin/master
+npx impact-gate crew --workflow quick-check --path /path/to/project --tests-root ./e2e-tests --since origin/master
 
 # Full design-only workflow
-npx e2e-ai-agents crew --workflow design-only --path /path/to/project --tests-root ./e2e-tests --since origin/master
+npx impact-gate crew --workflow design-only --path /path/to/project --tests-root ./e2e-tests --since origin/master
 
 # End-to-end workflow
-npx e2e-ai-agents crew --workflow full-qa --path /path/to/project --tests-root ./e2e-tests --since origin/master
+npx impact-gate crew --workflow full-qa --path /path/to/project --tests-root ./e2e-tests --since origin/master
 ```
 
 Built-in safeguards include budget enforcement, provider circuit breaking, and structured output for downstream tooling.
@@ -155,7 +161,7 @@ Built-in safeguards include budget enforcement, provider circuit breaking, and s
 External agents can register into crew workflows via the `plugins` config:
 
 ```typescript
-import type {AgentPlugin, AgentTask, AgentResult, CrewContext} from '@yasserkhanorg/e2e-agents';
+import type {AgentPlugin, AgentTask, AgentResult, CrewContext} from '@yasserkhanorg/impact-gate';
 
 const myPlugin: AgentPlugin = {
     role: 'my-custom-analyzer',
@@ -170,7 +176,7 @@ export default myPlugin;
 ```
 
 ```bash
-npx e2e-ai-agents crew --plugins ./my-plugin.ts --workflow full-qa --path ./app
+npx impact-gate crew --plugins ./my-plugin.ts --workflow full-qa --path ./app
 ```
 
 See [docs/PLUGIN_API_STABILITY.md](docs/PLUGIN_API_STABILITY.md) for the API contract and stability guarantees.
@@ -185,7 +191,7 @@ import {
     RegressionAdvisorAgent,
     StrategistAgent,
     TestDesignerAgent,
-} from '@yasserkhanorg/e2e-agents';
+} from '@yasserkhanorg/impact-gate';
 
 const orchestrator = new CrewOrchestrator();
 orchestrator.registerAgent(new ImpactAnalystAgent());
@@ -236,7 +242,7 @@ channel.go changed
       → flag if coverage is missing for the affected user flows
 ```
 
-Every downstream command (`impact`, `plan`, `generate`, `heal`, `e2e-qa-agent`) reads this manifest to understand the codebase.
+Every downstream command (`impact`, `plan`, `generate`, `heal`, `impact-gate-qa`) reads this manifest to understand the codebase.
 
 ### How scanning works
 
@@ -271,16 +277,16 @@ This tells you the manifest is complete enough. If coverage were 30%, impact ana
 
 ```bash
 # Scan your codebase + LLM enrichment (default)
-npx e2e-ai-agents train --path /path/to/project
+npx impact-gate train --path /path/to/project
 
 # Offline mode (no LLM, no API key needed)
-npx e2e-ai-agents train --path /path/to/project --no-enrich
+npx impact-gate train --path /path/to/project --no-enrich
 
 # Validate accuracy against recent git history
-npx e2e-ai-agents train --path /path/to/project --validate --since HEAD~50
+npx impact-gate train --path /path/to/project --validate --since HEAD~50
 
 # Full pipeline: scan + enrich + validate
-npx e2e-ai-agents train --path /path/to/project --validate --since HEAD~20
+npx impact-gate train --path /path/to/project --validate --since HEAD~20
 ```
 
 **Why LLM enrichment is on by default:** The manifest gives AI context for impact analysis, scenario suggestion, and bug detection. AI-generated context produces better AI reasoning downstream. Use `--no-enrich` for offline/free operation or to avoid sending code snippets to third-party LLM APIs.
@@ -299,7 +305,7 @@ npx e2e-ai-agents train --path /path/to/project --validate --since HEAD~20
 
 ## Configuration
 
-Create `e2e-ai-agents.config.json` in your project (auto-discovered):
+Create `impact-gate.config.json` in your project (auto-discovered):
 
 ```json
 {
@@ -355,8 +361,8 @@ Framework detection is separate. The CLI can auto-detect Playwright, Cypress, py
 ```yaml
 - name: Run E2E coverage check
   run: |
-    npx e2e-ai-agents plan \
-      --config ./e2e-ai-agents.config.json \
+    npx impact-gate plan \
+      --config ./impact-gate.config.json \
       --since origin/${{ github.base_ref }} \
       --fail-on-must-add-tests \
       --github-output "$GITHUB_OUTPUT"
@@ -411,7 +417,7 @@ export OLLAMA_MODEL=deepseek-r1:7b
 Programmatic provider usage:
 
 ```typescript
-import { AnthropicProvider } from '@yasserkhanorg/e2e-agents';
+import { AnthropicProvider } from '@yasserkhanorg/impact-gate';
 
 const claude = new AnthropicProvider({
     apiKey: process.env.ANTHROPIC_API_KEY
@@ -426,7 +432,7 @@ Factory pattern with auto-detection, hybrid mode (free local + premium fallback)
 Exposes 6 tools for test agents (Playwright v1.56+):
 
 ```typescript
-import { E2EAgentsMCPServer } from '@yasserkhanorg/e2e-agents/mcp';
+import { E2EAgentsMCPServer } from '@yasserkhanorg/impact-gate/mcp';
 
 const server = new E2EAgentsMCPServer();
 // Tools: discover_tests, read_file, write_file, run_tests, get_git_changes, get_repository_context
@@ -465,7 +471,7 @@ Schemas: [schemas/traceability-input.schema.json](schemas/traceability-input.sch
 
 All written under `<testsRoot>/.e2e-ai-agents/`.
 
-## Advanced / Experimental: Autonomous QA Agent (`e2e-qa-agent`)
+## Advanced / Experimental: Autonomous QA Agent (`impact-gate-qa`)
 
 An autonomous QA engineer that opens a real browser, navigates to changed features, tries edge cases, and produces a findings report — all unsupervised. Built on top of `agent-browser` and the Anthropic tool-use API.
 
@@ -473,21 +479,21 @@ An autonomous QA engineer that opens a real browser, navigates to changed featur
 
 ```bash
 # PR mode — test features changed since origin/main
-npx e2e-qa-agent pr --since origin/main --base-url http://localhost:8065
+npx impact-gate-qa pr --since origin/main --base-url http://localhost:8065
 
 # Hunt mode — deep-test a specific area
-npx e2e-qa-agent hunt "channel settings" --base-url http://localhost:8065
+npx impact-gate-qa hunt "channel settings" --base-url http://localhost:8065
 
 # Release mode — systematic exploration of all critical flows
-npx e2e-qa-agent release --base-url http://localhost:8065 --time 30
+npx impact-gate-qa release --base-url http://localhost:8065 --time 30
 
 # Fix mode — verify healed specs
-npx e2e-qa-agent fix --base-url http://localhost:8065
+npx impact-gate-qa fix --base-url http://localhost:8065
 ```
 
 ### Architecture
 
-1. **Phase 1 (Script)** — Runs `e2e-ai-agents impact/plan` to determine scope, then executes matched Playwright specs.
+1. **Phase 1 (Script)** — Runs `impact-gate impact/plan` to determine scope, then executes matched Playwright specs.
 2. **Phase 2 (Explore)** — LLM-driven browser loop: observe (accessibility snapshot) → think → act (click/fill/navigate) → record findings. Includes stuck detection, multi-user testing, console error capture, and vision-based analysis.
 3. **Phase 3 (Report)** — Generates a structured report with findings, per-flow sign-off, and a release-readiness verdict (go/no-go/conditional).
 

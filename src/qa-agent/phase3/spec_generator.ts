@@ -45,9 +45,9 @@ export function generateSpecsForFindings(
     const scenariosPath = join(outputDir, 'qa-findings-scenarios.json');
     writeFileSync(scenariosPath, JSON.stringify(scenarios, null, 2), 'utf-8');
 
-    // Call e2e-ai-agents generate with the scenarios
+    // Call impact-gate generate with the scenarios
     const args = [
-        'e2e-ai-agents', 'generate',
+        'impact-gate', 'generate',
         '--scenarios', scenariosPath,
     ];
     if (config.testsRoot) {

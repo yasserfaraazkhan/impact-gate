@@ -1,6 +1,6 @@
 # Plugin API Stability
 
-This document defines the API stability guarantees for `@yasserkhanorg/e2e-agents` plugin authors. It covers the `CrewContext` interface, the `AgentPlugin` contract, and the versioning rules that govern breaking changes.
+This document defines the API stability guarantees for `@yasserkhanorg/impact-gate` plugin authors. It covers the `CrewContext` interface, the `AgentPlugin` contract, and the versioning rules that govern breaking changes.
 
 ## API Stability Guarantees
 
@@ -112,7 +112,7 @@ Plugins should declare a version requirement so the orchestrator can detect inco
 requiredVersion?: string; // semver range, e.g., ">=1.9.0 <3.0.0"
 ```
 
-The `CrewOrchestrator` will emit a warning if the installed `@yasserkhanorg/e2e-agents` version does not satisfy the plugin's `requiredVersion` range. This is advisory — the plugin still runs — but it signals that untested combinations are in use.
+The `CrewOrchestrator` will emit a warning if the installed `@yasserkhanorg/impact-gate` version does not satisfy the plugin's `requiredVersion` range. This is advisory — the plugin still runs — but it signals that untested combinations are in use.
 
 **Summary of versioning semantics:**
 

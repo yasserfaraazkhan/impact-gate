@@ -1,5 +1,5 @@
 name: Bug Report
-description: Report a bug in @yasserkhanorg/e2e-agents
+description: Report a bug in @yasserkhanorg/impact-gate
 title: "[Bug]: "
 labels: ["bug"]
 body:
@@ -23,7 +23,7 @@ body:
       label: Steps to reproduce
       description: Step-by-step instructions to reproduce the behavior.
       placeholder: |
-        1. Run `e2e-ai-agents crew --workflow quick-check`
+        1. Run `impact-gate crew --workflow quick-check`
         2. Wait for analysis to complete
         3. See error...
     validations:
@@ -69,7 +69,7 @@ body:
     id: package-version
     attributes:
       label: Package version
-      description: Output of `npx e2e-ai-agents --version` or the version in your package.json.
+      description: Output of `npx impact-gate --version` or the version in your package.json.
       placeholder: "1.8.5"
     validations:
       required: false
@@ -93,7 +93,7 @@ body:
     attributes:
       label: Command used
       description: The full command you ran.
-      placeholder: "e2e-ai-agents crew --workflow quick-check"
+      placeholder: "impact-gate crew --workflow quick-check"
     validations:
       required: false
 

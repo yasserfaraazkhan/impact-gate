@@ -8,7 +8,7 @@
  * percentage of impacted features have test coverage.
  *
  * Usage:
- *   e2e-ai-agents gate --threshold 80 --path . --since origin/main
+ *   impact-gate gate --threshold 80 --path . --since origin/main
  */
 
 import {resolveConfig} from '../../agent/config.js';

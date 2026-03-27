@@ -154,7 +154,7 @@ export async function runTrainCommand(args: ParsedArgs, autoConfig?: string): Pr
     if (args.verbose) logger.setLevel(LogLevel.DEBUG);
     if (args.jsonOutput) logger.setJsonMode(true);
 
-    logger.info('e2e-ai-agents train');
+    logger.info('impact-gate train');
     logger.info('===================');
 
     // ---------- Phase 1: Deterministic scan ----------

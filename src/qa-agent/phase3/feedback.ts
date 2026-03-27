@@ -8,7 +8,7 @@ import {safeEnv} from '../safe_env.js';
 import type {QAConfig} from '../types.js';
 
 export function submitFeedback(config: QAConfig): void {
-    const args = ['e2e-ai-agents', 'feedback'];
+    const args = ['impact-gate', 'feedback'];
 
     if (config.testsRoot) {
         args.push('--tests-root', config.testsRoot);

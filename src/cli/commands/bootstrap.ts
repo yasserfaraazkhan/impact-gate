@@ -30,7 +30,7 @@ export async function runBootstrapCommand(args: ParsedArgs): Promise<void> {
     if (args.verbose) logger.setLevel(LogLevel.DEBUG);
     if (args.jsonOutput) logger.setJsonMode(true);
 
-    logger.info('e2e-ai-agents bootstrap');
+    logger.info('impact-gate bootstrap');
     logger.info('=======================');
 
     // ---------- Step 1: Check for knowledge graph ----------
@@ -44,8 +44,8 @@ export async function runBootstrapCommand(args: ParsedArgs): Promise<void> {
             'To bootstrap, first generate a knowledge graph for your project:\n' +
             '  1. Install Understand-Anything: npm install -g understand-anything\n' +
             '  2. Run: understand-anything analyze .\n' +
-            '  3. Then run: e2e-ai-agents bootstrap\n\n' +
-            'Or provide a path: e2e-ai-agents bootstrap --kg-path /path/to/knowledge-graph.json',
+            '  3. Then run: impact-gate bootstrap\n\n' +
+            'Or provide a path: impact-gate bootstrap --kg-path /path/to/knowledge-graph.json',
         );
     }
 
@@ -121,7 +121,7 @@ export async function runBootstrapCommand(args: ParsedArgs): Promise<void> {
     logger.info('');
     logger.info('Next steps:');
     logger.info('  1. Review and refine .e2e-ai-agents/route-families.json');
-    logger.info('  2. Run `e2e-ai-agents train --enrich` to add LLM-enriched metadata');
-    logger.info('  3. Run `e2e-ai-agents plan` to see what tests are needed');
-    logger.info('  4. Run `e2e-ai-agents generate` to create test stubs');
+    logger.info('  2. Run `impact-gate train --enrich` to add LLM-enriched metadata');
+    logger.info('  3. Run `impact-gate plan` to see what tests are needed');
+    logger.info('  4. Run `impact-gate generate` to create test stubs');
 }

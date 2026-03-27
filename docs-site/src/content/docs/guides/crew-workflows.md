@@ -18,7 +18,7 @@ The Crew system orchestrates 10 specialized AI agents for deep test analysis. Th
 Best for PR triage. Runs impact analysis, cross-impact detection, regression risk scoring, and strategy recommendations. No test code is generated.
 
 ```bash
-npx e2e-ai-agents crew --workflow quick-check \
+npx impact-gate crew --workflow quick-check \
   --path . --tests-root ./e2e-tests --since origin/main
 ```
 
@@ -27,7 +27,7 @@ npx e2e-ai-agents crew --workflow quick-check \
 Adds structured test case design on top of quick-check. Produces `TestCase[]` objects with preconditions, steps, expected outcomes, and rationale. Useful for handing off to human test authors or reviewing AI-suggested coverage.
 
 ```bash
-npx e2e-ai-agents crew --workflow design-only \
+npx impact-gate crew --workflow design-only \
   --path . --tests-root ./e2e-tests --since origin/main
 ```
 
@@ -36,7 +36,7 @@ npx e2e-ai-agents crew --workflow design-only \
 End-to-end: designs tests, generates Playwright specs, executes them, and heals any failures. Use this when you want the tool to produce runnable test code.
 
 ```bash
-npx e2e-ai-agents crew --workflow full-qa \
+npx impact-gate crew --workflow full-qa \
   --path . --tests-root ./e2e-tests --since origin/main
 ```
 
@@ -53,7 +53,7 @@ npx e2e-ai-agents crew --workflow full-qa \
 --dry-run
 
 # View cost breakdown after a run
-npx e2e-ai-agents cost-report --path .
+npx impact-gate cost-report --path .
 ```
 
 ## When to Use Each
