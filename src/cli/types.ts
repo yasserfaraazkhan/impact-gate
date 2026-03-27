@@ -20,7 +20,8 @@ export type Command =
     | 'crew'
     | 'cost-report'
     | 'gate'
-    | 'bootstrap';
+    | 'bootstrap'
+    | 'install-skill';
 
 export interface ParsedArgs {
     command?: Command;

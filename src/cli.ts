@@ -21,10 +21,11 @@ import {runCrewCommand} from './cli/commands/crew.js';
 import {runCostReportCommand} from './cli/commands/cost_report.js';
 import {runGateCommand} from './cli/commands/gate.js';
 import {runBootstrapCommand} from './cli/commands/bootstrap.js';
+import {runInstallSkillCommand} from './cli/commands/install_skill.js';
 import {classifyError, EXIT_CODES} from './cli/errors.js';
 
 // Commands that skip default resolution (they handle their own setup)
-const SKIP_DEFAULTS_COMMANDS = new Set(['init', 'llm-health', 'cost-report', 'bootstrap']);
+const SKIP_DEFAULTS_COMMANDS = new Set(['init', 'llm-health', 'cost-report', 'bootstrap', 'install-skill']);
 
 // Commands that need path/testsRoot/framework/since
 const NEEDS_DEFAULTS_COMMANDS = new Set([
@@ -53,6 +54,12 @@ async function main(): Promise<void> {
     if (args.command === 'init') {
         const hasYes = process.argv.includes('--yes') || process.argv.includes('-y');
         await runInitCommand(hasYes);
+        return;
+    }
+
+    if (args.command === 'install-skill') {
+        const skillName = process.argv[3]; // impact-gate install-skill <name>
+        runInstallSkillCommand(skillName);
         return;
     }
 

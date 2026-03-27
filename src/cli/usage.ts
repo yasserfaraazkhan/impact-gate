@@ -23,6 +23,7 @@ export function printUsage(): void {
             '  init [--yes]',
             '  train --path <project-root> [--no-enrich] [--validate] [--since <ref>] [--pr <num>]',
             '  bootstrap --path <app-root> [options]',
+            '  install-skill [name]        Install a Claude Code skill (e.g. /qa)',
             '  feedback --path <app-root> --feedback-input <json>',
             '  traceability-capture --path <app-root> --traceability-report <json>',
             '  traceability-ingest --path <app-root> --traceability-input <json>',
