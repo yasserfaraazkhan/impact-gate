@@ -50,7 +50,11 @@ These commands work with **zero LLM cost** and do not require an API key:
 
 Optional AI features use [Anthropic](https://console.anthropic.com/), [OpenAI](https://platform.openai.com/), or a local [Ollama](https://ollama.ai/) instance.
 
-## Installation
+## Start Here
+
+The fastest way to evaluate the package is the deterministic CI path. These commands do not require an API key.
+
+Install the package:
 
 ```bash
 npm install @yasserkhanorg/e2e-agents
@@ -64,9 +68,7 @@ Verify the CLI:
 npx e2e-ai-agents --help
 ```
 
-## Core CI Commands
-
-Use these first. They are the heart of the package.
+Then run the core CI workflow:
 
 ```bash
 # 1. See what changed
@@ -84,6 +86,7 @@ Notes:
 - `impact` prints a deterministic summary to stdout.
 - `plan` writes `.e2e-ai-agents/plan.json` and `.e2e-ai-agents/ci-summary.md`.
 - `gate` expects a threshold in the range `0-100` and exits `1` when the threshold is missed.
+- Add the Optional AI Workflow only after your `route-families.json` manifest is useful enough to trust.
 
 ## Setup and Calibration
 
