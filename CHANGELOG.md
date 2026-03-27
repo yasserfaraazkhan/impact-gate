@@ -2,6 +2,56 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.10.0] - 2026-03-27
+
+### Oracle Mechanism: Assertion Patterns
+
+- **Assertion patterns in route-families manifest** — Families and features can now define `assertionPatterns` that specify *what correct behavior looks like* (state-change, cross-user, persistence, negative, permission, data-integrity, error-handling). These patterns are injected into the generation prompt, requiring the AI to produce business-logic assertions instead of just `toBeVisible()` checks.
+- **End-to-end wiring** — Assertion patterns flow from manifest -> stage1 impact -> FlowDecision -> generation prompt. Previously the field was declared but never populated.
+- **Single type source** — `AssertionPattern` type defined once in `route_families.ts`, re-exported from `output_schema.ts` to prevent type drift.
+
+### TypeScript AST-Based API Surface Extraction
+
+- **Replaced regex extraction with TypeScript Compiler API** — `api_surface.ts` now uses `ts.createProgram()` and `ts.TypeChecker` to parse page object source files. This catches:
+  - Arrow function properties (`name = async () => {}`)
+  - Inherited methods from base classes (e.g., `ConfirmModal extends BaseModal`)
+  - Full method signatures with parameter names, types, optional flags, and return types
+  - Barrel export files (`index.ts`) are no longer skipped
+- **Prompt now shows full signatures** — e.g., `async postMessage(text: string, options?: PostOptions): Promise<void>` instead of `postMessage()`
+- **Regex fallback** — Config flag `useRegexFallback` for environments where TS compilation is unavailable
+- **`MethodSignature` now includes** `params?: MethodParam[]`, `returnType?: string`, `async?: boolean` — all populated from the AST
+
+### Hallucination Detection
+
+- **Expanded detection patterns** — `detectHallucinatedMethods()` now uses 4 regex patterns instead of 1, catching `await X.Y()`, `const z = X.Y()`, `*Page.method()` (any page object), and `pw/page/this` chained calls
+- **Block instead of warn** — When hallucinated methods are detected and `warnOnHallucinations` is not set, specs are moved to `generated-needs-review/` instead of being written to the specs directory
+- **Dynamic page object matching** — `\w+Page` pattern replaces hardcoded `channelsPage`
+
+### Coverage Evaluation
+
+- **Total character budget** — Added `MAX_TOTAL_SPEC_CHARS = 200000` (~50K tokens) budget to prevent context window blowout for families with many large spec files
+- **Two-tier approach** — All spec titles sent to LLM (compact), full content for top 30 specs only. Specs beyond the content limit appear as title-only summaries.
+- **Semantic matching rules** — 6 new rules added to coverage prompt: happy-path doesn't cover negative, one role doesn't cover another, creation doesn't cover editing, "when in doubt choose partial"
+- **Increased spec cap** — From 15 to 30 specs per family (with budget guard)
+
+### Historical Failure Correlation
+
+- **New module: `failure_history.ts`** — Tracks which tests fail when certain files change over time
+  - `recordFailures()` — Call after test runs to record correlations
+  - `getConfidenceBoost()` — Returns 0-20 confidence boost based on historical patterns
+  - `getPredictedFailures()` — Returns most likely failing specs for a set of changed files
+  - Auto-prunes correlations older than 90 days
+  - Stored at `.e2e-ai-agents/failure-history.json`
+- **Wired into confidence scoring** — `EvidenceCheck` in `guardrails.ts` now accepts `historyBoost`, and `computeConfidence()` includes it in the score. Files that historically cause test failures get higher confidence -> more likely to trigger test generation.
+
+### Bug Fixes
+
+- **`async` field inconsistency** — Normalized to `true` or `undefined` across all extraction branches (previously could be `false` in JSON cache)
+- **`serializeManifest` dropped `assertionPatterns`** — Added to optional arrays list for proper round-trip serialization
+- **API test prompt missing assertion patterns** — `buildApiTestPrompt()` now includes assertion pattern block
+
+Tests: 469 pass, 0 failures.
+
 ## [1.9.5] - 2026-03-23
 
 ### Architecture

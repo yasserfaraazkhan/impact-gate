@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type {FlowDecision} from '../validation/output_schema.js';
+import type {FlowDecision, AssertionPattern} from '../validation/output_schema.js';
 import type {ApiSurfaceCatalog} from '../knowledge/api_surface.js';
 import {formatApiSurfaceForPrompt} from '../knowledge/api_surface.js';
 import {sanitizeForPrompt} from '../crew/sanitize.js';
@@ -42,6 +42,19 @@ function resolveRelevantPageObjects(
     }
 
     return [...new Set(relevant)].slice(0, 10);
+}
+
+function buildAssertionPatternsBlock(patterns?: AssertionPattern[]): string[] {
+    if (!patterns || patterns.length === 0) {
+        return [];
+    }
+    return [
+        'REQUIRED ASSERTION PATTERNS:',
+        'Your tests MUST include assertions that verify each of these behaviors.',
+        'Do NOT just check element visibility — verify the actual business outcome.',
+        ...patterns.map((p) => `  - [${p.type}] ${p.pattern}`),
+        '',
+    ];
 }
 
 export function buildGenerationPrompt(ctx: GenerationPromptContext): string {
@@ -154,6 +167,7 @@ export function buildGenerationPrompt(ctx: GenerationPromptContext): string {
         'USER ACTIONS:',
         ctx.decision.userActions.map((a) => `  - ${sanitizeForPrompt(a)}`).join('\n') || '  (none specified)',
         '',
+        ...buildAssertionPatternsBlock(ctx.decision.assertionPatterns),
         'AVAILABLE PAGE OBJECTS AND METHODS:',
         apiBlock,
         existingBlock,
@@ -197,6 +211,8 @@ function buildApiTestPrompt(
         '',
         'USER ACTIONS:',
         ctx.decision.userActions.map((a) => `  - ${sanitizeForPrompt(a)}`).join('\n') || '  (none specified)',
+        '',
+        ...buildAssertionPatternsBlock(ctx.decision.assertionPatterns),
         existingBlock,
         '',
         'MANDATORY RULES:',
@@ -305,20 +321,44 @@ const BUILT_IN_METHODS = new Set([
 
 /**
  * Returns method names that appear in generated code but do not exist in the API surface.
- * Used for logging; does not block generation.
+ * Detects all call patterns: await X.Y(), X.Y(), const z = X.Y(), chained calls.
  */
 export function detectHallucinatedMethods(code: string, apiSurface: ApiSurfaceCatalog): string[] {
     const allMethods = new Set(apiSurface.pageObjects.flatMap((po) => po.methods.map((m) => m.name)));
-    const suspected: string[] = [];
+    const suspected = new Set<string>();
 
-    const callRe = /\bawait\s+\w+\.([a-zA-Z_]\w*)\s*\(/g;
-    let match;
-    while ((match = callRe.exec(code)) !== null) {
-        const methodName = match[1];
-        if (!BUILT_IN_METHODS.has(methodName) && !allMethods.has(methodName) && methodName.length > 3) {
-            suspected.push(methodName);
+    const callPatterns = [
+        /\bawait\s+\w+\.([a-zA-Z_]\w*)\s*\(/g,
+        /\b(?:const|let|var)\s+\w+\s*=\s*\w+\.([a-zA-Z_]\w*)\s*\(/g,
+        /\b\w+Page\.([a-zA-Z_]\w*)\s*\(/g,      // any *Page object (channelsPage, settingsPage, etc.)
+        /\b(?:pw|page|this)\.\w*\.?([a-zA-Z_]\w*)\s*\(/g,
+    ];
+
+    const generalCallRe = /\b[a-zA-Z_]\w*\.([a-zA-Z_]\w*)\s*\(/g;
+
+    for (const re of callPatterns) {
+        let match;
+        while ((match = re.exec(code)) !== null) {
+            const methodName = match[1];
+            if (!BUILT_IN_METHODS.has(methodName) && !allMethods.has(methodName) && methodName.length > 3) {
+                suspected.add(methodName);
+            }
         }
     }
 
-    return [...new Set(suspected)];
+    let match;
+    while ((match = generalCallRe.exec(code)) !== null) {
+        const methodName = match[1];
+        if (
+            !BUILT_IN_METHODS.has(methodName) &&
+            !allMethods.has(methodName) &&
+            methodName.length > 3 &&
+            !methodName.startsWith('to') &&
+            !methodName.startsWith('get')
+        ) {
+            suspected.add(methodName);
+        }
+    }
+
+    return [...suspected];
 }

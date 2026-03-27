@@ -75,13 +75,25 @@ export async function runCoverageStage(
     for (const [familyId, familyDecisions] of byFamily) {
         // Gather relevant specs
         const specs = getSpecsForFamily(specIndex, familyId);
-        const specsWithContent = specs
-            .map((s) => {
-                const content = loadSpecFileContent(testsRoot, s.relativePath, maxSpecChars);
-                return content ? {relativePath: s.relativePath, content, testTitles: s.testTitles} : null;
-            })
-            .filter((s): s is NonNullable<typeof s> => s !== null)
-            .slice(0, 15); // Limit to 15 specs per family to stay within token budget
+        // Two-tier approach: send all spec titles (compact), full content for top matches only
+        const allSpecSummaries = specs.map((s) => ({
+            relativePath: s.relativePath,
+            testTitles: s.testTitles,
+        }));
+
+        // Load full content with a total budget of 200K chars (~50K tokens) to avoid blowing context windows
+        const MAX_TOTAL_SPEC_CHARS = 200000;
+        let totalSpecChars = 0;
+        const specsWithContent: Array<{relativePath: string; content: string; testTitles: string[]}> = [];
+
+        for (const s of specs) {
+            if (specsWithContent.length >= 30) break;
+            const content = loadSpecFileContent(testsRoot, s.relativePath, maxSpecChars);
+            if (!content) continue;
+            if (totalSpecChars + content.length > MAX_TOTAL_SPEC_CHARS) break;
+            totalSpecChars += content.length;
+            specsWithContent.push({relativePath: s.relativePath, content, testTitles: s.testTitles});
+        }
 
         if (specsWithContent.length === 0) {
             // No specs to evaluate — mark all as create_spec
@@ -105,10 +117,19 @@ export async function runCoverageStage(
             priority: d.priority,
         }));
 
+        // Include titles-only summaries for specs beyond the content limit
+        const extraSummaries = allSpecSummaries
+            .slice(specsWithContent.length)
+            .map((s) => `  - ${s.relativePath}: ${s.testTitles.join(', ')}`)
+            .join('\n');
+        const extraContext = extraSummaries
+            ? `\nADDITIONAL SPECS (titles only, no content loaded):\n${extraSummaries}\n`
+            : '';
+
         const prompt = buildCoveragePrompt({
             flows,
             specs: specsWithContent,
-            contextBlock,
+            contextBlock: contextBlock + extraContext,
             profile: config.profile,
         });
 

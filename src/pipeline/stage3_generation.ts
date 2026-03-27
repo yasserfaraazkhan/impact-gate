@@ -169,12 +169,31 @@ export async function runGenerationStage(
                 continue;
             }
 
-            // Hallucination detection
+            // Hallucination detection — block specs with hallucinated methods
             const hallucinationWarnings = detectHallucinatedMethods(parsed.code, apiSurface);
             if (hallucinationWarnings.length > 0) {
                 warnings.push(
                     `Flow ${decision.flowId}: suspected hallucinated methods: ${hallucinationWarnings.join(', ')}`,
                 );
+                if (!config.warnOnHallucinations) {
+                    // Block: move to needs-review instead of writing to specs dir
+                    if (!dryRun) {
+                        const reviewDir = join(testsRoot, 'generated-needs-review');
+                        mkdirSync(reviewDir, {recursive: true});
+                        const safeName = decision.flowId.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+                        const reviewPath = join(reviewDir, `${safeName}-${Date.now().toString(36)}.spec.ts`);
+                        writeFileSync(reviewPath, `${parsed.code}\n`, 'utf-8');
+                        warnings.push(`Flow ${decision.flowId}: blocked — moved to ${reviewPath}`);
+                    }
+                    generated.push({
+                        flowId: decision.flowId,
+                        specPath,
+                        mode,
+                        written: false,
+                        hallucinationWarnings,
+                    });
+                    continue;
+                }
             }
 
             let written = false;

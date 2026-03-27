@@ -66,6 +66,16 @@ export function buildCoveragePrompt(ctx: CoveragePromptContext): string {
         '- For add_scenarios, specify which existing spec file to extend in targetSpec.',
         `- For create_spec, suggest a path following ${ctx.profile?.projectName || 'Mattermost'} conventions.`,
         '- Prefer adding scenarios to existing specs over creating new spec files.',
+        '',
+        'SEMANTIC MATCHING RULES (critical for accuracy):',
+        '- A happy-path test does NOT cover the negative/error path of the same feature.',
+        '  "user can edit post" does NOT cover "user without permission cannot edit post".',
+        '- A test for one user role does NOT cover a different role.',
+        '  "admin can delete channel" does NOT cover "member cannot delete channel".',
+        '- A test for creation does NOT cover editing or deletion of the same entity.',
+        '- "partial" means: same feature area but different specific scenario.',
+        '- "full" means: the exact user action sequence and outcome is tested.',
+        '- When in doubt between "full" and "partial", choose "partial".',
     ].join('\n');
 }
 

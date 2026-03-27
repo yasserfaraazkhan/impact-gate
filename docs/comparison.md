@@ -1,6 +1,6 @@
 # How e2e-agents Compares to Other Tools
 
-> Last updated: March 2026 | e2e-agents v1.9.5
+> Last updated: March 2026 | e2e-agents v1.10.0
 
 ## The Problem Space
 
@@ -10,123 +10,161 @@ When a developer opens a pull request, three questions need answering:
 2. **Do tests already cover those features?** (coverage assessment)
 3. **If not, what exactly should be tested?** (test design)
 
-The market offers tools for pieces of this — but no single tool answers all three from a code diff. e2e-agents does.
+The market offers 40+ tools for pieces of this — but no single tool answers all three from a code diff. e2e-agents does.
 
-## Market Segments
+## The Oracle Problem
 
-The testing tooling market splits into three segments that don't communicate with each other:
+Every AI testing tool faces the same fundamental challenge: **knowing what correct behavior looks like** (the oracle problem). Most tools sidestep it by generating shallow assertions (`toBeVisible()`, "page didn't crash"). e2e-agents solves it through a **constraint-based oracle**:
+
+```
+Route Families Manifest (human-curated source of truth)
+    → "channels/search is a P0 feature, lives in src/components/search*"
+    → Assertion patterns: state-change, cross-user, persistence, negative
+Git Diff (deterministic)
+    → "search.tsx changed"
+Impact Analysis (AI constrained by manifest)
+    → "Search flow is impacted, here's evidence"
+Spec Index (deterministic inventory of existing tests)
+    → "These exact test titles already exist"
+Coverage Evaluation (AI matching flows → tests)
+    → "Partial coverage: missing 'empty results' scenario"
+Constrained Generation (AI bounded by API surface from TypeScript AST)
+    → "Generate test using ONLY these page objects and methods"
+Validation (compile check + smoke run + hallucination blocking)
+    → "Block unknown methods, reject tests that don't compile"
+```
+
+No other tool has this layered constraint system.
+
+## Market Segments (40+ tools surveyed)
 
 ### Test Selectors — "Which existing tests should run?"
 
-Tools like **Launchable** (CloudBees), **Codecov ATS**, and **Trunk.io** select a subset of existing tests to run on a PR. They reduce CI time but cannot generate new tests or reason about feature-level impact.
-
 | Tool | Approach | Limitation |
 |------|----------|------------|
-| Launchable (CloudBees) | ML model predicts which tests will fail based on historical data | Black-box selection; requires months of training data; cannot generate missing tests |
-| Codecov ATS | Uses line-level coverage data to select tests touching changed code | Python-only; cannot select tests for net-new code paths; no feature reasoning |
-| Trunk.io | Analyzes build-target dependencies (Bazel, Nx) to determine impacted targets | Requires specific build systems; no feature or route awareness |
+| Launchable (CloudBees) | ML model predicts failures from historical data | Black-box; months of training data; can't generate |
+| Codecov ATS | Line-level coverage to select tests | Python-only; no feature reasoning |
+| Trunk.io | Build-target dependency analysis | Requires Bazel/Nx; no feature awareness |
 
-### Test Generators — "Create tests from requirements or code"
+### AI Test Generation — URL-based
 
-Tools like **Qodo**, **Testsigma**, **mabl**, and **GitHub Copilot** generate test code from requirements, recordings, or code context. They don't know what changed in the PR or which features are impacted.
+These tools start from a URL and explore the page. They don't know what code changed.
 
-| Tool | Approach | Limitation |
-|------|----------|------------|
-| Qodo (formerly CodiumAI) | AI-generated unit tests from code context; Playwright/Cypress via Cover agent | Not change-driven; generates to increase coverage, not to validate specific PR changes |
-| Testsigma | Test creation from Jira stories, Figma designs, or video recordings | No diff awareness; requirements-driven, not change-driven |
-| mabl | Low-code browser recording with AI-assisted creation | No impact analysis; strong for ongoing regression, weak for PR-specific testing |
-| GitHub Copilot | Inline test suggestions in IDE; .NET testing agent can scope to git diff | No E2E orchestration; context window limits; no feature structure awareness |
-| Playwright Codegen | Records browser interactions and generates test scripts | Cannot decide what to test; records whatever the human does; fragile output |
+| Tool | Stars/Status | Approach | Limitation |
+|------|-------------|----------|------------|
+| **Octomind** | Commercial, EUR 4.5M raised | AI agents discover flows from URLs; generates Playwright code | No code-change awareness; URL-based, not diff-based |
+| **Momentic** | Commercial, $15M Series A | Intent-based testing, no selectors | No export (vendor lock-in); Chrome-only |
+| **Shortest** | 5.1K stars, MIT | Claude API + natural language → Playwright | No impact analysis; single-page focus |
+| **Midscene.js** | 12.3K stars, MIT (ByteDance) | Vision LLM reads screenshots, no selectors | Slower; API costs per run; no code awareness |
+| **Skyvern** | 21K stars, AGPL | Vision LLMs + auto-generates Playwright | Workflow automation, not testing-specific |
+| **TestDriver.ai** | Active | Black-box vision + OS-level input | Slower; non-deterministic at runtime |
+| **QA Wolf** | Commercial, ~$90K/year | Managed QA: humans + AI write Playwright | Expensive; per-test pricing |
+| **BlinqIO** | Commercial, $250/scenario | AI generates Playwright in your repo | No impact analysis |
+| **Meticulous AI** | Commercial | Records real user sessions, replays | Frontend-only; backend mocked |
+| **Bug0** | Commercial, from $250/mo | Video/recording → Playwright code | Tests run on Bug0 infra only |
+| **testRigor** | Commercial, Y Combinator | Plain English → web/mobile/desktop tests | Vendor lock-in (proprietary format) |
 
-### CI Optimizers — "Run tests faster"
+### Enterprise Incumbents (AI bolt-on)
 
-Tools like **Buildkite Test Engine** and **Currents.dev** optimize test execution through parallelization, flaky detection, and analytics. They don't decide what to test.
+| Tool | Pricing | Self-healing? | Limitation |
+|------|---------|---------------|------------|
+| Testim (Tricentis) | ~$450/user/mo | Yes (ML locators) | Enterprise pricing; web-focused |
+| mabl | ~$499/mo | Yes | No impact analysis |
+| Katalon | Free tier + paid | Yes (dual engine) | Groovy scripting; large suite lag |
+| Functionize | $20-60K/year | Yes (adaptive learning) | Enterprise-only; premium pricing |
+| Applitools | $10-50K/year | No (visual only) | Visual validation, not E2E flow |
 
-| Tool | Approach | Limitation |
-|------|----------|------------|
-| Buildkite Test Engine | Test splitting, flaky detection, performance analytics | Does not analyze diffs or select tests; pure orchestration |
-| Currents.dev | Playwright/Cypress dashboard with intelligent sharding | Analytics only; no test selection or generation |
+### Code-Level Test Generators (not E2E)
 
-### Visual Testing — Different Problem
-
-**Applitools** solves visual regression through screenshot comparison. It doesn't reason about functional behavior, code changes, or test coverage.
+| Tool | Focus | Approach |
+|------|-------|---------|
+| Qodo Cover | Unit tests, 11+ languages | LLM code analysis |
+| Diffblue Cover | Java unit tests | Reinforcement learning (no hallucination) |
+| EvoMaster | API tests (REST/GraphQL/gRPC) | Evolutionary algorithm, not LLM |
+| Keploy | API tests from traffic | Captures prod/staging calls |
 
 ## What e2e-agents Does Differently
 
-e2e-agents bridges all three segments in a single pipeline:
+### The Constraint-Based Oracle (unique in market)
 
+| Capability | e2e-agents | Octomind | Momentic | Midscene | Shortest | Others |
+|-----------|-----------|----------|----------|----------|----------|--------|
+| Knows which features are affected by a code change | **Yes** (manifest + git diff) | No | No | No | No | No |
+| Maps existing tests to user flows | **Yes** (spec index + coverage eval) | No | No | No | No | No |
+| Identifies coverage gaps per priority | **Yes** (P0/P1/P2 gap analysis) | No | No | No | No | No |
+| Constrains AI to known API surface | **Yes** (TypeScript AST extraction) | Partial | No | No | No | No |
+| Blocks hallucinated selectors/methods | **Yes** (detect + block to needs-review) | No | N/A (vision) | N/A (vision) | No | No |
+| Defines what correct behavior looks like | **Yes** (assertion patterns in manifest) | No | Partial (intent) | No | No | No |
+| Generates tests from code changes, not URLs | **Yes** | No | No | No | No | No |
+
+### Five Things No Other Tool Does
+
+**1. Assertion patterns as oracle specifications**
+
+Route families define *what correct behavior looks like* per feature:
+```json
+{
+  "id": "channels/send-message",
+  "assertionPatterns": [
+    {"type": "state-change", "pattern": "message appears in channel for sender"},
+    {"type": "cross-user", "pattern": "message visible to other channel members"},
+    {"type": "persistence", "pattern": "message persists after page reload"},
+    {"type": "negative", "pattern": "empty message is rejected with error"}
+  ]
+}
 ```
-Code diff → Feature mapping → Impact analysis → Coverage check → Test design → Generation → Healing
-```
+Generation is *required* to produce assertions matching these patterns. This moves beyond "element visible" to "business logic verified."
 
-### Capability Comparison
+**2. TypeScript AST-powered API surface extraction**
 
-| Capability | e2e-agents | Launchable | Codecov ATS | Qodo | Testsigma | mabl | Copilot |
-|-----------|-----------|-----------|------------|------|-----------|------|---------|
-| Diff-based impact analysis | Yes | Partial (ML) | Yes (line-level) | Partial | No | No | No |
-| Feature-family mapping | **Yes** | No | No | No | No | No | No |
-| Cross-family impact detection | **Yes** | Indirect | Indirect | No | No | No | No |
-| Structured test design | **Yes** (9 categories) | No | No | Partial | Partial | Partial | No |
-| CI gate | Yes | Yes | Yes | Yes | Yes | Yes | No |
-| E2E test generation | Yes | No | No | Yes | Yes | Yes | Yes |
-| Self-healing | Yes | No | No | No | Yes | Yes | No |
-| Open source | Yes | No | Partial | Partial | Partial | No | No |
+Uses the TypeScript Compiler API (not regex) to extract full method signatures from page object source files — including inherited methods, parameter types, return types, and arrow functions. Generated code is validated against this surface; hallucinated methods are blocked (moved to `needs-review/`), not silently written.
 
-### Three Things No Other Tool Does
+**3. Historical failure correlation**
 
-**1. Route-family mapping**
+Tracks which tests fail when certain files change over time. Files with historically broken correlations get a confidence boost in future runs, automatically prioritizing them for test generation. Competitors either don't track history (most generators) or require months of ML training data (Launchable).
 
-e2e-agents maintains a structured manifest (`route-families.json`) that connects source file paths, server paths, UI routes, page objects, spec directories, and user flows into named feature families. This is the knowledge layer that makes deterministic impact analysis possible.
+**4. Semantic coverage matching**
 
-No other tool in the market has this concept. Every competitor operates at file-level, line-level, or build-target-level granularity. The route-family approach means e2e-agents can say "this change affects the channels/search feature" rather than "this change touches line 42 of search_bar.tsx."
+Coverage evaluation applies 6 semantic rules: happy-path doesn't cover negative, one role doesn't cover another, creation doesn't cover editing. "When in doubt, choose partial." Prevents the common failure mode where AI claims full coverage because a related test exists.
 
-**2. Cross-family impact detection**
+**5. Cross-family impact detection**
 
-When a PR changes a shared component used by multiple features, the CI pipeline evaluates each feature family independently and may miss the ripple effect. The Crew's Cross-Impact Agent finds these connections — both deterministically (shared path overlap) and semantically (LLM-powered reasoning about shared state and APIs).
-
-In a real run on a Mattermost PR, the pipeline saw 1 impacted flow. The Crew found 50 cross-family links including `permissions → system_users`, `channels → external_links`, and `user → mentions`.
-
-**3. Structured test design across 9 categories**
-
-Other test generators produce code or flat scenario strings. The Crew's Test Designer produces structured test plans across 9 categories: happy-path, edge-case, boundary, negative, state-transition, race-condition, permission, accessibility, and performance.
-
-Each test case includes preconditions, concrete user-action steps, expected outcomes, priority, and a rationale explaining why the test matters. This is closer to what a senior QA engineer produces than what any automated tool generates.
+When a PR changes a shared component, the Crew's Cross-Impact Agent finds ripple effects across feature families — both deterministically (shared path overlap) and semantically (LLM reasoning about shared state/APIs).
 
 ## Where Competitors Are Stronger
 
-Honest assessment of where e2e-agents falls short:
-
 | Area | Stronger competitor | Gap |
 |------|-------------------|-----|
-| ML-based test selection from large suites | Launchable predicts failures with ~90% recall on ~20% of tests | e2e-agents identifies gaps but doesn't predict which existing tests will fail |
-| Visual regression testing | Applitools has 10+ years of visual AI with cross-browser grid | e2e-agents has no visual testing |
-| Low-code test creation for non-developers | mabl and Testsigma allow test creation without code | e2e-agents requires Playwright and TypeScript familiarity |
-| Enterprise maturity | Launchable (CloudBees), Codecov (Sentry), Copilot (Microsoft) have SOC 2, dedicated support, SLAs | e2e-agents is a focused open-source project |
-| Broad language support | Qodo supports 30+ languages, Copilot supports everything | e2e-agents focuses on TypeScript/Playwright with Go server support |
+| ML-based test selection from large suites | Launchable (~90% recall on ~20% of tests) | e2e-agents identifies gaps but doesn't predict which existing tests will fail |
+| Vision-based testing (no selectors at all) | Midscene.js, TestDriver.ai | e2e-agents uses DOM/selectors; vision would eliminate selector issues entirely |
+| Intent-based runtime assertions | Momentic, Harness AI | e2e-agents defines assertions at generation time, not runtime |
+| Visual regression testing | Applitools (10+ years of visual AI) | e2e-agents has no visual testing |
+| Low-code test creation | mabl, Testsigma, Katalon | e2e-agents requires Playwright/TypeScript familiarity |
+| Managed QA service | QA Wolf (human-verified tests) | e2e-agents is fully automated, no human verification loop |
+| Enterprise maturity | Launchable (CloudBees), Copilot (Microsoft) | e2e-agents is a focused open-source project |
+| Broad language support | Qodo (30+), Copilot (all) | e2e-agents: TypeScript/Playwright + pytest + supertest |
 
 ## Cost Comparison
 
 | Tool | Pricing model | Typical cost |
 |------|-------------|-------------|
-| e2e-agents CI gate | Pay-per-use LLM (or free with deterministic mode) | ~$0.02/PR |
-| e2e-agents Crew | Pay-per-use LLM | ~$0.50–2.00/run |
-| Launchable | Enterprise contract (CloudBees) | Not public |
-| Codecov | $4/user/month (Team) | ~$48/user/year |
-| Qodo | $19–45/user/month | ~$228–540/user/year |
-| Testsigma | Enterprise contract | Not public |
-| mabl | Enterprise contract | Not public |
-| GitHub Copilot | $10–39/user/month | ~$120–468/user/year |
+| e2e-agents CI gate | Free (deterministic mode) | ~$0.02/PR |
+| e2e-agents Crew | Pay-per-use LLM | ~$0.50-2.00/run |
+| Octomind | Free tier + custom paid | Unknown |
+| Momentic | Custom ($15M raised) | Unknown |
+| QA Wolf | Managed service | ~$90K/year |
+| Qodo | $19-45/user/month | ~$228-540/user/year |
+| Testim | ~$450/user/month | ~$5,400/user/year |
+| GitHub Copilot | $10-39/user/month | ~$120-468/user/year |
 | Applitools | From ~$969/month | ~$11,600/year |
-| Currents.dev | From ~$40/month | ~$480/year |
+| testRigor | Free to ~$900/month | ~$0-10,800/year |
 
-e2e-agents has no per-seat pricing. The only cost is LLM API usage, and the deterministic pipeline (impact + plan) works without any LLM key at all.
-
-## The Closest Competitor
-
-**Checksum.ai** is the nearest tool in concept — it generates 50–200 integration/E2E/API tests per PR for "exactly what changed" and claims ~70% auto-healing. However, Checksum does not publish details about feature-level mapping or cross-subsystem impact detection, and pricing is not public.
+e2e-agents has no per-seat pricing. The only cost is LLM API usage, and the deterministic pipeline (impact + plan + gate) works without any LLM key at all.
 
 ## Summary
 
-e2e-agents occupies a unique position: it is the only tool that combines deterministic feature-family mapping, cross-family impact detection, structured multi-category test design, and executable E2E test generation in a single open-source pipeline. The tradeoff is narrower scope (TypeScript/Playwright focus) and less enterprise maturity compared to well-funded competitors.
+e2e-agents occupies a unique position: it is the only tool that combines a **constraint-based oracle** (manifest + assertion patterns + TypeScript AST surface + historical failure correlation), **diff-driven impact analysis**, **semantic coverage evaluation**, and **executable test generation** in a single open-source pipeline.
 
-For teams that want a fast CI gate on every PR plus deep test design when needed — without vendor lock-in or per-seat pricing — this is currently the only option that exists.
+The tradeoff is narrower scope (TypeScript/Playwright focus) and less enterprise maturity compared to well-funded competitors. The vision-based testing approach (Midscene, TestDriver) eliminates selector issues entirely but adds runtime cost and non-determinism — a different tradeoff that may be worth adopting for specific use cases.
+
+For teams that want honest, change-driven test generation with business-logic assertions — without vendor lock-in or per-seat pricing — this is currently the only option that exists.

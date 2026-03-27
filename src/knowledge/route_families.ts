@@ -7,6 +7,13 @@ import {logger} from '../logger.js';
 
 export type FeaturePriority = 'P0' | 'P1' | 'P2';
 
+export type AssertionType = 'state-change' | 'cross-user' | 'persistence' | 'negative' | 'permission' | 'data-integrity' | 'error-handling';
+
+export interface AssertionPattern {
+    type: AssertionType;
+    pattern: string;
+}
+
 export interface RouteFeature {
     id: string;
     routes?: string[];
@@ -17,6 +24,7 @@ export interface RouteFeature {
     tags?: string[];
     priority?: FeaturePriority;
     userFlows?: string[];
+    assertionPatterns?: AssertionPattern[];
 }
 
 export interface ApiEndpoint {
@@ -42,6 +50,7 @@ export interface RouteFamily {
     features?: RouteFeature[];
     apiEndpoints?: ApiEndpoint[];
     testType?: TestType;
+    assertionPatterns?: AssertionPattern[];
 }
 
 export interface RouteFamilyManifest {
@@ -168,8 +177,24 @@ function validateFamily(family: unknown): RouteFamily | null {
     if (testType) {
         result.testType = testType;
     }
+    if (Array.isArray(obj.assertionPatterns)) {
+        result.assertionPatterns = validateAssertionPatterns(obj.assertionPatterns);
+    }
 
     return result;
+}
+
+const VALID_ASSERTION_TYPES: AssertionType[] = [
+    'state-change', 'cross-user', 'persistence', 'negative',
+    'permission', 'data-integrity', 'error-handling',
+];
+
+function validateAssertionPatterns(patterns: unknown[]): AssertionPattern[] {
+    return patterns
+        .filter((p): p is Record<string, unknown> => p != null && typeof p === 'object')
+        .filter((p) => typeof p.type === 'string' && typeof p.pattern === 'string')
+        .filter((p) => VALID_ASSERTION_TYPES.includes(p.type as AssertionType))
+        .map((p) => ({type: p.type as AssertionType, pattern: p.pattern as string}));
 }
 
 function validateFeature(feature: unknown): RouteFeature | null {
@@ -204,6 +229,9 @@ function validateFeature(feature: unknown): RouteFeature | null {
     }
     if (Array.isArray(obj.userFlows)) {
         result.userFlows = obj.userFlows.filter((v): v is string => typeof v === 'string');
+    }
+    if (Array.isArray(obj.assertionPatterns)) {
+        result.assertionPatterns = validateAssertionPatterns(obj.assertionPatterns);
     }
     return result;
 }
@@ -389,6 +417,23 @@ export function getRoutesForBinding(
     return family.routes;
 }
 
+export function getAssertionPatternsForBinding(
+    manifest: RouteFamilyManifest,
+    binding: {family: string; feature?: string},
+): AssertionPattern[] {
+    const family = getFamilyById(manifest, binding.family);
+    if (!family) {
+        return [];
+    }
+    if (binding.feature) {
+        const feature = getFeatureById(family, binding.feature);
+        if (feature?.assertionPatterns && feature.assertionPatterns.length > 0) {
+            return feature.assertionPatterns;
+        }
+    }
+    return family.assertionPatterns || [];
+}
+
 export function clearManifestCache(): void {
     manifestCache.clear();
 }
@@ -447,7 +492,7 @@ export function serializeManifest(manifest: RouteFamilyManifest): string {
             const cleaned = {...f};
             const optionalArrays = [
                 'pageObjects', 'components', 'webappPaths', 'serverPaths',
-                'specDirs', 'cypressSpecDirs', 'tags', 'userFlows', 'features', 'apiEndpoints',
+                'specDirs', 'cypressSpecDirs', 'tags', 'userFlows', 'features', 'apiEndpoints', 'assertionPatterns',
             ] as const;
             for (const key of optionalArrays) {
                 if (!cleaned[key] || (Array.isArray(cleaned[key]) && (cleaned[key] as unknown[]).length === 0)) {

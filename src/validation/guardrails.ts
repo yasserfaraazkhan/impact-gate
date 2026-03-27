@@ -9,6 +9,8 @@ export interface EvidenceCheck {
     hasPageObject: boolean;
     hasUserAction: boolean;
     hasExistingSpecCited: boolean;
+    /** Historical failure correlation boost (0-20) from failure_history */
+    historyBoost?: number;
 }
 
 export type ConfidenceClass = 'high' | 'medium' | 'low';
@@ -36,6 +38,11 @@ export function computeConfidence(check: EvidenceCheck): number {
     }
     if (check.hasExistingSpecCited) {
         score += 15;
+    }
+    // Historical failure correlation: if this file historically causes test failures,
+    // we're more confident it needs testing now
+    if (check.historyBoost) {
+        score += check.historyBoost;
     }
     return Math.min(100, score);
 }

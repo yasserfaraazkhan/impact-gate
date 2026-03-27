@@ -14,6 +14,9 @@ export interface ExistingSpecCoverage {
     missingScenarios?: string[];
 }
 
+export type {AssertionPattern} from '../knowledge/route_families.js';
+import type {AssertionPattern} from '../knowledge/route_families.js';
+
 export interface FlowDecision {
     flowId: string;
     flowName: string;
@@ -32,6 +35,7 @@ export interface FlowDecision {
     blockingReason?: string;
     priority: FlowPriority;
     userActions: string[];
+    assertionPatterns?: AssertionPattern[];
 }
 
 export interface FlowDecisionSummary {

@@ -5,7 +5,8 @@ import {LLMProviderFactory} from '../provider_factory.js';
 import type {LLMProvider} from '../provider_interface.js';
 import {buildImpactPrompt, parseImpactResponse, type ImpactPromptContext} from '../prompts/impact.js';
 import {formatContextForPrompt} from '../knowledge/context_loader.js';
-import {getFamilyById, type RouteFamilyManifest} from '../knowledge/route_families.js';
+import {getFamilyById, getAssertionPatternsForBinding, type RouteFamilyManifest} from '../knowledge/route_families.js';
+import {loadFailureHistory, getConfidenceBoost} from '../knowledge/failure_history.js';
 import {getSpecsForFamily, type SpecIndex} from '../knowledge/spec_index.js';
 import type {ApiSurfaceCatalog} from '../knowledge/api_surface.js';
 import type {LoadedContext} from '../knowledge/context_loader.js';
@@ -47,6 +48,7 @@ export async function runImpactStage(
     apiSurface: ApiSurfaceCatalog,
     context: LoadedContext,
     config: ImpactConfig,
+    testsRoot?: string,
 ): Promise<ImpactResult> {
     const warnings: string[] = [];
     const allDecisions: FlowDecision[] = [];
@@ -66,6 +68,9 @@ export async function runImpactStage(
     }
 
     const contextBlock = formatContextForPrompt(context);
+
+    // Load historical failure correlations for confidence boosting
+    const failureHistory = testsRoot ? loadFailureHistory(testsRoot) : null;
 
     for (const group of familyGroups) {
         const family = manifest ? getFamilyById(manifest, group.familyId) : null;
@@ -122,15 +127,29 @@ export async function runImpactStage(
                     continue;
                 }
 
+                // Compute confidence with optional historical failure boost
+                const changedFilesList = Array.isArray(flow.changedFiles)
+                    ? flow.changedFiles.filter((f): f is string => typeof f === 'string')
+                    : [];
+                const historyBoost = failureHistory
+                    ? Math.max(...changedFilesList.map((f) => getConfidenceBoost(failureHistory, f)), 0)
+                    : 0;
+
                 const confidence = typeof flow.confidence === 'number'
-                    ? Math.max(0, Math.min(100, flow.confidence))
+                    ? Math.min(100, Math.max(0, flow.confidence) + historyBoost)
                     : computeConfidence({
                         hasRouteFamily: true,
                         hasSpecificRoute: Boolean(flow.route),
                         hasPageObject: Boolean(flow.pageObjects && flow.pageObjects.length > 0),
                         hasUserAction: Boolean(flow.userActions && flow.userActions.length > 0),
                         hasExistingSpecCited: false,
+                        historyBoost,
                     });
+
+                // Resolve assertion patterns from manifest for this flow's family/feature
+                const assertionPatterns = manifest
+                    ? getAssertionPatternsForBinding(manifest, {family: group.familyId, feature: group.featureId})
+                    : [];
 
                 const decision: FlowDecision = {
                     flowId: flow.id,
@@ -147,6 +166,7 @@ export async function runImpactStage(
                     blockingReason: shouldForceCannotDetermine(confidence) ? 'Confidence too low to determine action.' : undefined,
                     priority: normalizePriority(flow.priority),
                     userActions: Array.isArray(flow.userActions) ? flow.userActions.filter((a): a is string => typeof a === 'string') : [],
+                    assertionPatterns: assertionPatterns.length > 0 ? assertionPatterns : undefined,
                 };
 
                 allDecisions.push(decision);
