@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0] - 2026-03-27
+
+### Release Focus
+
+This major release completes the outward rename from `e2e-agents` to `impact-gate` and aligns the package name, CLI names, docs, and repo identity with the product's actual core value: **diff-aware E2E impact analysis and coverage gating for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.**
+
+### Highlights
+
+- **New package name** — publish under `@yasserkhanorg/impact-gate` instead of `@yasserkhanorg/e2e-agents`.
+- **New primary CLI names** — the main executables are now `impact-gate`, `impact-gate-qa`, and `impact-gate-mcp`.
+- **Legacy aliases remain for migration** — `e2e-ai-agents`, `e2e-qa-agent`, and `e2e-agents-mcp` still resolve to the same binaries during the transition.
+- **Repo and docs now match the new identity** — GitHub URLs, docs-site branding, package metadata, and user-facing examples now point to `impact-gate`.
+- **Config migration is gentle** — `impact-gate.config.json` is the preferred config name, while legacy config filenames remain supported.
+- **Artifact compatibility is preserved** — `.e2e-ai-agents/` remains unchanged for now so existing CI jobs and local workflows do not break during the rename.
+
+### Migration Notes
+
+- Install the renamed package with `npm i -D @yasserkhanorg/impact-gate`.
+- Prefer the new commands in docs, scripts, and CI:
+  - `impact-gate`
+  - `impact-gate-qa`
+  - `impact-gate-mcp`
+- Existing artifact paths and older config filenames continue to work during this transition release.
+
+### Verification
+
+- `npm test` — **469 passing, 0 failing**
+- `npm pack --dry-run` — **passes**
+- CLI smoke checks:
+  - `node dist/cli.js --help` -> exit `0`
+  - `node dist/qa-agent/cli.js --help` -> exit `0`
+
 ## [1.10.2] - 2026-03-27
 
 ### Release Focus

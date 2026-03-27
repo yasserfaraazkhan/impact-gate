@@ -1,6 +1,6 @@
 # How impact-gate Compares to Other Tools
 
-> Last updated: March 2026 | impact-gate v1.10.2
+> Last updated: March 2026 | impact-gate v2.0.0
 
 ## The Problem Space
 
