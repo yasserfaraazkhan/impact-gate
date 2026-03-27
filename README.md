@@ -1,6 +1,6 @@
 # @yasserkhanorg/impact-gate
 
-Diff-aware E2E impact analysis, release-ready test planning, and coverage gating for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.
+Diff-aware E2E impact analysis, release-ready test planning, coverage gating, and hallucination-resistant AI generation for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.
 
 [![npm](https://img.shields.io/npm/v/%40yasserkhanorg%2Fimpact-gate)](https://www.npmjs.com/package/@yasserkhanorg/impact-gate)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
@@ -24,6 +24,9 @@ Product priorities:
 - **Tertiary**: crew workflows, MCP integrations, plugins, and the autonomous QA agent
 
 The clearest path today is a Playwright or Cypress repository with a maintained `route-families.json` manifest. That is the path this package is optimized to make unusually clear and useful.
+
+AI-specific note:
+- Generated tests are grounded against the discovered local API surface and verified before they are trusted. The package is designed to reduce hallucinated page-object methods, fabricated helpers, and low-evidence test generation.
 
 Transition note:
 - The package and primary CLI are being renamed to `impact-gate`.
@@ -153,6 +156,20 @@ npx impact-gate finalize-generated-tests --path /path/to/project --create-pr
 ```
 
 `plan` and `suggest` are aliases. `analyze` is the convenience wrapper when you want the full path in one invocation.
+
+### How Hallucinations Are Tackled
+
+The AI path is intentionally constrained instead of trusting raw LLM output.
+
+- **Deterministic first**: impact analysis, coverage planning, and release-diff planning work without an LLM. The AI layer comes after the diff and coverage evidence are already established.
+- **Local API surface grounding**: generation prompts are built from discovered page objects, helpers, method signatures, and inherited methods from your own repository.
+- **Prompt-level constraints**: the generator is explicitly told to use only known methods and to fall back to raw Playwright selectors when a method is not available.
+- **Prompt sanitization**: flow names, evidence, and user-action strings are sanitized before being injected into prompts.
+- **Hallucination detection gate**: generated code is scanned for method calls that do not exist in the discovered API surface. Suspicious specs are blocked by default instead of being written into the main specs directory.
+- **Needs-review quarantine**: blocked specs are written to `generated-needs-review/` so teams can inspect them manually rather than accidentally trusting them in CI.
+- **Verification after generation**: written specs go through compile checks and smoke-run verification. Failing specs are moved out of the trusted path.
+
+This is why the strongest product story is still: deterministic diff -> test plan -> optional AI assistance with guardrails.
 
 ## Advanced / Experimental
 

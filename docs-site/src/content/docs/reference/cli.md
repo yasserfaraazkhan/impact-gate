@@ -3,7 +3,7 @@ title: "CLI Commands"
 description: "Complete reference for all impact-gate CLI commands"
 ---
 
-All commands are invoked via `npx impact-gate <command>`. Start with the core CI workflow first, then layer in optional AI features if the deterministic plan is already useful. The same deterministic flow supports pull-request gating and release-readiness planning from a git diff.
+All commands are invoked via `npx impact-gate <command>`. Start with the core CI workflow first, then layer in optional AI features if the deterministic plan is already useful. The same deterministic flow supports pull-request gating and release-readiness planning from a git diff, while the AI path adds local-API grounding and hallucination guardrails rather than trusting raw generated code.
 
 ## Core CI Workflow
 

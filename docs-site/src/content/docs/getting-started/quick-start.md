@@ -47,6 +47,16 @@ npx impact-gate plan --path . --since v2.1.0
 
 That gives you a release-focused view of impacted flows, current coverage, and what still needs tests or manual validation before shipping.
 
+## Why The AI Path Is Safer Than Raw Generation
+
+When you later enable generation or healing, `impact-gate` does not just trust whatever the LLM writes.
+
+- The diff and coverage plan are established first with deterministic analysis
+- Generation prompts are grounded in your repository's discovered page objects and helpers
+- The generator is told to use only known methods and fall back to raw Playwright selectors when needed
+- Suspicious method calls are detected after generation and blocked into `generated-needs-review/`
+- Written specs are compile-checked and smoke-run before they count as verified
+
 ## What Next?
 
 - Run `train --no-enrich` to build the route-families manifest for better accuracy

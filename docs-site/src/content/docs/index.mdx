@@ -1,6 +1,6 @@
 ---
 title: Impact Gate
-description: Diff-aware E2E impact analysis, release-ready test planning, and coverage gating for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.
+description: Diff-aware E2E impact analysis, release-ready test planning, coverage gating, and hallucination-resistant AI generation for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
@@ -12,10 +12,10 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
   <Card title="Release Readiness" icon="setting">
     Compare the current branch or release candidate to the last shipped tag and turn that diff into a prioritized test plan before you ship.
   </Card>
+  <Card title="Hallucination Guardrails" icon="warning">
+    AI-generated specs are grounded against your local API surface and suspicious method calls are blocked into <code>generated-needs-review/</code> instead of silently entering the main suite.
+  </Card>
   <Card title="Secondary: Optional AI" icon="puzzle">
     Add generation and healing after your <code>route-families.json</code> manifest is in good shape and the deterministic plan is already useful.
-  </Card>
-  <Card title="Advanced / Experimental" icon="group">
-    Crew workflows, MCP integrations, plugins, and the autonomous QA agent are available, but they are not the best starting point for most teams.
   </Card>
 </CardGrid>
