@@ -5,7 +5,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'E2E Agents',
-      description: 'AI-powered E2E test impact analysis, generation, and healing',
+      description: 'Diff-aware E2E impact analysis and coverage gating for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.',
       social: {
         github: 'https://github.com/yasserfaraazkhan/e2e-agents',
       },
@@ -13,16 +13,15 @@ export default defineConfig({
         {
           label: 'Getting Started',
           items: [
-            { label: 'Installation', slug: 'getting-started/installation' },
             { label: 'Quick Start', slug: 'getting-started/quick-start' },
+            { label: 'Installation', slug: 'getting-started/installation' },
             { label: 'Zero Config', slug: 'getting-started/zero-config' },
           ],
         },
         {
-          label: 'Guides',
+          label: 'Core CI Workflow',
           items: [
             { label: 'Impact Analysis', slug: 'guides/impact-analysis' },
-            { label: 'Crew Workflows', slug: 'guides/crew-workflows' },
             { label: 'CI Integration', slug: 'guides/ci-integration' },
             { label: 'Cost Management', slug: 'guides/cost-management' },
           ],
@@ -32,8 +31,14 @@ export default defineConfig({
           items: [
             { label: 'CLI Commands', slug: 'reference/cli' },
             { label: 'Configuration', slug: 'reference/config' },
-            { label: 'Agents', slug: 'reference/agents' },
             { label: 'Providers', slug: 'reference/providers' },
+          ],
+        },
+        {
+          label: 'Advanced / Experimental',
+          items: [
+            { label: 'Crew Workflows', slug: 'guides/crew-workflows' },
+            { label: 'Agents', slug: 'reference/agents' },
           ],
         },
         {

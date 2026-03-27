@@ -91,16 +91,16 @@ describe('generation prompts', () => {
             assert.ok(prompt.includes('ChannelsPage') || prompt.includes('ScheduledPostsPage'));
         });
 
-        it('should include mandatory rules about @mattermost/playwright-lib', () => {
+        it('should use generic Playwright rules when no profile is provided', () => {
             const prompt = buildGenerationPrompt({
                 decision: MOCK_DECISION,
                 apiSurface: MOCK_API_SURFACE,
                 specPath: 'specs/functional/ai-assisted/test.spec.ts',
                 mode: 'create_spec',
             });
-            assert.ok(prompt.includes('@mattermost/playwright-lib'));
-            assert.ok(prompt.includes('pw.initSetup'));
-            assert.ok(prompt.includes('pw.testBrowser.login'));
+            assert.ok(prompt.includes('@playwright/test'));
+            assert.ok(prompt.includes('async ({page}) =>'));
+            assert.ok(!prompt.includes('pw.initSetup'));
         });
 
         it('should include existing spec content for add_scenarios mode', () => {
@@ -164,7 +164,7 @@ test('my test', async ({pw}) => {});
             const codeWithoutImport = "test('my test', {tag: '@channels'}, async ({pw}) => {});";
             const result = parseGenerationResponse(codeWithoutImport, 'specs/test.spec.ts', 'create_spec', 'flow_1');
             assert.ok(result);
-            assert.ok(result.code.includes('@mattermost/playwright-lib'));
+            assert.ok(result.code.includes('@playwright/test'));
         });
     });
 

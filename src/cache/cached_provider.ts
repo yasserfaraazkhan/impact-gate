@@ -122,6 +122,10 @@ export class CachedProvider implements LLMProvider {
     resetUsageStats(): void {
         this.inner.resetUsageStats();
     }
+
+    async checkHealth(): Promise<{healthy: boolean; message: string}> {
+        return this.inner.checkHealth();
+    }
 }
 
 // Re-export for convenience

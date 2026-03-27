@@ -367,6 +367,26 @@ class HybridProvider implements LLMProvider {
         this.fallback.resetUsageStats();
     }
 
+    async checkHealth(): Promise<{healthy: boolean; message: string}> {
+        const primaryHealth = await this.primary.checkHealth();
+        if (primaryHealth.healthy) {
+            return {healthy: true, message: `${this.primary.name}: ${primaryHealth.message}`};
+        }
+
+        const fallbackHealth = await this.fallback.checkHealth();
+        if (fallbackHealth.healthy) {
+            return {
+                healthy: true,
+                message: `${this.primary.name} unhealthy (${primaryHealth.message}); fallback ${this.fallback.name}: ${fallbackHealth.message}`,
+            };
+        }
+
+        return {
+            healthy: false,
+            message: `${this.primary.name} unhealthy (${primaryHealth.message}); fallback ${this.fallback.name} unhealthy (${fallbackHealth.message})`,
+        };
+    }
+
     /**
      * Get breakdown of which provider was used for what
      */

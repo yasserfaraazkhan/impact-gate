@@ -50,11 +50,10 @@ Create `e2e-ai-agents.config.json` (or `.e2e-ai-agents.config.json`) in your pro
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `path` | string | `.` | Project root directory |
-| `profile` | string | `default` | Analysis profile: `default`, `mattermost`, or auto-detected from knowledge graph (see below) |
+| `profile` | string | `default` | Analysis profile: `default` or `mattermost` |
 | `testsRoot` | string | auto-detected | Path to tests directory |
 | `mode` | string | `impact` | Default analysis mode |
-| `testMode` | string | auto-detected | Test mode: `ui`, `api`, or `both`. Controls whether generated tests target the browser, API endpoints, or a mix. Auto-detected from the project structure or knowledge graph when omitted. |
-| `framework` | string | `auto` | Test framework (`playwright`, `cypress`, `pytest`, `supertest`, `auto`) |
+| `framework` | string | `auto` | Test framework (`playwright`, `cypress`, `pytest`, `supertest`, `selenium`, `auto`) |
 
 ### `git`
 
@@ -70,7 +69,7 @@ Create `e2e-ai-agents.config.json` (or `.e2e-ai-agents.config.json`) in your pro
 | `dependencyGraph.maxDepth` | number | `3` | Max depth for transitive impact traversal |
 | `traceability.enabled` | boolean | `true` | Use CI execution data for file-to-test mapping |
 | `aiFlow.enabled` | boolean | `true` | Enable LLM-powered flow mapping |
-| `aiFlow.provider` | string | `anthropic` | LLM provider for AI enrichment |
+| `aiFlow.provider` | string | `auto` | LLM provider for AI enrichment |
 
 ### `pipeline`
 
@@ -92,7 +91,8 @@ Create `e2e-ai-agents.config.json` (or `.e2e-ai-agents.config.json`) in your pro
 
 - **`default`** -- standard analysis with configurable strictness
 - **`mattermost`** -- strict mode with escalation for heuristic-only mappings, tuned for Mattermost's codebase structure
-- **auto-detected** -- when a knowledge graph is present (via `bootstrap`), the profile is inferred from the project's frameworks and structure. The resolved profile name appears in the bootstrap output.
+
+Framework auto-detection is separate from profiles. The CLI can auto-detect Playwright, Cypress, pytest, supertest, and Selenium usage from project files and dependencies.
 
 ## Precedence
 

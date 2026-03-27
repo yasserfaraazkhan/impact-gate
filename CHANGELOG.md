@@ -4,23 +4,49 @@ All notable changes to this project will be documented in this file.
 
 ## [1.10.1] - 2026-03-27
 
-### Bug Fixes
+### Release Focus
 
-- **`--help` exits with code 0** — Previously exited with code 1 when invoked without a command, signaling failure to CI systems.
-- **`--threshold` accepts both fractions and percentages** — `--threshold 0.7` now correctly means 70%, not 0.7%. Values < 1 are auto-multiplied by 100.
-- **`llm-health` checks all configured providers** — Now probes Anthropic, OpenAI, and Ollama based on which env vars are set, instead of Anthropic-only.
-- **`impact` command writes plan.json** — Output now written to `.e2e-ai-agents/plan.json` in addition to stdout, matching documentation.
-- **"Language Learning Models" typo** — Fixed to "Large Language Models" in public API exports.
-- **Usage output lists all commands** — Added `crew`, `gate`, `cost-report`, `bootstrap` to `--help` output.
+This patch release tightens the product around its clearest promise: **Diff-aware E2E impact analysis and coverage gating for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.**
 
-### Documentation Honesty
+### Highlights
 
-- **Toned down absolute claims** — Removed "no single tool", "the only tool", "no other tool" language from comparison docs. Replaced with accurate phrasing like "few tools attempt", "uncommon in the market", "one of the few options".
-- **Quick-start accuracy** — Corrected impact command output description.
-- **Installation docs** — Fixed llm-health description to reflect multi-provider support.
-- **Deployment docs** — Removed false "reports latency" claim (only checks availability).
+- **Repositioned the package around the CI-first workflow** — README, docs-site homepage, CLI help, and command reference now point users to `impact -> plan -> gate` first instead of treating every feature as equally primary.
+- **Advanced features are now labeled honestly** — crew workflows, MCP integrations, plugins, and the autonomous QA agent are clearly presented as advanced/experimental instead of default entry points.
+- **Documentation now matches actual behavior** — quick start, installation, CLI reference, CI guide, deployment guide, and comparison docs were rewritten to remove misleading or overstated claims.
 
-Tests: 469 pass, 0 failures.
+### CLI & Behavior
+
+- **`--help` now exits successfully** — `npx e2e-ai-agents --help` returns exit code `0`; invoking the CLI without a command still returns exit code `1`.
+- **Help output now reflects the product shape** — commands are grouped into Core CI Workflow, Optional AI Workflow, Setup and Calibration, and Advanced / Experimental sections.
+- **`llm-health` now checks the configured or auto-detected provider** — this command no longer implies “probe everything”; it reports the health of the provider path the package would actually use.
+- **Crew plugins are exposed through the CLI** — added `--plugins` to the `crew` command so the plugin system is documented and wired end-to-end.
+
+### Generalization & Defaults
+
+- **Generic Playwright is now the default prompt fallback** — generation and healing prompts no longer silently assume Mattermost conventions when no Mattermost profile is selected.
+- **Framework support is less hidden** — CLI/config framework handling now accepts and auto-detects `pytest` and `supertest` in addition to Playwright, Cypress, and Selenium.
+- **Profiles are clarified** — `profile` is now documented as analysis behavior (`default` or `mattermost`), separate from framework detection.
+
+### Docs & Messaging
+
+- **Homepage and sidebar realigned** — the docs-site hero, description, and navigation now reinforce the CI-first story instead of leading with crew workflows.
+- **Threshold docs corrected** — examples now use `--threshold 80` and explicitly describe threshold values as percentage-style (`0-100`).
+- **Impact vs. plan artifacts clarified** — `impact` is documented as stdout-first; `plan` is documented as the command that writes `.e2e-ai-agents/plan.json` and `.e2e-ai-agents/ci-summary.md`.
+- **Comparison page toned down** — replaced absolute, credibility-damaging language with narrower, more defensible wording.
+- **Version and deployment metadata updated** — docs now consistently reflect `1.10.1`.
+
+### Internal Consistency
+
+- **Provider interface now includes health checks** — `checkHealth()` is part of the provider contract, and cached/hybrid providers now implement it cleanly.
+- **Public package description updated** — `package.json` now describes the package in the same CI-first terms used by the README and docs.
+
+### Verification
+
+- `npm test` — **469 passing, 0 failing**
+- `npm pack --dry-run` — **passes**
+- CLI smoke checks:
+  - `node dist/cli.js --help` -> exit `0`
+  - `node dist/cli.js` -> exit `1`
 
 ## [1.10.0] - 2026-03-27
 

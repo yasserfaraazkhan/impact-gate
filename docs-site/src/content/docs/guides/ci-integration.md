@@ -29,8 +29,6 @@ jobs:
         run: npm install @yasserkhanorg/e2e-agents
 
       - name: Run coverage check
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           npx e2e-ai-agents plan \
             --since origin/${{ github.base_ref }} \
@@ -43,10 +41,10 @@ jobs:
 The `gate` command provides a pass/fail check based on a confidence threshold:
 
 ```bash
-npx e2e-ai-agents gate --threshold 0.7 --path .
+npx e2e-ai-agents gate --threshold 80 --path .
 ```
 
-This exits non-zero if overall coverage confidence falls below the threshold, making it suitable as a required status check.
+This exits non-zero if overall coverage falls below the threshold, making it suitable as a required status check. `--threshold` uses percentage-style values (`0-100`).
 
 ## CI Artifacts
 
@@ -54,10 +52,10 @@ Every run produces files under `.e2e-ai-agents/`:
 
 | File | Purpose |
 |------|---------|
-| `plan.json` | Structured plan with run sets, confidence, and decisions |
-| `ci-summary.md` | Markdown summary for PR comments |
-| `metrics-summary.json` | Aggregated run metrics |
-| `metrics.jsonl` | Append-only metric log |
+| `.e2e-ai-agents/plan.json` | Structured plan with run sets, confidence, and decisions |
+| `.e2e-ai-agents/ci-summary.md` | Markdown summary for PR comments |
+| `.e2e-ai-agents/metrics-summary.json` | Aggregated run metrics |
+| `.e2e-ai-agents/metrics.jsonl` | Append-only metric log |
 
 ## JSON Output for Parsing
 
@@ -76,4 +74,4 @@ npx e2e-ai-agents impact --path . --since origin/${{ github.base_ref }}
 npx e2e-ai-agents plan --path . --since origin/${{ github.base_ref }}
 ```
 
-These commands use deterministic analysis only and require no API key.
+These commands use deterministic analysis only and require no API key. Add provider env vars only when you intentionally want AI enrichment on top of this baseline.

@@ -100,6 +100,7 @@ export interface ParsedArgs {
 
     // Crew command
     crewWorkflow?: string;
+    plugins?: string[];
 
     // Gate command
     gateThreshold?: number;

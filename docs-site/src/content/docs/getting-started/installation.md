@@ -32,13 +32,14 @@ npx e2e-ai-agents --help
 ```
 
 You should see the list of available commands including `impact`, `plan`, `crew`, `train`, and others.
+The best first run is usually `impact`, then `plan`, then `gate`.
 
 ## Optional: LLM Provider
 
-AI-powered features (crew workflows, test generation, healing) need an API key. Set one of these environment variables:
+AI-powered features (crew workflows, test generation, healing) need a provider. Set one of these environment variables:
 
 ```bash
-# Anthropic (default provider)
+# Anthropic
 export ANTHROPIC_API_KEY=sk-ant-...
 
 # OpenAI
@@ -48,7 +49,7 @@ export OPENAI_API_KEY=sk-...
 export OLLAMA_BASE_URL=http://localhost:11434
 ```
 
-The free-tier commands (`impact`, `plan`, `train --no-enrich`, `cost-report`, `feedback`) work without any API key.
+The core CI commands (`impact`, `plan`, `gate`, `train --no-enrich`, `cost-report`, `feedback`) work without any API key.
 
 ## Verify Provider Connectivity
 
@@ -56,4 +57,4 @@ The free-tier commands (`impact`, `plan`, `train --no-enrich`, `cost-report`, `f
 npx e2e-ai-agents llm-health
 ```
 
-This sends a minimal probe to each provider whose environment variable is set (Anthropic, OpenAI, and/or Ollama) and reports whether it can accept requests and return responses.
+This probes the configured provider, or the auto-detected provider if you rely on environment discovery, and reports whether it can accept requests and return responses.

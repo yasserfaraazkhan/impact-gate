@@ -75,6 +75,7 @@ export async function runCrewCommand(args: ParsedArgs, autoConfig: string | unde
         providerOverride: args.llmProvider,
         budgetUSD: args.budgetUSD,
         dryRun: degraded || args.dryRun,
+        plugins: args.plugins,
     };
 
     // Create orchestrator and register all agents

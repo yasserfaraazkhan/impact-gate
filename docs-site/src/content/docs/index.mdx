@@ -1,32 +1,32 @@
 ---
 title: E2E Agents
-description: AI-powered E2E test impact analysis, generation, and healing for frontend repositories.
+description: Diff-aware E2E impact analysis and coverage gating for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.
 template: splash
 hero:
-  tagline: Determine which E2E tests are impacted by code changes, identify coverage gaps, and generate or heal Playwright tests — all from the CLI.
+  tagline: Diff-aware E2E impact analysis and coverage gating for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.
   actions:
-    - text: Get Started
-      link: /getting-started/installation/
+    - text: Quick Start
+      link: /getting-started/quick-start/
       icon: right-arrow
       variant: primary
-    - text: View on GitHub
-      link: https://github.com/yasserfaraazkhan/e2e-agents
-      icon: external
+    - text: CLI Reference
+      link: /reference/cli/
+      icon: right-arrow
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
 <CardGrid stagger>
-  <Card title="Free Impact Analysis" icon="magnifier">
-    Deterministic impact analysis from git diffs with zero LLM cost. No API key required.
+  <Card title="Primary: Impact + Gate" icon="magnifier">
+    Start with <code>impact</code>, <code>plan</code>, and <code>gate</code> to make pull-request coverage decisions from a git diff.
   </Card>
-  <Card title="10-Agent Crew" icon="group">
-    Specialized agents for impact detection, strategy, test design, generation, execution, and healing.
+  <Card title="Free Core CI Workflow" icon="setting">
+    The deterministic path works without API keys: impact analysis, coverage planning, route-family training, and CI gating.
   </Card>
-  <Card title="CI-Ready" icon="setting">
-    GitHub Actions integration with coverage gating, PR comments, and JSON output for automation.
+  <Card title="Secondary: Optional AI" icon="puzzle">
+    Add generation and healing after your <code>route-families.json</code> manifest is in good shape and the deterministic plan is already useful.
   </Card>
-  <Card title="Multi-Provider" icon="puzzle">
-    Works with Anthropic, OpenAI, Ollama (free local), or any OpenAI-compatible endpoint.
+  <Card title="Advanced / Experimental" icon="group">
+    Crew workflows, MCP integrations, plugins, and the autonomous QA agent are available, but they are not the best starting point for most teams.
   </Card>
 </CardGrid>

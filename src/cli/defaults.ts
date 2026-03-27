@@ -14,6 +14,45 @@ export interface ResolvedDefaults {
     since: string;
 }
 
+function detectPytestFramework(appPath: string): FrameworkType | undefined {
+    const resolvedPath = resolve(appPath);
+    const pytestIni = join(resolvedPath, 'pytest.ini');
+    if (existsSync(pytestIni)) {
+        return 'pytest';
+    }
+
+    const conftest = join(resolvedPath, 'conftest.py');
+    if (existsSync(conftest)) {
+        return 'pytest';
+    }
+
+    const pyproject = join(resolvedPath, 'pyproject.toml');
+    if (existsSync(pyproject)) {
+        try {
+            const content = readFileSync(pyproject, 'utf-8');
+            if (content.includes('pytest')) {
+                return 'pytest';
+            }
+        } catch {
+            // ignore malformed or unreadable file
+        }
+    }
+
+    const setupCfg = join(resolvedPath, 'setup.cfg');
+    if (existsSync(setupCfg)) {
+        try {
+            const content = readFileSync(setupCfg, 'utf-8');
+            if (content.includes('[tool:pytest]') || content.includes('[pytest]')) {
+                return 'pytest';
+            }
+        } catch {
+            // ignore malformed or unreadable file
+        }
+    }
+
+    return undefined;
+}
+
 /**
  * Detect the test framework from package.json dependencies.
  */
@@ -21,6 +60,10 @@ export function detectFramework(appPath: string): FrameworkType {
     const resolvedPath = resolve(appPath);
     const pkgPath = join(resolvedPath, 'package.json');
     if (!existsSync(pkgPath)) {
+        const pytestFramework = detectPytestFramework(resolvedPath);
+        if (pytestFramework) {
+            return pytestFramework;
+        }
         return 'auto';
     }
     try {
@@ -32,11 +75,19 @@ export function detectFramework(appPath: string): FrameworkType {
         if (allDeps.cypress) {
             return 'cypress';
         }
+        if (allDeps.supertest) {
+            return 'supertest';
+        }
         if (allDeps['selenium-webdriver'] || allDeps.webdriverio) {
             return 'selenium';
         }
     } catch {
         // ignore malformed package.json
+    }
+
+    const pytestFramework = detectPytestFramework(resolvedPath);
+    if (pytestFramework) {
+        return pytestFramework;
     }
     return 'auto';
 }

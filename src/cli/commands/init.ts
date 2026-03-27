@@ -64,10 +64,10 @@ function buildConfig(answers: InitAnswers): Record<string, unknown> {
 function printNextSteps(): void {
     console.log('');
     console.log('  Next steps:');
-    console.log('    1. Set your API key:  export ANTHROPIC_API_KEY=sk-ant-...');
-    console.log('    2. Test connectivity:  npx e2e-ai-agents llm-health');
-    console.log('    3. Run impact analysis: npx e2e-ai-agents impact');
-    console.log('    4. Add to CI: see examples/github-actions/pr-impact.yml');
+    console.log('    1. Start with impact analysis:  npx e2e-ai-agents impact --path .');
+    console.log('    2. Build a coverage plan:      npx e2e-ai-agents plan --path .');
+    console.log('    3. Optional AI setup:          export ANTHROPIC_API_KEY=sk-ant-...');
+    console.log('    4. Verify provider health:     npx e2e-ai-agents llm-health');
     console.log('');
 }
 
@@ -114,7 +114,7 @@ export async function runInitCommand(yes = false): Promise<void> {
     try {
         const appPath = await ask(rl, '  Path to your web app root', '.');
         const detectedFramework = detectFramework(appPath);
-        const framework = await ask(rl, '  Test framework (auto | playwright | cypress | selenium)', detectedFramework);
+        const framework = await ask(rl, '  Test framework (auto | playwright | cypress | pytest | supertest | selenium)', detectedFramework);
 
         const detectedTestsRoot = detectTestsRoot(appPath);
         const testsRoot = await ask(

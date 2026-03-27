@@ -59,6 +59,11 @@ export interface LLMProvider {
      * Reset usage statistics (typically called at start of new cycle)
      */
     resetUsageStats(): void;
+
+    /**
+     * Run a lightweight health probe against the provider.
+     */
+    checkHealth(): Promise<{healthy: boolean; message: string}>;
 }
 
 /**

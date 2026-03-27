@@ -3,7 +3,7 @@ title: "Zero Config"
 description: "How auto-detection works and when you need a config file"
 ---
 
-The CLI auto-detects most settings so you can run commands without any configuration file.
+The CLI auto-detects most settings so you can run commands without any configuration file. The most battle-tested path is still a Playwright or Cypress repo using the core `impact -> plan -> gate` loop.
 
 ## What Gets Auto-Detected
 
@@ -45,6 +45,8 @@ Create `e2e-ai-agents.config.json` in your project root when you need to:
 - Define **policy enforcement** rules (advisory, warn, or block)
 - Point to a **separate server path** for backend analysis
 - Override framework or tests-root detection
+
+If auto-detection gets it wrong, prefer explicit flags or a config file over guessing.
 
 The CLI searches for `e2e-ai-agents.config.json` or `.e2e-ai-agents.config.json` starting from the current directory and walking upward.
 

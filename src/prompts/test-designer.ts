@@ -52,7 +52,7 @@ export function buildTestDesignerPrompt(ctx: TestDesignerPromptContext): string 
     const categories = ctx.strategy.testCategories.join(', ');
 
     return [
-        `You are a senior QA engineer designing comprehensive test cases for a ${ctx.profile?.projectName || 'Mattermost'} user flow.`,
+        `You are a senior QA engineer designing comprehensive test cases for a ${ctx.profile?.projectName || 'project'} user flow.`,
         '',
         `FLOW: ${ctx.flow.flowName}`,
         `Flow ID: ${ctx.flow.flowId}`,

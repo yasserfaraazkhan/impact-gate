@@ -23,7 +23,7 @@ This parses the git diff, maps changed files to route families, and reports whic
 
 ## Step 3: View the Results
 
-The impact report prints to stdout and writes to `.e2e-ai-agents/plan.json`. You can also get a coverage plan with gap analysis:
+The `impact` command prints a deterministic summary to stdout. To write coverage artifacts with gap analysis, run `plan`:
 
 ```bash
 npx e2e-ai-agents plan --path . --since origin/main
@@ -36,7 +36,8 @@ This produces:
 ## What Next?
 
 - Run `train --no-enrich` to build the route-families manifest for better accuracy
+- Add `gate --threshold 80` in CI once `plan` output looks trustworthy
 - **Non-Mattermost projects**: if you have an Understand-Anything knowledge graph, run `bootstrap` instead of `train` to auto-generate route families from the graph. See [Zero Config -- Bootstrap](/getting-started/zero-config/#bootstrap-alternative-setup-with-a-knowledge-graph) for details.
-- Try `crew --workflow quick-check` for AI-powered strategy recommendations
+- Try `crew --workflow quick-check` later if you want AI-powered strategy recommendations on top of the core CI loop
 - Add a [CI integration](/guides/ci-integration) to gate PRs on coverage
 - Set up [cost controls](/guides/cost-management) before enabling AI features

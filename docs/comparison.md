@@ -1,6 +1,6 @@
 # How e2e-agents Compares to Other Tools
 
-> Last updated: March 2026 | e2e-agents v1.10.0
+> Last updated: March 2026 | e2e-agents v1.10.1
 
 ## The Problem Space
 
@@ -10,7 +10,7 @@ When a developer opens a pull request, three questions need answering:
 2. **Do tests already cover those features?** (coverage assessment)
 3. **If not, what exactly should be tested?** (test design)
 
-The market offers 40+ tools for pieces of this — but few tools attempt all three from a code diff. e2e-agents does.
+The market offers many tools for pieces of this problem. e2e-agents is aimed at teams that want these three questions answered from a code diff inside one workflow.
 
 ## The Oracle Problem
 
@@ -34,9 +34,9 @@ Validation (compile check + smoke run + hallucination blocking)
     → "Block unknown methods, reject tests that don't compile"
 ```
 
-This layered constraint approach is uncommon in the market.
+This layered constraint approach is still less common than URL-first or recorder-first tools.
 
-## Market Segments (40+ tools surveyed)
+## Market Segments
 
 ### Test Selectors — "Which existing tests should run?"
 
@@ -142,7 +142,7 @@ When a PR changes a shared component, the Crew's Cross-Impact Agent finds ripple
 | Low-code test creation | mabl, Testsigma, Katalon | e2e-agents requires Playwright/TypeScript familiarity |
 | Managed QA service | QA Wolf (human-verified tests) | e2e-agents is fully automated, no human verification loop |
 | Enterprise maturity | Launchable (CloudBees), Copilot (Microsoft) | e2e-agents is a focused open-source project |
-| Broad language support | Qodo (30+), Copilot (all) | e2e-agents: TypeScript/Playwright + pytest + supertest |
+| Broad language support | Qodo (30+), Copilot (all) | e2e-agents is strongest today in TypeScript/Playwright and Cypress; pytest/supertest adapters exist but are less battle-tested |
 
 ## Cost Comparison
 
@@ -167,4 +167,4 @@ e2e-agents occupies an unusual position: it is one of the few tools that combine
 
 The tradeoff is narrower scope (TypeScript/Playwright focus) and less enterprise maturity compared to well-funded competitors. The vision-based testing approach (Midscene, TestDriver) eliminates selector issues entirely but adds runtime cost and non-determinism — a different tradeoff that may be worth adopting for specific use cases.
 
-For teams that want honest, change-driven test generation with business-logic assertions — without vendor lock-in or per-seat pricing — this is one of the few options available today.
+For teams that want change-driven test planning and optional generation with business-logic assertions — without vendor lock-in or per-seat pricing — e2e-agents is a distinctive open-source option, especially when the route-families manifest is well maintained.

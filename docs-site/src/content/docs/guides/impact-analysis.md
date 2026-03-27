@@ -28,7 +28,7 @@ channel.go changed
 npx e2e-ai-agents impact --path . --since origin/main
 ```
 
-Output is written to `.e2e-ai-agents/plan.json` with fields including `impactedFamilies`, `runSet`, `confidence`, and `decision`.
+The `impact` command prints a deterministic summary to stdout. Use `plan` when you want `.e2e-ai-agents/plan.json` and `.e2e-ai-agents/ci-summary.md` artifacts with `impactedFamilies`, `runSet`, `confidence`, and `decision`.
 
 ## Building the Route Families Manifest
 

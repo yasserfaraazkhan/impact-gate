@@ -41,7 +41,7 @@ export function buildCoveragePrompt(ctx: CoveragePromptContext): string {
         .join('\n\n');
 
     return [
-        `You are evaluating whether existing ${ctx.profile?.projectName || 'Mattermost'} ${ctx.profile?.testFramework || 'Playwright'} E2E tests cover the impacted flows.`,
+        `You are evaluating whether existing ${ctx.profile?.projectName || 'the project'} ${ctx.profile?.testFramework || 'Playwright'} E2E tests cover the impacted flows.`,
         '',
         `IMPACTED FLOWS (${ctx.flows.length}):`,
         flowsBlock,
@@ -64,7 +64,7 @@ export function buildCoveragePrompt(ctx: CoveragePromptContext): string {
         '  Wrong: "test the new isEditing state"',
         '  Right: "test editing a scheduled message while it is in pending state"',
         '- For add_scenarios, specify which existing spec file to extend in targetSpec.',
-        `- For create_spec, suggest a path following ${ctx.profile?.projectName || 'Mattermost'} conventions.`,
+        `- For create_spec, suggest a path following ${ctx.profile?.projectName || 'the project'} conventions.`,
         '- Prefer adding scenarios to existing specs over creating new spec files.',
         '',
         'SEMANTIC MATCHING RULES (critical for accuracy):',

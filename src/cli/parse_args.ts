@@ -159,6 +159,7 @@ const FLAGS: Record<string, FlagDef> = {
     '--patterns':              {key: 'testPatterns', type: 'csv'},
     '--flow-patterns':         {key: 'flowPatterns', type: 'csv'},
     '--flow-exclude':          {key: 'flowExclude', type: 'csv'},
+    '--plugins':               {key: 'plugins', type: 'csv'},
     '--policy-risky-patterns': {key: 'policyRiskyPatterns', type: 'csv'},
     '--policy-block-actions':  {
         key: 'policyBlockActions',
@@ -218,7 +219,9 @@ export function parseArgs(argv: string[]): ParsedArgs {
         parsed.command = command as Command;
     }
 
-    for (let i = 1; i < argv.length; i += 1) {
+    const startIndex = parsed.command ? 1 : 0;
+
+    for (let i = startIndex; i < argv.length; i += 1) {
         const arg = argv[i];
         const canonical = ALIAS_MAP[arg];
         if (!canonical) {

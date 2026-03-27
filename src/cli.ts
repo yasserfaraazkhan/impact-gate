@@ -66,9 +66,14 @@ async function main(): Promise<void> {
         return;
     }
 
-    if (args.help || !args.command) {
+    if (args.help) {
         printUsage();
         process.exit(0);
+    }
+
+    if (!args.command) {
+        printUsage();
+        process.exit(1);
     }
 
     if (args.command === 'llm-health') {

@@ -73,13 +73,14 @@ describe('heal prompts', () => {
             assert.ok(prompt.includes('TimeoutError'));
         });
 
-        it('should enforce playwright-lib constraint', () => {
+        it('should use generic Playwright constraints when no profile is provided', () => {
             const prompt = buildHealPrompt({
                 specPath: 'specs/test.spec.ts',
                 status: 'flaky',
             });
-            assert.ok(prompt.includes('@mattermost/playwright-lib'));
-            assert.ok(prompt.includes('test.describe'));
+            assert.ok(prompt.includes('@playwright/test'));
+            assert.ok(prompt.includes('Keep a single tag string'));
+            assert.ok(!prompt.includes('@mattermost/playwright-lib'));
         });
     });
 

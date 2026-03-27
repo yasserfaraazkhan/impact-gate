@@ -3,9 +3,9 @@ title: "CLI Commands"
 description: "Complete reference for all e2e-ai-agents CLI commands"
 ---
 
-All commands are invoked via `npx e2e-ai-agents <command>`. Use `--help` on any command for full flag details.
+All commands are invoked via `npx e2e-ai-agents <command>`. Start with the core CI workflow first, then layer in optional AI features if the deterministic plan is already useful.
 
-## Analysis Commands
+## Core CI Workflow
 
 ### `impact`
 
@@ -25,6 +25,18 @@ npx e2e-ai-agents plan --path . --since origin/main --fail-on-must-add-tests
 
 Key flags: `--fail-on-must-add-tests`, `--github-output`, `--ci-comment-path`, `--json`
 
+### `gate`
+
+Pass/fail check against a coverage threshold. Exits non-zero on failure.
+
+```bash
+npx e2e-ai-agents gate --threshold 80 --path .
+```
+
+`--threshold` is percentage-style (`0-100`). For example, `80` means 80%.
+
+## Optional AI Workflow
+
 ### `analyze`
 
 Convenience wrapper that runs impact + plan, and optionally generation and healing.
@@ -32,28 +44,6 @@ Convenience wrapper that runs impact + plan, and optionally generation and heali
 ```bash
 npx e2e-ai-agents analyze --path . --generate --heal
 ```
-
-### `gate`
-
-Pass/fail check against a confidence threshold. Exits non-zero on failure.
-
-```bash
-npx e2e-ai-agents gate --threshold 0.7 --path .
-```
-
-## Crew Command
-
-### `crew`
-
-Run multi-agent workflows with 10 specialized agents.
-
-```bash
-npx e2e-ai-agents crew --workflow quick-check --path . --tests-root ./e2e --since origin/main
-```
-
-Key flags: `--workflow` (`quick-check`, `design-only`, `full-qa`), `--budget-usd`, `--dry-run`, `--json`
-
-## Generation & Healing
 
 ### `generate`
 
@@ -79,7 +69,32 @@ Stage generated tests, commit, and optionally open a PR.
 npx e2e-ai-agents finalize-generated-tests --path . --create-pr --pr-title "Add E2E tests"
 ```
 
-## Bootstrap
+## Setup And Calibration
+
+### `init`
+
+Initialize a new configuration file interactively.
+
+```bash
+npx e2e-ai-agents init
+```
+
+### `train`
+
+Build the route-families manifest by scanning your codebase.
+
+```bash
+# Offline (free)
+npx e2e-ai-agents train --no-enrich --path .
+
+# With LLM enrichment
+npx e2e-ai-agents train --path . --budget-usd 0.50
+
+# Validate accuracy
+npx e2e-ai-agents train --validate --since HEAD~50 --path .
+```
+
+Key flags: `--no-enrich`, `--validate`, `--server-path`, `--budget-usd`, `--verbose`
 
 ### `bootstrap`
 
@@ -104,25 +119,6 @@ Key flags:
 | `--test-mode` | Test mode: `ui`, `api`, or `both` (auto-detected from the knowledge graph if omitted) |
 | `--max-families` | Maximum number of route families to generate (default: 50) |
 | `--dry-run` | Print the proposed manifest without writing files |
-
-## Training & Knowledge
-
-### `train`
-
-Build the route-families manifest by scanning your codebase.
-
-```bash
-# Offline (free)
-npx e2e-ai-agents train --no-enrich --path .
-
-# With LLM enrichment
-npx e2e-ai-agents train --path . --budget-usd 0.50
-
-# Validate accuracy
-npx e2e-ai-agents train --validate --since HEAD~50 --path .
-```
-
-Key flags: `--no-enrich`, `--validate`, `--server-path`, `--budget-usd`, `--verbose`
 
 ## Traceability
 
@@ -170,13 +166,19 @@ Test LLM provider connectivity.
 npx e2e-ai-agents llm-health
 ```
 
-### `init`
+`llm-health` checks the configured provider, or the auto-detected provider if you rely on environment discovery.
 
-Initialize a new configuration file interactively.
+## Advanced / Experimental
+
+### `crew`
+
+Run multi-agent workflows when you want richer strategy output or design artifacts on top of the core plan.
 
 ```bash
-npx e2e-ai-agents init
+npx e2e-ai-agents crew --workflow quick-check --path . --tests-root ./e2e --since origin/main
 ```
+
+Key flags: `--workflow` (`quick-check`, `design-only`, `full-qa`), `--budget-usd`, `--dry-run`, `--json`, `--plugins`
 
 ## Global Flags
 
@@ -184,7 +186,8 @@ npx e2e-ai-agents init
 |------|-------------|
 | `--path` | Project root directory |
 | `--tests-root` | Path to test directory |
-| `--framework` | Test framework (`playwright`, `cypress`, `pytest`, `supertest`, `auto`) |
+| `--framework` | Test framework (`playwright`, `cypress`, `pytest`, `supertest`, `selenium`, `auto`) |
+| `--profile` | Analysis profile (`default`, `mattermost`) |
 | `--since` | Git ref for diff base |
 | `--config` | Path to config file |
 | `--budget-usd` | Max LLM spend in USD |

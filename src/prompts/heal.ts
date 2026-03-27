@@ -46,9 +46,9 @@ export function buildHealPrompt(ctx: HealPromptContext): string {
         ? `\nRecent console errors from test run:\n${ctx.consoleErrors.slice(-3).map((e) => `  - ${sanitizeForPrompt(e)}`).join('\n')}`
         : '';
 
-    const importLib = ctx.profile?.importStatement || '@mattermost/playwright-lib';
-    const isMM = ctx.profile ? isMattermostProfile(ctx.profile) : true;
-    const projectLabel = ctx.profile?.projectName || 'Mattermost';
+    const importLib = ctx.profile?.importStatement || '@playwright/test';
+    const isMM = ctx.profile ? isMattermostProfile(ctx.profile) : false;
+    const projectLabel = ctx.profile?.projectName || 'Project';
     const frameworkLabel = ctx.profile?.testFramework || 'Playwright';
 
     const constraints = isMM
@@ -92,7 +92,7 @@ export function buildHealPrompt(ctx: HealPromptContext): string {
  * (e.g. contain test.describe, test.only, wrong imports).
  */
 export function buildQualityFixPrompt(specPath: string, qualityIssues: string[], profile?: GenerationProfile): string {
-    const importLib = profile?.importStatement || '@mattermost/playwright-lib';
+    const importLib = profile?.importStatement || '@playwright/test';
     const frameworkLabel = profile?.testFramework || 'Playwright';
 
     return [

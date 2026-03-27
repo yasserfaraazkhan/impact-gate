@@ -1,7 +1,7 @@
 {
   "name": "@yasserkhanorg/e2e-agents",
   "version": "1.10.1",
-  "description": "AI-powered E2E test impact analysis, generation, and healing. Analyzes code changes to identify affected Playwright tests, detects coverage gaps, and generates or repairs specs using pluggable LLM providers (Claude, OpenAI, Ollama). Includes MCP server, traceability, and CI/CD integration.",
+  "description": "Diff-aware E2E impact analysis and coverage gating for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
   "types": "dist/index.d.ts",

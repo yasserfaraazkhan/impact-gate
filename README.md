@@ -1,6 +1,6 @@
 # @yasserkhanorg/e2e-agents
 
-AI-powered E2E test impact analysis, generation, healing, and autonomous QA for any project with route families — not just Mattermost.
+Diff-aware E2E impact analysis and coverage gating for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.
 
 [![npm](https://img.shields.io/npm/v/%40yasserkhanorg%2Fe2e-agents)](https://www.npmjs.com/package/@yasserkhanorg/e2e-agents)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
@@ -8,30 +8,47 @@ AI-powered E2E test impact analysis, generation, healing, and autonomous QA for 
 
 ## What It Does
 
-Given a git diff, `e2e-ai-agents` determines which E2E test flows are impacted, identifies coverage gaps, and can generate or heal tests for Playwright, Cypress, pytest (Python), or supertest/vitest (Node.js API) — all from the CLI. The tool is project-agnostic: any codebase with a `route-families.json` manifest works out of the box. The companion `e2e-qa-agent` goes further: it opens a real browser, explores your app autonomously, and produces a QA report with findings and a release-readiness verdict.
+`e2e-agents` is built first for one painful CI job: given a git diff, tell us which E2E surface changed and whether the current suite already covers it.
 
-**Pipeline:** `impact` → `plan` → `generate` → `heal` → `finalize`
-**Multi-Agent Crew:** `impact` + `cross-impact` + `regression-advisor` → `strategist` → `test-designer` → `generator` → `executor` → `healer`
+- **Primary**: diff-aware E2E impact analysis and coverage gating
+- **Secondary**: optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest
+- **Tertiary**: crew workflows, MCP integrations, plugins, and the autonomous QA agent
 
-> **How does this compare to other tools?** See [docs/comparison.md](docs/comparison.md) for a detailed analysis against Launchable, Codecov ATS, Qodo, Testsigma, mabl, GitHub Copilot, and others.
+The clearest path today is a Playwright or Cypress repository with a maintained `route-families.json` manifest. That is the path this package is optimized to make unusually clear and useful.
+
+## Product Shape
+
+| Level | Commands | What They Are For |
+|------|----------|-------------------|
+| Core CI Workflow | `impact`, `plan`, `gate` | Decide what changed, what is covered, and whether a PR should pass |
+| Optional AI Workflow | `generate`, `heal`, `analyze`, `finalize-generated-tests` | Suggest, create, or repair tests after impact analysis |
+| Setup and Calibration | `train`, `bootstrap`, `traceability-*`, `feedback`, `cost-report`, `llm-health` | Build the manifest, feed execution data back in, and inspect cost/provider health |
+| Advanced / Experimental | `crew`, MCP mode, plugins, `e2e-qa-agent` | Deeper orchestration and browser-driven workflows beyond the core CI loop |
+
+## Known Limitations
+
+- The clearest, most stable workflow is still **Playwright/Cypress impact analysis and gating**.
+- AI generation and healing work best **after** the project has a good `route-families.json` manifest.
+- Advanced features are improving, but they are **not** the best entry point if you only want dependable CI coverage decisions.
+- The Mattermost profile is still the most opinionated path in the codebase. Generic flows are supported, but the package should be judged first on the core CI workflow above.
 
 ## Free Tier
 
-These commands work with **zero LLM cost** — no API key required:
+These commands work with **zero LLM cost** and do not require an API key:
 
 | Command | What It Does |
 |---------|-------------|
-| `impact` | Deterministic impact analysis from git diff |
-| `plan` | Coverage gap detection and test recommendations |
-| `train --no-enrich` | Build route-families manifest (scanner only) |
-| `bootstrap` | Generate route-families.json from a knowledge graph (deterministic) |
-| `gate` | CI coverage gate — exit 1 if coverage is below threshold |
+| `impact` | Deterministic impact analysis from a git diff |
+| `plan` | Coverage-gap detection and recommended run set |
+| `gate` | CI coverage gate that exits non-zero below a threshold |
+| `train --no-enrich` | Build `route-families.json` with the scanner only |
+| `bootstrap` | Generate `route-families.json` from a knowledge graph |
 | `traceability-capture` | Extract test-file relationships from Playwright JSON |
 | `traceability-ingest` | Merge traceability mappings into rolling manifest |
 | `feedback` | Ingest recommendation outcomes for calibration |
 | `cost-report` | View LLM cost breakdown from past runs |
 
-AI-powered features (crew workflows, test generation, healing) require an API key from [Anthropic](https://console.anthropic.com/), [OpenAI](https://platform.openai.com/), or a local [Ollama](https://ollama.ai/) instance (free).
+Optional AI features use [Anthropic](https://console.anthropic.com/), [OpenAI](https://platform.openai.com/), or a local [Ollama](https://ollama.ai/) instance.
 
 ## Installation
 
@@ -41,103 +58,111 @@ npm install @yasserkhanorg/e2e-agents
 
 Requires Node.js >= 20. Ships both CommonJS and ESM builds.
 
-## CLI Commands
+Verify the CLI:
 
 ```bash
-# All-in-one: impact + plan + optional generate/heal
-npx e2e-ai-agents analyze --path /path/to/project [--generate] [--heal]
+npx e2e-ai-agents --help
+```
 
-# Analyze which flows are impacted by code changes
-npx e2e-ai-agents impact --path /path/to/project
+## Core CI Commands
 
-# Generate a coverage plan with gap analysis
-npx e2e-ai-agents plan --path /path/to/project
+Use these first. They are the heart of the package.
 
-# Generate tests for uncovered gaps (requires plan output)
-npx e2e-ai-agents generate --path /path/to/project
+```bash
+# 1. See what changed
+npx e2e-ai-agents impact --path /path/to/project --since origin/main
 
-# Bootstrap route-families.json from an Understand-Anything knowledge graph
-npx e2e-ai-agents bootstrap --path <project-root> [--kg-path <path>] [--test-mode ui|api|both] [--max-families <n>] [--dry-run]
+# 2. Build a coverage plan and CI summary artifacts
+npx e2e-ai-agents plan --path /path/to/project --since origin/main
 
-# CI coverage gate — fails with exit code 1 if coverage is below threshold
-npx e2e-ai-agents gate --path <project-root> [--threshold <0-100>]
+# 3. Fail the job if coverage is below a threshold
+npx e2e-ai-agents gate --path /path/to/project --threshold 80
+```
 
-# Heal flaky/failing specs from a Playwright report
-npx e2e-ai-agents heal --path /path/to/project --traceability-report ./playwright-report.json
+Notes:
 
-# Stage generated tests, commit, and open a PR
-npx e2e-ai-agents finalize-generated-tests --path /path/to/project --create-pr
+- `impact` prints a deterministic summary to stdout.
+- `plan` writes `.e2e-ai-agents/plan.json` and `.e2e-ai-agents/ci-summary.md`.
+- `gate` expects a threshold in the range `0-100` and exits `1` when the threshold is missed.
 
-# Ingest test execution data for traceability
+## Setup and Calibration
+
+These commands help the core CI workflow become accurate and project-aware.
+
+```bash
+# Build the manifest from the repo structure
+npx e2e-ai-agents train --path /path/to/project --no-enrich
+
+# Or bootstrap it from an Understand-Anything knowledge graph
+npx e2e-ai-agents bootstrap --path /path/to/project [--kg-path ./knowledge-graph.json]
+
+# Feed execution data back into the manifest
 npx e2e-ai-agents traceability-capture --path /path/to/project --traceability-report ./playwright-report.json
 npx e2e-ai-agents traceability-ingest --path /path/to/project --traceability-input ./traceability-input.json
 
-# Ingest recommendation feedback for calibration
+# Calibration and diagnostics
 npx e2e-ai-agents feedback --path /path/to/project --feedback-input ./feedback.json
-
-# Test LLM provider connectivity
+npx e2e-ai-agents cost-report --path /path/to/project
 npx e2e-ai-agents llm-health
 ```
 
-`plan` and `suggest` are aliases. `analyze` is a convenience wrapper that runs impact + plan and optionally generation/healing in one invocation. Use `--help` for all available flags.
+## Optional AI Workflow
 
-## Multi-Agent Crew
-
-The Crew orchestrates 10 specialized agents for deep test analysis. While the standard pipeline gives a fast pass/fail gate, the Crew produces structured test designs, cross-family impact maps, and prioritized test strategies.
+Once impact analysis is useful and the manifest is in place, you can layer on AI assistance.
 
 ```bash
-# Quick strategy: impact + strategy recommendations (~$0.10, ~1 min)
-npx e2e-ai-agents crew --workflow quick-check --path /path/to/project --tests-root ./e2e-tests --since origin/master
+# All-in-one wrapper: impact + coverage + optional generation/healing
+npx e2e-ai-agents analyze --path /path/to/project [--generate] [--heal]
 
-# Full test design without generation (~$0.50-2.00, ~5-40 min)
-npx e2e-ai-agents crew --workflow design-only --path /path/to/project --tests-root ./e2e-tests --since origin/master
+# Generate tests for uncovered gaps
+npx e2e-ai-agents generate --path /path/to/project
 
-# End-to-end: design + generate + execute + heal (~$2-5, ~10-60 min)
-npx e2e-ai-agents crew --workflow full-qa --path /path/to/project --tests-root ./e2e-tests --since origin/master
+# Heal flaky or failing specs from a Playwright report
+npx e2e-ai-agents heal --path /path/to/project --traceability-report ./playwright-report.json
 
-# With budget cap and JSON output
-npx e2e-ai-agents crew --workflow design-only --budget-usd 2.00 --json --path /path/to/project --tests-root ./e2e-tests --since origin/master
-
-# Dry run: preview what would happen without LLM calls
-npx e2e-ai-agents crew --workflow design-only --dry-run --path /path/to/project --tests-root ./e2e-tests --since origin/master
-
-# View LLM cost breakdown
-npx e2e-ai-agents cost-report --path /path/to/project
+# Stage generated tests, commit, and optionally open a PR
+npx e2e-ai-agents finalize-generated-tests --path /path/to/project --create-pr
 ```
 
-### Budget Enforcement
+`plan` and `suggest` are aliases. `analyze` is the convenience wrapper when you want the full path in one invocation.
 
-The `--budget-usd` flag sets a hard cost limit for the entire crew run. Budget enforcement uses a **pre-reservation** model (like credit card authorization holds) to prevent parallel agents from overshooting:
+## Advanced / Experimental
 
-1. Before each LLM call, the provider **reserves** estimated cost in a shared ledger
-2. Other parallel agents see the in-flight hold and stop if the budget would be exceeded
-3. After the call completes, the reservation is **settled** to actual cost
+These features are real, but they are not the clearest place to start if your goal is simple CI coverage decisions.
 
-This means 3 agents running in parallel against a $1.00 budget will not collectively spend $1.20. The overshoot is bounded by the estimation error of a single call (~$0.01).
+### Multi-Agent Crew
 
-### Resilience
+The Crew orchestrates deeper multi-agent workflows on top of the same impact-analysis foundation. Use it when you want richer strategy output, structured test design, or end-to-end generation pipelines.
 
-Provider calls are protected by a **circuit breaker** (3-failure threshold, 60s cooldown). If a provider goes down, calls fail fast instead of burning through retry timeouts. Circuit breakers are shared per provider type — if Anthropic is down, all agents discover it after 3 total failures.
+```bash
+# Quick strategy recommendations
+npx e2e-ai-agents crew --workflow quick-check --path /path/to/project --tests-root ./e2e-tests --since origin/master
 
-Only transient errors (429, 5xx, network) trip the circuit. Budget exceeded and auth errors do not.
+# Full design-only workflow
+npx e2e-ai-agents crew --workflow design-only --path /path/to/project --tests-root ./e2e-tests --since origin/master
+
+# End-to-end workflow
+npx e2e-ai-agents crew --workflow full-qa --path /path/to/project --tests-root ./e2e-tests --since origin/master
+```
+
+Built-in safeguards include budget enforcement, provider circuit breaking, and structured output for downstream tooling.
 
 ### Plugins
 
 External agents can register into crew workflows via the `plugins` config:
 
 ```typescript
-// my-plugin.ts
-import type { AgentPlugin, AgentTask, AgentResult, CrewContext } from '@yasserkhanorg/e2e-agents';
+import type {AgentPlugin, AgentTask, AgentResult, CrewContext} from '@yasserkhanorg/e2e-agents';
 
 const myPlugin: AgentPlugin = {
     role: 'my-custom-analyzer',
-    phase: 'understand',              // Run in the 'understand' phase
-    runAfter: ['impact-analyst'],     // After impact-analyst completes
+    phase: 'understand',
+    runAfter: ['impact-analyst'],
     async execute(task: AgentTask, ctx: CrewContext): Promise<AgentResult> {
-        // Access ctx.impactedFlows, ctx.changedFiles, etc.
-        return { role: 'my-custom-analyzer', status: 'success', output: null, warnings: [] };
+        return {role: 'my-custom-analyzer', status: 'success', output: null, warnings: []};
     },
 };
+
 export default myPlugin;
 ```
 
@@ -145,24 +170,19 @@ export default myPlugin;
 npx e2e-ai-agents crew --plugins ./my-plugin.ts --workflow full-qa --path ./app
 ```
 
-Plugins with `runAfter` dependencies run sequentially after their dependencies. Plugins without `runAfter` run in parallel with other agents in their phase. Plugin paths must be relative and cannot escape the workspace directory.
-
-See [docs/PLUGIN_API_STABILITY.md](docs/PLUGIN_API_STABILITY.md) for the full API contract and stability guarantees.
-
-### What the Crew Adds Beyond the Pipeline
-
-| Capability | Pipeline | Crew |
-|-----------|---------|------|
-| Impact detection | Per-family, isolated | Same + cross-family ripple detection |
-| Test scenarios | Flat `scenariosToAdd` strings | Structured `TestCase[]` with type, preconditions, steps, expected outcome, rationale |
-| Test categories | None | 9: happy-path, edge-case, boundary, negative, state-transition, race-condition, permission, accessibility, performance |
-| Strategy | None | Per-flow approach (full-test / smoke-test / skip) with priority and rationale |
-| Regression awareness | None | Risk scoring from flaky history, calibration data, and file-pattern heuristics |
+See [docs/PLUGIN_API_STABILITY.md](docs/PLUGIN_API_STABILITY.md) for the API contract and stability guarantees.
 
 ### Programmatic API
 
 ```typescript
-import { CrewOrchestrator, ImpactAnalystAgent, StrategistAgent, TestDesignerAgent, CrossImpactAgent, RegressionAdvisorAgent } from '@yasserkhanorg/e2e-agents';
+import {
+    CrewOrchestrator,
+    ImpactAnalystAgent,
+    CrossImpactAgent,
+    RegressionAdvisorAgent,
+    StrategistAgent,
+    TestDesignerAgent,
+} from '@yasserkhanorg/e2e-agents';
 
 const orchestrator = new CrewOrchestrator();
 orchestrator.registerAgent(new ImpactAnalystAgent());
@@ -178,11 +198,10 @@ const result = await orchestrator.run({
     workflow: 'design-only',
 });
 
-console.log(result.context.testDesigns);   // Structured test cases
-console.log(result.context.crossImpacts);  // Cross-family links
-console.log(result.context.strategyEntries); // Prioritized strategy
+console.log(result.context.strategyEntries);
+console.log(result.context.testDesigns);
+console.log(result.context.crossImpacts);
 ```
-
 ## Route-Families Training
 
 ### What it produces
@@ -305,26 +324,24 @@ Create `e2e-ai-agents.config.json` in your project (auto-discovered):
 }
 ```
 
-### Generation Profiles
+### Analysis Profiles
 
-The tool auto-detects your project type and generates tests following the appropriate conventions. Use the `--profile` flag (or the `profile` config key) to select a profile explicitly:
+Profiles are not the same thing as frameworks. They control analysis strictness and project-specific conventions.
 
 | Profile | Description |
 |---------|-------------|
-| `mattermost` | Mattermost-specific conventions (strict mode, escalation for heuristic-only mappings) |
-| `generic` | Generic Playwright project |
-| `pytest` | Python projects using pytest + requests/httpx |
-| `supertest` | Node.js API projects using supertest/vitest |
+| `default` | Standard analysis behavior for most repositories |
+| `mattermost` | Mattermost-specific conventions and stricter handling of heuristic-only mappings |
 
-When `--profile` is omitted, the tool inspects `package.json`, `pyproject.toml`, and test directory structure to pick the best match automatically.
+Framework detection is separate. The CLI can auto-detect Playwright, Cypress, pytest, supertest, and Selenium usage from the project structure and dependencies.
 
 ### Key options
 
 - **`testsRoot`** — path to tests when they live outside the app root
-- **`profile`** — `mattermost`, `generic`, `pytest`, or `supertest` (auto-detected when omitted)
+- **`profile`** — `default` or `mattermost`
 - **`impact.dependencyGraph`** — static reverse dependency graph for transitive impact
 - **`impact.traceability`** — file-to-test mapping from CI execution data
-- **`impact.aiFlow`** — LLM-powered flow mapping (requires `ANTHROPIC_API_KEY`)
+- **`impact.aiFlow`** — LLM-powered flow mapping through the configured provider
 - **`pipeline.mcp`** — use Playwright MCP server for browser-aware generation/healing
 - **`policy.enforcementMode`** — `advisory`, `warn`, or `block`
 
@@ -334,8 +351,6 @@ When `--profile` is omitted, the tool inspects `package.json`, `pyproject.toml`,
 
 ```yaml
 - name: Run E2E coverage check
-  env:
-    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
   run: |
     npx e2e-ai-agents plan \
       --config ./e2e-ai-agents.config.json \
@@ -351,13 +366,15 @@ The `plan` command writes:
 
 Use `--fail-on-must-add-tests` to exit non-zero when uncovered P0/P1 gaps exist. Use `--github-output` to expose outputs to subsequent workflow steps.
 
+If you want AI enrichment on top of the deterministic plan, add your provider environment variables to the workflow separately.
+
 See [examples/github-actions/pr-impact.yml](examples/github-actions/pr-impact.yml) for a complete workflow template.
 
 ## Pipeline Modes
 
 ### Package Native (default)
 
-Strategy-based test templates for Playwright, Cypress, pytest, or supertest/vitest with quality guardrails and iterative heal attempts.
+Strategy-based test templates with quality guardrails and iterative heal attempts. The strongest path today is still a repo whose impact analysis and manifest quality are already in good shape.
 
 ### MCP Mode (`--pipeline-mcp`)
 
@@ -377,7 +394,7 @@ LLM-powered generate-run-fix loop: generates a spec, runs it, analyzes failures,
 Used internally for AI enrichment, test generation, and healing.
 
 ```bash
-# Anthropic (default)
+# Anthropic
 export ANTHROPIC_API_KEY=sk-ant-...
 
 # OpenAI
@@ -401,7 +418,7 @@ const response = await claude.generateText('Analyze test failure');
 
 Factory pattern with auto-detection, hybrid mode (free local + premium fallback), and custom OpenAI-compatible endpoints are also supported. See the [provider API exports](src/index.ts) for full details.
 
-## MCP Server
+## Advanced / Experimental: MCP Server
 
 Exposes 6 tools for test agents (Playwright v1.56+):
 
@@ -445,7 +462,7 @@ Schemas: [schemas/traceability-input.schema.json](schemas/traceability-input.sch
 
 All written under `<testsRoot>/.e2e-ai-agents/`.
 
-## Autonomous QA Agent (`e2e-qa-agent`)
+## Advanced / Experimental: Autonomous QA Agent (`e2e-qa-agent`)
 
 An autonomous QA engineer that opens a real browser, navigates to changed features, tries edge cases, and produces a findings report — all unsupervised. Built on top of `agent-browser` and the Anthropic tool-use API.
 
@@ -487,7 +504,7 @@ Requires `agent-browser` CLI (`npm install -g agent-browser`) and `ANTHROPIC_API
 
 ## Production Usage
 
-The tool works with any project that has a `route-families.json` manifest — frontend, backend, or full-stack. Used in production by [Mattermost](https://github.com/mattermost/mattermost) for CI-integrated E2E coverage gating, test generation, and spec healing. See the [Mattermost Playwright integration](https://github.com/mattermost/mattermost/tree/master/e2e-tests/playwright) for a real-world example.
+The strongest production story today is a repo that maintains a good `route-families.json` manifest and uses the deterministic `impact -> plan -> gate` loop in CI. [Mattermost](https://github.com/mattermost/mattermost) is the most battle-tested public example for coverage gating, generation, and healing. See the [Mattermost Playwright integration](https://github.com/mattermost/mattermost/tree/master/e2e-tests/playwright) for a real-world setup.
 
 ## License
 

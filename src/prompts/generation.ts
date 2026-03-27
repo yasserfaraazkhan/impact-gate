@@ -59,7 +59,7 @@ function buildAssertionPatternsBlock(patterns?: AssertionPattern[]): string[] {
 
 export function buildGenerationPrompt(ctx: GenerationPromptContext): string {
     const profile = ctx.profile;
-    const isMM = profile ? isMattermostProfile(profile) : true;
+    const isMM = profile ? isMattermostProfile(profile) : false;
 
     const relevantClasses = resolveRelevantPageObjects(ctx.apiSurface, ctx.decision);
     const apiBlock = relevantClasses.length > 0
@@ -81,9 +81,9 @@ export function buildGenerationPrompt(ctx: GenerationPromptContext): string {
     const routeFamilyTag = ctx.decision.routeFamily;
 
     // Build prompt based on profile
-    const projectName = profile?.projectName || 'Mattermost';
+    const projectName = profile?.projectName || 'Project';
     const testFramework = profile?.testFramework || 'Playwright';
-    const importStatement = profile?.importStatement || '@mattermost/playwright-lib';
+    const importStatement = profile?.importStatement || '@playwright/test';
 
     // API test mode prompt
     if (profile?.testMode === 'api') {
@@ -283,7 +283,7 @@ export function parseGenerationResponse(
         return null;
     }
 
-    const importStatement = profile?.importStatement || '@mattermost/playwright-lib';
+    const importStatement = profile?.importStatement || '@playwright/test';
 
     // Auto-add import if missing
     if (!code.includes(importStatement)) {

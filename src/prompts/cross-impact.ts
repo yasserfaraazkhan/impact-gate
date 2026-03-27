@@ -33,7 +33,7 @@ export function buildCrossImpactPrompt(ctx: CrossImpactPromptContext): string {
     const changedBlock = ctx.changedFiles.map((f) => sanitizeForPrompt(f)).join('\n');
 
     return [
-        `You are analyzing code changes in ${ctx.projectName || 'Mattermost'} to identify cross-family ripple effects.`,
+        `You are analyzing code changes in ${ctx.projectName || 'the project'} to identify cross-family ripple effects.`,
         'When a change in one route family could affect another family through shared dependencies,',
         'that is a cross-impact.',
         '',

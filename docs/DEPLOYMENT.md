@@ -19,14 +19,14 @@ npx e2e-ai-agents --help
 For first-time setup, run the init command to generate a config file:
 
 ```bash
-npx e2e-ai-agents init --path /path/to/project
+npx e2e-ai-agents init
 ```
 
 ## Compatibility Matrix
 
 | e2e-agents | Node.js   | Playwright | Cypress  |
 |------------|-----------|------------|----------|
-| 1.9.x      | >= 20.0.0 | >= 1.40.0  | >= 13.0  |
+| 1.10.x     | >= 20.0.0 | >= 1.40.0  | >= 13.0  |
 
 **LLM providers:** Anthropic SDK ^0.73.0, OpenAI SDK ^4.73.0, or any local Ollama instance. The `agent-browser` peer dependency (>= 0.18.0) is optional and only required for the autonomous QA agent (`e2e-qa-agent`).
 
@@ -111,8 +111,6 @@ jobs:
         run: npm ci
 
       - name: Run impact analysis
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           npx e2e-ai-agents plan \
             --path . \
@@ -134,7 +132,7 @@ jobs:
             --json
 ```
 
-**Error handling:** If `ANTHROPIC_API_KEY` is not set, AI-powered steps will fail but deterministic commands (`impact`, `plan` without `--aiFlow`) will still succeed. Consider splitting your workflow into a required deterministic job and an optional AI-powered job.
+**Error handling:** Deterministic commands (`impact`, `plan`, `gate`) work without API keys. Consider splitting your workflow into a required deterministic job and an optional AI-powered job for crew or generation features.
 
 Artifacts are written to `.e2e-ai-agents/` and can be uploaded for later inspection:
 
@@ -166,7 +164,7 @@ Verify that configured LLM providers are reachable:
 npx e2e-ai-agents llm-health
 ```
 
-This sends a minimal probe to each provider whose environment variable is set (Anthropic, OpenAI, and/or Ollama) and reports availability. It does not measure latency.
+This sends a minimal probe to the configured provider, or the auto-detected provider if you rely on environment discovery, and reports availability. It does not measure latency.
 
 ### Exit Codes
 

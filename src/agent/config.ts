@@ -5,7 +5,7 @@ import {existsSync, readFileSync} from 'fs';
 import {dirname, resolve} from 'path';
 
 export type AnalysisMode = 'impact' | 'gap';
-export type FrameworkType = 'auto' | 'playwright' | 'cypress' | 'selenium' | 'unknown';
+export type FrameworkType = 'auto' | 'playwright' | 'cypress' | 'pytest' | 'supertest' | 'selenium' | 'unknown';
 export type ArtifactMode = 'commit' | 'keep-local' | 'none';
 export type AnalysisProfile = 'default' | 'mattermost' | string;
 
@@ -577,7 +577,14 @@ function normalizeProfile(value: unknown): AnalysisProfile | undefined {
 }
 
 function normalizeFramework(value: unknown): FrameworkType | undefined {
-    if (value === 'auto' || value === 'playwright' || value === 'cypress' || value === 'selenium') {
+    if (
+        value === 'auto' ||
+        value === 'playwright' ||
+        value === 'cypress' ||
+        value === 'pytest' ||
+        value === 'supertest' ||
+        value === 'selenium'
+    ) {
         return value;
     }
     return undefined;
