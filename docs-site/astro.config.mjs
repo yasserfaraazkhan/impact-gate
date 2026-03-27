@@ -8,6 +8,10 @@ export default defineConfig({
     starlight({
       title: 'Impact Gate',
       description: 'Diff-aware E2E impact analysis, release-ready test planning, coverage gating, and hallucination-resistant AI generation for Playwright/Cypress teams.',
+      disable404Route: true,
+      editLink: {
+        baseUrl: 'https://github.com/yasserfaraazkhan/impact-gate/blob/master/docs-site/src/content/docs/',
+      },
       social: {
         github: 'https://github.com/yasserfaraazkhan/impact-gate',
       },
@@ -17,7 +21,11 @@ export default defineConfig({
           autogenerate: { directory: 'getting-started' },
         },
         {
-          label: 'Core CI Workflow',
+          label: 'Concepts',
+          autogenerate: { directory: 'concepts' },
+        },
+        {
+          label: 'Guides',
           autogenerate: { directory: 'guides' },
         },
         {

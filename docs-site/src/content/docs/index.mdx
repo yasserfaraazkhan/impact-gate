@@ -1,6 +1,20 @@
 ---
 title: Impact Gate
+template: splash
 description: Diff-aware E2E impact analysis, release-ready test planning, coverage gating, and hallucination-resistant AI generation for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.
+hero:
+  tagline: Turn a git diff into a release-ready E2E test plan.
+  actions:
+    - text: Quick Start
+      link: /getting-started/quick-start/
+      icon: right-arrow
+      variant: primary
+    - text: Release Readiness
+      link: /guides/release-readiness/
+      icon: right-arrow
+    - text: CLI Reference
+      link: /reference/cli/
+      icon: right-arrow
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
@@ -8,6 +22,9 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 <CardGrid stagger>
   <Card title="Primary: Impact + Gate" icon="magnifier">
     Start with <code>impact</code>, <code>plan</code>, and <code>gate</code> to make pull-request and release-readiness coverage decisions from a git diff.
+  </Card>
+  <Card title="Detailed Concepts" icon="open-book">
+    Learn the core building blocks: route families, impact analysis, confidence scoring, CI artifacts, and where AI fits into the workflow.
   </Card>
   <Card title="Release Readiness" icon="setting">
     Compare the current branch or release candidate to the last shipped tag and turn that diff into a prioritized test plan before you ship.
@@ -17,5 +34,8 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
   </Card>
   <Card title="Secondary: Optional AI" icon="puzzle">
     Add generation and healing after your <code>route-families.json</code> manifest is in good shape and the deterministic plan is already useful.
+  </Card>
+  <Card title="Operational Guides" icon="rocket">
+    Use step-by-step guides for PR gating, release diffs, CI setup, AI safety, cost controls, and troubleshooting.
   </Card>
 </CardGrid>
