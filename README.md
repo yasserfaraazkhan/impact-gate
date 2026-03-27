@@ -1,6 +1,6 @@
 # @yasserkhanorg/impact-gate
 
-Diff-aware E2E impact analysis and coverage gating for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.
+Diff-aware E2E impact analysis, release-ready test planning, and coverage gating for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.
 
 [![npm](https://img.shields.io/npm/v/%40yasserkhanorg%2Fimpact-gate)](https://www.npmjs.com/package/@yasserkhanorg/impact-gate)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
@@ -8,7 +8,16 @@ Diff-aware E2E impact analysis and coverage gating for Playwright/Cypress teams.
 
 ## What It Does
 
-`impact-gate` is built first for one painful CI job: given a git diff, tell us which E2E surface changed and whether the current suite already covers it.
+`impact-gate` is built first for one painful CI job: given a git diff, tell us which E2E surface changed, whether the current suite already covers it, and what still needs testing before we merge or ship.
+
+That same workflow works for:
+
+- pull requests against `main`
+- release branches against the previous release tag
+- hotfixes against the last shipped version
+- any "what changed between these refs?" release-readiness check
+
+Product priorities:
 
 - **Primary**: diff-aware E2E impact analysis and coverage gating
 - **Secondary**: optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest
@@ -26,7 +35,7 @@ Transition note:
 
 | Level | Commands | What They Are For |
 |------|----------|-------------------|
-| Core CI Workflow | `impact`, `plan`, `gate` | Decide what changed, what is covered, and whether a PR should pass |
+| Core CI Workflow | `impact`, `plan`, `gate` | Decide what changed, what is covered, and whether a PR should pass or a release is ready |
 | Optional AI Workflow | `generate`, `heal`, `analyze`, `finalize-generated-tests` | Suggest, create, or repair tests after impact analysis |
 | Setup and Calibration | `train`, `bootstrap`, `traceability-*`, `feedback`, `cost-report`, `llm-health` | Build the manifest, feed execution data back in, and inspect cost/provider health |
 | Advanced / Experimental | `crew`, MCP mode, plugins, `impact-gate-qa` | Deeper orchestration and browser-driven workflows beyond the core CI loop |
@@ -77,7 +86,7 @@ npx impact-gate --help
 Then run the core CI workflow:
 
 ```bash
-# 1. See what changed
+# 1. See what changed in a PR or branch diff
 npx impact-gate impact --path /path/to/project --since origin/main
 
 # 2. Build a coverage plan and CI summary artifacts
@@ -87,10 +96,20 @@ npx impact-gate plan --path /path/to/project --since origin/main
 npx impact-gate gate --path /path/to/project --threshold 80
 ```
 
+Use the same `plan` command for release readiness:
+
+```bash
+# Compare the current branch or release candidate to the last shipped tag
+npx impact-gate plan --path /path/to/project --since v2.1.0
+```
+
+That gives you a release-focused test plan showing impacted flows, current coverage, and where you still need tests or validation before shipping.
+
 Notes:
 
 - `impact` prints a deterministic summary to stdout.
 - `plan` writes `.e2e-ai-agents/plan.json` and `.e2e-ai-agents/ci-summary.md`.
+- `plan --since <old-release-tag>` is the simplest way to turn a release diff into a prioritized test plan.
 - `gate` expects a threshold in the range `0-100` and exits `1` when the threshold is missed.
 - Add the Optional AI Workflow only after your `route-families.json` manifest is useful enough to trust.
 

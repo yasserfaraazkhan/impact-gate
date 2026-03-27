@@ -1,27 +1,16 @@
 ---
 title: Impact Gate
-description: Diff-aware E2E impact analysis and coverage gating for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.
-template: splash
-hero:
-  tagline: Diff-aware E2E impact analysis and coverage gating for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.
-  actions:
-    - text: Quick Start
-      link: /getting-started/quick-start/
-      icon: right-arrow
-      variant: primary
-    - text: CLI Reference
-      link: /reference/cli/
-      icon: right-arrow
+description: Diff-aware E2E impact analysis, release-ready test planning, and coverage gating for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
 <CardGrid stagger>
   <Card title="Primary: Impact + Gate" icon="magnifier">
-    Start with <code>impact</code>, <code>plan</code>, and <code>gate</code> to make pull-request coverage decisions from a git diff.
+    Start with <code>impact</code>, <code>plan</code>, and <code>gate</code> to make pull-request and release-readiness coverage decisions from a git diff.
   </Card>
-  <Card title="Free Core CI Workflow" icon="setting">
-    The deterministic path works without API keys: impact analysis, coverage planning, route-family training, and CI gating.
+  <Card title="Release Readiness" icon="setting">
+    Compare the current branch or release candidate to the last shipped tag and turn that diff into a prioritized test plan before you ship.
   </Card>
   <Card title="Secondary: Optional AI" icon="puzzle">
     Add generation and healing after your <code>route-families.json</code> manifest is in good shape and the deterministic plan is already useful.

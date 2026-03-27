@@ -60,7 +60,7 @@ npx impact-gate bootstrap --path .
 
 Bootstrap reads the knowledge graph, classifies your project (frontend, backend, or fullstack), and produces `.e2e-ai-agents/route-families.json` with prioritized families derived from the graph's nodes and edges. It also auto-detects your test framework and test mode (`ui`, `api`, or `both`).
 
-Use `--dry-run` to preview the manifest before writing, or `--max-families 30` to limit the output. See the [CLI reference](/reference/cli/#bootstrap) for all flags.
+Use `--dry-run` to preview the manifest before writing, or `--max-families 30` to limit the output. See the [CLI reference](../reference/cli/#bootstrap) for all flags.
 
 ## Explicit Flags Always Win
 

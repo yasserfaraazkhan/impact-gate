@@ -146,14 +146,13 @@ Only maintainers can release new versions.
 
 ## Code of Conduct
 
-Be respectful, inclusive, and constructive. All contributors are expected to follow the [Mattermost Code of Conduct](https://handbook.mattermost.com/operations/operations/mattermost-values).
+Be respectful, inclusive, and constructive. All contributors are expected to follow the project's [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Questions?
 
-- Open a GitHub discussion
 - Check existing issues
 - Review examples in README
-- Ask in Mattermost community
+- Open a GitHub issue if you are blocked or unsure where something belongs
 
 ## License
 

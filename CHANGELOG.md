@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.6] - 2026-03-28
+
+### Release Focus
+
+This patch release makes the launch-facing surfaces clearer and more confident for teams evaluating `impact-gate` as a release-readiness tool, not just a pull-request gate.
+
+### Highlights
+
+- **Release-readiness positioning in first-touch docs** — README, quick start, and CLI reference now show how to compare the current candidate against a previous shipped tag and turn that diff into a prioritized test plan.
+- **Public repo hygiene improved** — added `CODE_OF_CONDUCT.md`, updated `CONTRIBUTING.md`, and updated `SECURITY.md` so the community and support surfaces match the current 2.x line.
+- **Docs-site prep tightened** — docs workflow now uses Node 22 and `npm ci`, `.astro/` is ignored, and the docs site has an explicit Astro content config plus a checked-in lockfile for reproducible installs.
+- **NPM metadata now matches the story** — package description now includes release-ready test planning so npm and GitHub better reflect the product's real value.
+
+### Verification
+
+- `npm run lint` — **passes**
+- `npm test` — **469 passing, 0 failing**
+- `npm run build` in `docs-site` — **still failing** due to a Starlight/Astro docs-entry issue during static route generation, so this release is suitable as a package/docs patch but not yet a full public-docs launch.
+
 ## [2.1.5] - 2026-03-28
 
 ### Fix

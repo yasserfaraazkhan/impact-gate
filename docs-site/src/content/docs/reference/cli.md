@@ -3,7 +3,7 @@ title: "CLI Commands"
 description: "Complete reference for all impact-gate CLI commands"
 ---
 
-All commands are invoked via `npx impact-gate <command>`. Start with the core CI workflow first, then layer in optional AI features if the deterministic plan is already useful.
+All commands are invoked via `npx impact-gate <command>`. Start with the core CI workflow first, then layer in optional AI features if the deterministic plan is already useful. The same deterministic flow supports pull-request gating and release-readiness planning from a git diff.
 
 ## Core CI Workflow
 
@@ -15,6 +15,14 @@ Map changed files to impacted route families using deterministic analysis. Free 
 npx impact-gate impact --path . --since origin/main
 ```
 
+Release-readiness example:
+
+```bash
+npx impact-gate impact --path . --since v2.1.0
+```
+
+Use `--since` with a previous release tag or branch when you want to compare the current candidate against what is already shipped.
+
 ### `plan` (alias: `suggest`)
 
 Generate a coverage plan with gap analysis, run sets, and confidence scores. Free tier.
@@ -22,6 +30,14 @@ Generate a coverage plan with gap analysis, run sets, and confidence scores. Fre
 ```bash
 npx impact-gate plan --path . --since origin/main --fail-on-must-add-tests
 ```
+
+Release-readiness example:
+
+```bash
+npx impact-gate plan --path . --since v2.1.0
+```
+
+This is the easiest way to turn a release diff into a test plan that shows impacted areas, current coverage, and where new tests or manual checks are still needed before ship.
 
 Key flags: `--fail-on-must-add-tests`, `--github-output`, `--ci-comment-path`, `--json`
 
@@ -188,7 +204,7 @@ Key flags: `--workflow` (`quick-check`, `design-only`, `full-qa`), `--budget-usd
 | `--tests-root` | Path to test directory |
 | `--framework` | Test framework (`playwright`, `cypress`, `pytest`, `supertest`, `selenium`, `auto`) |
 | `--profile` | Analysis profile (`default`, `mattermost`) |
-| `--since` | Git ref for diff base |
+| `--since` | Git ref for diff base, such as `origin/main`, a release branch, or a previous shipped tag |
 | `--config` | Path to config file |
 | `--budget-usd` | Max LLM spend in USD |
 | `--verbose` / `-v` | Debug-level output |

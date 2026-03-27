@@ -1,10 +1,6 @@
 name: Deploy Docs to GitHub Pages
 
 on:
-  push:
-    branches: [master]
-    paths:
-      - 'docs-site/**'
   workflow_dispatch:
 
 permissions:
@@ -24,13 +20,13 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: docs-site/package-lock.json
 
       - name: Install dependencies
         working-directory: docs-site
-        run: npm install
+        run: npm ci
 
       - name: Build docs
         working-directory: docs-site
