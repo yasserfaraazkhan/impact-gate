@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.10.2] - 2026-03-27
+
+### Release Focus
+
+This follow-up patch release finishes the CI-first cleanup by making the package language, docs-site homepage/navigation, package metadata, and release notes say the same thing everywhere users first land.
+
+### Highlights
+
+- **Final wording consistency pass** — README, docs-site, `package.json`, and release notes now use the same top-line description and the same product-shape labels: Core CI Workflow, Optional AI Workflow, Setup and Calibration, and Advanced / Experimental.
+- **Docs-site entry points are now aligned** — the homepage hero, sidebar navigation, and supporting copy all lead with `impact -> plan -> gate` and keep advanced capabilities clearly secondary.
+- **Version bump for a clean release path** — this release publishes the CI-first cleanup under `v1.10.2` rather than rewriting the existing `v1.10.1` tag.
+
+### Verification
+
+- `npm test` — **469 passing, 0 failing**
+- CLI smoke checks still match the intended behavior:
+  - `node dist/cli.js --help` -> exit `0`
+  - `node dist/cli.js` -> exit `1`
+
 ## [1.10.1] - 2026-03-27
 
 ### Release Focus

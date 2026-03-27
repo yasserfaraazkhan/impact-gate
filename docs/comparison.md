@@ -1,6 +1,6 @@
 # How e2e-agents Compares to Other Tools
 
-> Last updated: March 2026 | e2e-agents v1.10.1
+> Last updated: March 2026 | e2e-agents v1.10.2
 
 ## The Problem Space
 
