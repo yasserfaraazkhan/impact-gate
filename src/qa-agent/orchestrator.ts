@@ -125,13 +125,25 @@ export async function runQAAgent(inputConfig: QAConfig): Promise<QAReport> {
     }
 
     // -----------------------------------------------------------------------
+    // Compute remaining findings (exclude verified fixes)
+    // -----------------------------------------------------------------------
+    const verifiedIds = new Set(
+        (phase25?.fixes ?? [])
+            .filter((f) => f.status === 'verified')
+            .map((f) => f.findingId),
+    );
+    const remainingFindings = verifiedIds.size > 0
+        ? phase2.findings.filter((f) => !verifiedIds.has(f.id))
+        : phase2.findings;
+
+    // -----------------------------------------------------------------------
     // Regression comparison (optional)
     // -----------------------------------------------------------------------
     let regressionComparison: RegressionComparison | undefined;
     if (config.regression) {
         const baseline = loadBaseline(outputDir);
         if (baseline) {
-            regressionComparison = compareBaselines(healthScore, phase2.findings, baseline);
+            regressionComparison = compareBaselines(healthScore, remainingFindings, baseline);
             logger.info('Regression comparison', {
                 scoreDelta: regressionComparison.scoreDelta,
                 fixedIssues: regressionComparison.fixedIssues.length,
@@ -142,8 +154,8 @@ export async function runQAAgent(inputConfig: QAConfig): Promise<QAReport> {
         }
     }
 
-    // Always save baseline for future comparisons
-    saveBaseline(outputDir, healthScore, phase2.findings, config.baseUrl);
+    // Always save baseline for future comparisons (use remaining findings, not stale originals)
+    saveBaseline(outputDir, healthScore, remainingFindings, config.baseUrl);
 
     // -----------------------------------------------------------------------
     // Phase 3: Report + Spec Generation + Verdict

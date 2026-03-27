@@ -55,7 +55,9 @@ ${evidence.consoleErrors?.length ? `- **Console errors:** ${evidence.consoleErro
 - Make the SMALLEST change that fixes the issue. Do NOT refactor surrounding code.
 - Only modify files directly related to the bug.
 - If you can't find the source after 3 search attempts, report that the fix is not possible.
-- If type checking fails after your fix, revert with git_revert.
+- If type checking or lint fails BEFORE you commit, use git_restore to discard your edits, then report the fix is not possible.
+- If you already committed and verification fails, use git_revert to undo the commit.
+- NEVER leave uncommitted edits behind. Always either commit or restore.
 - The base URL is ${baseUrl}.
 - When done, respond with text only (no tool use) explaining the result.`;
 }

@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.3] - 2026-03-28
+
+### Fixes (from Codex review round 2)
+
+- **[P1] Dirty edits after failed validation** — Added `git_restore` tool that discards uncommitted changes. System prompt now instructs the LLM to restore the working tree if validation fails before commit, so failed fix attempts never leave broken edits behind.
+- **[P1] Regression mode uses stale findings** — Orchestrator now computes remaining findings (excluding verified fixes) and passes them to both `compareBaselines` and `saveBaseline`, so regression output and saved baselines accurately reflect post-fix state.
+
 ## [2.1.2] - 2026-03-28
 
 ### Fixes (from Codex review)

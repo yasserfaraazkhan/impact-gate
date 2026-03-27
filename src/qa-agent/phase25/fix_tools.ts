@@ -88,6 +88,15 @@ export const FIX_TOOL_DEFINITIONS: Anthropic.Tool[] = [
         },
     },
     {
+        name: 'git_restore',
+        description: 'Discard all uncommitted changes in the working tree. Use this if validation fails BEFORE you have committed, to clean up your attempted edits.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {},
+            required: [],
+        },
+    },
+    {
         name: 'verify_in_browser',
         description: 'Navigate to a URL, take a screenshot, and report whether the fix resolved the issue. You MUST set fixed=true only if the original bug is no longer present. Set fixed=false if the bug still reproduces or if you cannot confirm.',
         input_schema: {
@@ -285,6 +294,16 @@ export function executeFixTool(
         } catch (err: unknown) {
             const error = err as {stderr?: string};
             return {output: `Git revert failed: ${error.stderr || String(err)}`};
+        }
+    }
+
+    case 'git_restore': {
+        try {
+            execFileSync('git', ['checkout', '--', '.'], {cwd: ctx.projectRoot, encoding: 'utf-8'});
+            return {output: 'Restored working tree to last commit state. All uncommitted edits discarded.'};
+        } catch (err: unknown) {
+            const error = err as {stderr?: string};
+            return {output: `Git restore failed: ${error.stderr || String(err)}`};
         }
     }
 
