@@ -26,7 +26,7 @@ jobs:
           node-version: 20
 
       - name: Install impact-gate
-        run: npm install @yasserkhanorg/impact-gate
+        run: npm install -D @yasserkhanorg/impact-gate
 
       - name: Run coverage check
         run: |

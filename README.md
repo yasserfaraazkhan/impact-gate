@@ -63,7 +63,7 @@ The fastest way to evaluate the package is the deterministic CI path. These comm
 Install the package:
 
 ```bash
-npm install @yasserkhanorg/impact-gate
+npm install -D @yasserkhanorg/impact-gate
 ```
 
 Requires Node.js >= 20. Ships both CommonJS and ESM builds.

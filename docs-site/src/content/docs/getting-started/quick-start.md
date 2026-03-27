@@ -8,7 +8,7 @@ Go from zero to impact analysis in under a minute. All three steps below are fre
 ## Step 1: Install
 
 ```bash
-npm install @yasserkhanorg/impact-gate
+npm install -D @yasserkhanorg/impact-gate
 ```
 
 ## Step 2: Run Impact Analysis

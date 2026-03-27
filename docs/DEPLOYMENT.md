@@ -5,7 +5,7 @@ This document covers installation, upgrades, rollback procedures, degraded-mode 
 ## Installation
 
 ```bash
-npm install @yasserkhanorg/impact-gate
+npm install -D @yasserkhanorg/impact-gate
 ```
 
 Requires Node.js >= 20. The package ships both CommonJS and ESM builds and exposes three CLI binaries: `impact-gate`, `impact-gate-qa`, and `impact-gate-mcp`.
@@ -35,7 +35,7 @@ npx impact-gate init
 1. Install the latest version:
 
 ```bash
-npm install @yasserkhanorg/impact-gate@latest
+npm install -D @yasserkhanorg/impact-gate@latest
 ```
 
 2. Run your project's test suite to verify compatibility:
@@ -57,7 +57,7 @@ npx impact-gate crew --workflow quick-check --dry-run --path /path/to/project --
 If an upgrade introduces issues, revert to the previous working version:
 
 ```bash
-npm install @yasserkhanorg/impact-gate@<previous-version>
+npm install -D @yasserkhanorg/impact-gate@<previous-version>
 ```
 
 Optionally clear cached analysis artifacts to avoid stale data from the newer version:

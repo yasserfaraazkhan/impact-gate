@@ -14,7 +14,7 @@ description: "Install @yasserkhanorg/impact-gate and verify your setup"
 Add the package to your project:
 
 ```bash
-npm install @yasserkhanorg/impact-gate
+npm install -D @yasserkhanorg/impact-gate
 ```
 
 Or install globally for CLI access anywhere:
