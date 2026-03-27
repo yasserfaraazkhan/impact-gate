@@ -166,7 +166,7 @@ Verify that configured LLM providers are reachable:
 npx e2e-ai-agents llm-health
 ```
 
-This sends a minimal probe to each configured provider and reports latency and availability.
+This sends a minimal probe to each provider whose environment variable is set (Anthropic, OpenAI, and/or Ollama) and reports availability. It does not measure latency.
 
 ### Exit Codes
 

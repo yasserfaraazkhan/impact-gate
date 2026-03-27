@@ -22,7 +22,10 @@ export async function runGateCommand(args: ParsedArgs, autoConfig: string | unde
         process.exit(1);
     }
 
-    const threshold = args.gateThreshold ?? 80;
+    let threshold = args.gateThreshold ?? 80;
+    if (threshold > 0 && threshold < 1) {
+        threshold = threshold * 100;
+    }
 
     const {config} = resolveConfig(process.cwd(), autoConfig, {
         path: args.path,

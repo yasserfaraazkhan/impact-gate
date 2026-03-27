@@ -10,7 +10,7 @@ When a developer opens a pull request, three questions need answering:
 2. **Do tests already cover those features?** (coverage assessment)
 3. **If not, what exactly should be tested?** (test design)
 
-The market offers 40+ tools for pieces of this — but no single tool answers all three from a code diff. e2e-agents does.
+The market offers 40+ tools for pieces of this — but few tools attempt all three from a code diff. e2e-agents does.
 
 ## The Oracle Problem
 
@@ -34,7 +34,7 @@ Validation (compile check + smoke run + hallucination blocking)
     → "Block unknown methods, reject tests that don't compile"
 ```
 
-No other tool has this layered constraint system.
+This layered constraint approach is uncommon in the market.
 
 ## Market Segments (40+ tools surveyed)
 
@@ -85,7 +85,7 @@ These tools start from a URL and explore the page. They don't know what code cha
 
 ## What e2e-agents Does Differently
 
-### The Constraint-Based Oracle (unique in market)
+### The Constraint-Based Oracle
 
 | Capability | e2e-agents | Octomind | Momentic | Midscene | Shortest | Others |
 |-----------|-----------|----------|----------|----------|----------|--------|
@@ -97,7 +97,7 @@ These tools start from a URL and explore the page. They don't know what code cha
 | Defines what correct behavior looks like | **Yes** (assertion patterns in manifest) | No | Partial (intent) | No | No | No |
 | Generates tests from code changes, not URLs | **Yes** | No | No | No | No | No |
 
-### Five Things No Other Tool Does
+### Five Differentiating Capabilities
 
 **1. Assertion patterns as oracle specifications**
 
@@ -163,8 +163,8 @@ e2e-agents has no per-seat pricing. The only cost is LLM API usage, and the dete
 
 ## Summary
 
-e2e-agents occupies a unique position: it is the only tool that combines a **constraint-based oracle** (manifest + assertion patterns + TypeScript AST surface + historical failure correlation), **diff-driven impact analysis**, **semantic coverage evaluation**, and **executable test generation** in a single open-source pipeline.
+e2e-agents occupies an unusual position: it is one of the few tools that combines a **constraint-based oracle** (manifest + assertion patterns + TypeScript AST surface + historical failure correlation), **diff-driven impact analysis**, **semantic coverage evaluation**, and **executable test generation** in a single open-source pipeline.
 
 The tradeoff is narrower scope (TypeScript/Playwright focus) and less enterprise maturity compared to well-funded competitors. The vision-based testing approach (Midscene, TestDriver) eliminates selector issues entirely but adds runtime cost and non-determinism — a different tradeoff that may be worth adopting for specific use cases.
 
-For teams that want honest, change-driven test generation with business-logic assertions — without vendor lock-in or per-seat pricing — this is currently the only option that exists.
+For teams that want honest, change-driven test generation with business-logic assertions — without vendor lock-in or per-seat pricing — this is one of the few options available today.

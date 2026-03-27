@@ -23,7 +23,7 @@ This parses the git diff, maps changed files to route families, and reports whic
 
 ## Step 3: View the Results
 
-The impact report is written to `.e2e-ai-agents/plan.json`. You can also get a coverage plan with gap analysis:
+The impact report prints to stdout and writes to `.e2e-ai-agents/plan.json`. You can also get a coverage plan with gap analysis:
 
 ```bash
 npx e2e-ai-agents plan --path . --since origin/main

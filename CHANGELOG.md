@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.10.1] - 2026-03-27
+
+### Bug Fixes
+
+- **`--help` exits with code 0** — Previously exited with code 1 when invoked without a command, signaling failure to CI systems.
+- **`--threshold` accepts both fractions and percentages** — `--threshold 0.7` now correctly means 70%, not 0.7%. Values < 1 are auto-multiplied by 100.
+- **`llm-health` checks all configured providers** — Now probes Anthropic, OpenAI, and Ollama based on which env vars are set, instead of Anthropic-only.
+- **`impact` command writes plan.json** — Output now written to `.e2e-ai-agents/plan.json` in addition to stdout, matching documentation.
+- **"Language Learning Models" typo** — Fixed to "Large Language Models" in public API exports.
+- **Usage output lists all commands** — Added `crew`, `gate`, `cost-report`, `bootstrap` to `--help` output.
+
+### Documentation Honesty
+
+- **Toned down absolute claims** — Removed "no single tool", "the only tool", "no other tool" language from comparison docs. Replaced with accurate phrasing like "few tools attempt", "uncommon in the market", "one of the few options".
+- **Quick-start accuracy** — Corrected impact command output description.
+- **Installation docs** — Fixed llm-health description to reflect multi-provider support.
+- **Deployment docs** — Removed false "reports latency" claim (only checks availability).
+
+Tests: 469 pass, 0 failures.
+
 ## [1.10.0] - 2026-03-27
 
 ### Oracle Mechanism: Assertion Patterns

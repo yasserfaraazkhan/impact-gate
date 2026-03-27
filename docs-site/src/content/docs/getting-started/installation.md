@@ -56,4 +56,4 @@ The free-tier commands (`impact`, `plan`, `train --no-enrich`, `cost-report`, `f
 npx e2e-ai-agents llm-health
 ```
 
-This tests that your configured provider can accept requests and return responses.
+This sends a minimal probe to each provider whose environment variable is set (Anthropic, OpenAI, and/or Ollama) and reports whether it can accept requests and return responses.

@@ -1,6 +1,9 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {mkdirSync, writeFileSync} from 'fs';
+import {join} from 'path';
+
 import type {resolveConfig} from '../../agent/config.js';
 import {getChangedFiles} from '../../agent/git.js';
 import {analyzeImpact as analyzeImpactV2} from '../../engine/impact_engine.js';
@@ -25,4 +28,10 @@ export function runImpactCommand(args: ParsedArgs, config: ReturnType<typeof res
             console.warn(`  Warning: ${w}`);
         }
     }
+
+    const outputDir = join(reportRoot, '.e2e-ai-agents');
+    mkdirSync(outputDir, {recursive: true});
+    const planPath = join(outputDir, 'plan.json');
+    writeFileSync(planPath, JSON.stringify(impactResult, null, 2));
+    console.log(`Wrote ${planPath}`);
 }

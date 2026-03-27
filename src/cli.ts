@@ -68,7 +68,7 @@ async function main(): Promise<void> {
 
     if (args.help || !args.command) {
         printUsage();
-        process.exit(args.command ? 0 : 1);
+        process.exit(0);
     }
 
     if (args.command === 'llm-health') {

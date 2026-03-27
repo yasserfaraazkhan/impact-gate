@@ -4,7 +4,7 @@
 /**
  * LLM Provider Module
  *
- * Framework-agnostic library for working with Language Learning Models.
+ * Framework-agnostic library for working with Large Language Models.
  * Pluggable architecture supports multiple providers:
  * - Anthropic Claude (premium, vision support)
  * - Ollama (free, local)
