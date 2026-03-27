@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.5] - 2026-03-28
+
+### Fix
+
+- **[P1] Guard against overwriting dirty files** — `write_file` now checks `git status --porcelain` before the first write to a file. If the file already has uncommitted user changes, the write is blocked. Subsequent writes to files the agent already owns are allowed. Combined with scoped `git_restore`, the fix loop is now safe on dirty branches.
+
 ## [2.1.4] - 2026-03-28
 
 ### Fix

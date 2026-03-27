@@ -206,6 +206,20 @@ export function executeFixTool(
         if (!isPathSafe(ctx.projectRoot, filePath)) {
             return {output: `Blocked: "${filePath}" is outside the project or a restricted path.`};
         }
+        // Refuse to overwrite files that already have uncommitted user changes
+        if (!ctx.pendingWrittenFiles.has(filePath)) {
+            try {
+                const status = execFileSync(
+                    'git', ['status', '--porcelain', '--', filePath],
+                    {cwd: ctx.projectRoot, encoding: 'utf-8'},
+                ).trim();
+                if (status.length > 0) {
+                    return {output: `Blocked: "${filePath}" has uncommitted user changes. Choose a different file or skip this fix.`};
+                }
+            } catch {
+                // git status failed — allow the write (file may be new/untracked)
+            }
+        }
         const fullPath = resolve(ctx.projectRoot, filePath);
         writeFileSync(fullPath, String(input.content), 'utf-8');
         ctx.pendingWrittenFiles.add(filePath);
