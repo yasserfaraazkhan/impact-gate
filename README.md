@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./docs-site/public/impact-gate-readme-banner.svg" alt="Impact Gate" width="720" />
+  <img src="./docs-site/public/impact-gate-readme-banner.png" alt="Impact Gate" width="720" />
 </p>
 
 # Impact Gate
