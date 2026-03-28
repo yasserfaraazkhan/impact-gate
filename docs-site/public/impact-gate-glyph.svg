@@ -1,34 +1,31 @@
 <svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="ig-neon" x1="12" y1="16" x2="84" y2="84" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#57F7FF"/>
-      <stop offset="0.52" stop-color="#89C5FF"/>
-      <stop offset="1" stop-color="#A855F7"/>
+    <linearGradient id="ig-glyph" x1="18" y1="12" x2="76" y2="84" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#BCC2FF"/>
+      <stop offset="0.48" stop-color="#AE7BFF"/>
+      <stop offset="1" stop-color="#72E8FF"/>
     </linearGradient>
-    <linearGradient id="ig-core" x1="18" y1="18" x2="78" y2="78" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#F1FFFF"/>
-      <stop offset="1" stop-color="#CFD4F8"/>
-    </linearGradient>
-    <filter id="ig-glow" x="0" y="0" width="96" height="96" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feGaussianBlur stdDeviation="3" result="blur"/>
-      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.52 0"/>
+    <filter id="ig-glyph-glow" x="0" y="0" width="96" height="96" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="6.5" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0.44 0 1 0 0 0.64 0 0 1 0 1 0 0 0 0.2 0"/>
       <feBlend in="SourceGraphic" mode="screen"/>
     </filter>
   </defs>
-  <g filter="url(#ig-glow)" stroke="url(#ig-neon)" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M17 20H35L28 27H24V70L17 76V20Z" stroke-width="4.2"/>
-    <path d="M34 23C44 16 57 16 66 22C73 27 77 35 77 45V49H57" stroke-width="6"/>
-    <path d="M32 55C32 68 42 78 56 78C68 78 78 72 82 61" stroke-width="6"/>
-    <path d="M56 49H76V62" stroke-width="6"/>
-    <path d="M64 77L78 47L92 77H64Z" stroke-width="4.2"/>
-    <path d="M70 64H86" stroke-width="4"/>
-  </g>
-  <g stroke="url(#ig-core)" stroke-linecap="round" stroke-linejoin="round" opacity="0.96">
-    <path d="M17 20H35L28 27H24V70L17 76V20Z" stroke-width="2.2"/>
-    <path d="M34 23C44 16 57 16 66 22C73 27 77 35 77 45V49H57" stroke-width="3.4"/>
-    <path d="M32 55C32 68 42 78 56 78C68 78 78 72 82 61" stroke-width="3.4"/>
-    <path d="M56 49H76V62" stroke-width="3.4"/>
-    <path d="M64 77L78 47L92 77H64Z" stroke-width="2.5"/>
-    <path d="M70 64H86" stroke-width="2.3"/>
+  <g filter="url(#ig-glyph-glow)">
+    <path d="M26 24L40 10H73L63 24H50V74H31L26 69V24Z" fill="url(#ig-glyph)"/>
+    <path d="M52 36L65 24V58H73V74H60L52 66V36Z" fill="#131313"/>
+    <path d="M52 36L65 24V74L52 66V36Z" fill="url(#ig-glyph)"/>
+    <path d="M52 65L41 47L46 41L52 52L59 43L65 48L52 65Z" fill="#131313"/>
+    <path d="M42 59L46 61" stroke="url(#ig-glyph)" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M44 52L49 55" stroke="url(#ig-glyph)" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M46 45L52 49" stroke="url(#ig-glyph)" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M49 39L55 43" stroke="url(#ig-glyph)" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M54 33L59 36" stroke="url(#ig-glyph)" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M42 59L39 67" stroke="url(#ig-glyph)" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M44 52L37 57" stroke="url(#ig-glyph)" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M46 45L37 47" stroke="url(#ig-glyph)" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M49 39L38 36" stroke="url(#ig-glyph)" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M54 33L43 27" stroke="url(#ig-glyph)" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M39 63L46 48L53 63H39Z" fill="#131313" stroke="url(#ig-glyph)" stroke-width="2.5" stroke-linejoin="round"/>
   </g>
 </svg>

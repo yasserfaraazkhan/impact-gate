@@ -1,33 +1,36 @@
-<svg width="460" height="78" viewBox="0 0 460 78" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="440" height="92" viewBox="0 0 440 92" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="logo-neon-dark" x1="8" y1="8" x2="72" y2="72" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#57F7FF"/>
-      <stop offset="0.52" stop-color="#89C5FF"/>
-      <stop offset="1" stop-color="#A855F7"/>
+    <linearGradient id="ig-mark-dark" x1="20" y1="14" x2="78" y2="78" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#B9BEFF"/>
+      <stop offset="0.48" stop-color="#AA7DFF"/>
+      <stop offset="1" stop-color="#74E9FF"/>
     </linearGradient>
-    <linearGradient id="logo-core-dark" x1="14" y1="14" x2="64" y2="64" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#F1FFFF"/>
-      <stop offset="1" stop-color="#CFD4F8"/>
+    <linearGradient id="ig-text-dark" x1="110" y1="18" x2="360" y2="72" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C18BFF"/>
+      <stop offset="1" stop-color="#78E6FF"/>
     </linearGradient>
-    <filter id="logo-glow-dark" x="0" y="0" width="84" height="78" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feGaussianBlur stdDeviation="2.8" result="blur"/>
-      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.46 0"/>
+    <filter id="ig-glow-dark" x="0" y="0" width="440" height="92" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0.42 0 1 0 0 0.62 0 0 1 0 1 0 0 0 0.22 0"/>
       <feBlend in="SourceGraphic" mode="screen"/>
     </filter>
   </defs>
-  <g transform="translate(2 4) scale(0.78)" filter="url(#logo-glow-dark)" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M17 20H35L28 27H24V70L17 76V20Z" stroke="url(#logo-neon-dark)" stroke-width="4.2"/>
-    <path d="M34 23C44 16 57 16 66 22C73 27 77 35 77 45V49H57" stroke="url(#logo-neon-dark)" stroke-width="6"/>
-    <path d="M32 55C32 68 42 78 56 78C68 78 78 72 82 61" stroke="url(#logo-neon-dark)" stroke-width="6"/>
-    <path d="M56 49H76V62" stroke="url(#logo-neon-dark)" stroke-width="6"/>
-    <path d="M64 77L78 47L92 77H64Z" stroke="url(#logo-neon-dark)" stroke-width="4.2"/>
-    <path d="M70 64H86" stroke="url(#logo-neon-dark)" stroke-width="4"/>
-    <path d="M17 20H35L28 27H24V70L17 76V20Z" stroke="url(#logo-core-dark)" stroke-width="2.2" opacity="0.96"/>
-    <path d="M34 23C44 16 57 16 66 22C73 27 77 35 77 45V49H57" stroke="url(#logo-core-dark)" stroke-width="3.4" opacity="0.96"/>
-    <path d="M32 55C32 68 42 78 56 78C68 78 78 72 82 61" stroke="url(#logo-core-dark)" stroke-width="3.4" opacity="0.96"/>
-    <path d="M56 49H76V62" stroke="url(#logo-core-dark)" stroke-width="3.4" opacity="0.96"/>
-    <path d="M64 77L78 47L92 77H64Z" stroke="url(#logo-core-dark)" stroke-width="2.5" opacity="0.96"/>
-    <path d="M70 64H86" stroke="url(#logo-core-dark)" stroke-width="2.3" opacity="0.96"/>
+  <g filter="url(#ig-glow-dark)">
+    <path d="M28 20L46 2H80L68 20H54V72H33L28 67V20Z" fill="url(#ig-mark-dark)"/>
+    <path d="M56 31L70 18V55H79V72H63L56 65V31Z" fill="#131313"/>
+    <path d="M56 31L70 18V72L56 65V31Z" fill="url(#ig-mark-dark)"/>
+    <path d="M56 65L43 44L49 38L56 51L63 40L70 45L56 65Z" fill="#131313"/>
+    <path d="M44 57L49 60" stroke="url(#ig-mark-dark)" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M46 50L52 54" stroke="url(#ig-mark-dark)" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M48 43L55 48" stroke="url(#ig-mark-dark)" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M52 36L58 41" stroke="url(#ig-mark-dark)" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M58 30L63 34" stroke="url(#ig-mark-dark)" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M44 57L41 66" stroke="url(#ig-mark-dark)" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M46 50L39 55" stroke="url(#ig-mark-dark)" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M48 43L38 45" stroke="url(#ig-mark-dark)" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M52 36L40 33" stroke="url(#ig-mark-dark)" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M58 30L46 23" stroke="url(#ig-mark-dark)" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M41 61L49 44L57 61H41Z" fill="#131313" stroke="url(#ig-mark-dark)" stroke-width="2.5" stroke-linejoin="round"/>
+    <text x="104" y="65" fill="url(#ig-text-dark)" font-size="31" font-weight="800" letter-spacing="1.1" font-family="Space Grotesk, Inter, Arial, sans-serif">IMPACT GATE</text>
   </g>
-  <text x="86" y="49" fill="#ECE9E6" font-size="31" font-weight="800" letter-spacing="1.8" font-family="Inter, Arial, sans-serif">IMPACT_GATE</text>
 </svg>

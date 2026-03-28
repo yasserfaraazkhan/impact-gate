@@ -701,11 +701,11 @@ footer .meta {
 }
 
 .docs-grid--two {
-	grid-template-columns: repeat(2, minmax(0, 1fr));
+	grid-template-columns: 1fr;
 }
 
 .docs-grid--three {
-	grid-template-columns: repeat(3, minmax(0, 1fr));
+	grid-template-columns: 1fr;
 }
 
 .docs-panel {
@@ -759,19 +759,25 @@ footer .meta {
 	padding: 1rem 1.05rem;
 }
 
-.docs-panel--compact .docs-panel__title {
+.docs-panel--compact .docs-panel__title,
+.docs-panel--compact > .docs-panel__title,
+.docs-panel--compact h2.docs-panel__title,
+.docs-panel--compact h3.docs-panel__title {
 	font-size: 1.08rem;
 }
 
 .docs-panel--feature {
-	gap: 1.15rem;
+	gap: 0.78rem;
 	padding: 1.55rem 1.6rem;
 }
 
-.docs-panel--feature .docs-panel__title {
-	font-size: clamp(1.9rem, 4vw, 3.2rem);
-	line-height: 0.98;
-	max-width: 12ch;
+.docs-panel--feature .docs-panel__title,
+.docs-panel--feature > .docs-panel__title,
+.docs-panel--feature h2.docs-panel__title,
+.docs-panel--feature h3.docs-panel__title {
+	font-size: clamp(1.45rem, 2.5vw, 2.1rem);
+	line-height: 1.02;
+	max-width: 18ch;
 }
 
 .docs-panel--terminal {
@@ -786,19 +792,24 @@ footer .meta {
 		linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(247, 248, 252, 0.96));
 }
 
-.docs-panel__eyebrow {
+.docs-panel__eyebrow,
+.docs-panel > .docs-panel__eyebrow {
 	font-family: var(--__sl-font-mono);
-	font-size: 0.68rem;
-	letter-spacing: 0.15em;
+	font-size: 0.74rem;
+	letter-spacing: 0.14em;
 	text-transform: uppercase;
-	color: var(--sl-color-gray-3);
+	color: var(--sl-color-gray-2);
+	margin: 0;
 }
 
-.docs-panel__title {
+.docs-panel__title,
+.docs-panel > .docs-panel__title,
+.docs-panel h2.docs-panel__title,
+.docs-panel h3.docs-panel__title {
 	margin: 0;
 	font-family: 'Space Grotesk', var(--__sl-font);
 	font-size: 1.28rem;
-	line-height: 1.08;
+	line-height: 1.06;
 	letter-spacing: -0.03em;
 	color: var(--sl-color-white);
 }
