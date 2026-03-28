@@ -1053,9 +1053,20 @@ footer .meta {
 .portal-card h2,
 .portal-card h3 {
 	margin: 0;
-	font-size: 1.4rem;
-	line-height: 1.1;
+	font-family: 'Space Grotesk', var(--__sl-font);
+	font-weight: 700;
+	letter-spacing: -0.035em;
 	color: var(--sl-color-white);
+}
+
+.portal-card h2 {
+	font-size: clamp(1.8rem, 2.4vw, 2.25rem);
+	line-height: 1.02;
+}
+
+.portal-card h3 {
+	font-size: clamp(1.55rem, 2vw, 1.85rem);
+	line-height: 1.05;
 }
 
 .portal-copy,

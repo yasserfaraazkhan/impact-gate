@@ -1,0 +1,9 @@
+[2026-03-28T15:32:07.427Z] [INFO] Built 1 heuristic families from 1 changed files (no route-families.json found)
+[2026-03-28T15:32:07.427Z] [INFO] Tip: Run `impact-gate train` to generate a proper route-families manifest for better accuracy.
+AI enrichment: 1 features enriched (1531 tokens)
+Suggested run set: full (confidence 95)
+Decision: run-now - Impacted features are covered by existing tests. Verify with the E2E suite before merge.
+Enforcement: advisory (shouldFail=false)
+Plan data: /Users/yasserkhan/Documents/mattermost/impact-gate/test/.e2e-ai-agents/plan.json
+CI summary: /Users/yasserkhan/Documents/mattermost/impact-gate/test/.e2e-ai-agents/ci-summary.md
+Plan metrics: /Users/yasserkhan/Documents/mattermost/impact-gate/test/.e2e-ai-agents/metrics-summary.json

@@ -124,6 +124,18 @@ Notes:
 - `gate` expects a threshold in the range `0-100` and exits `1` when the threshold is missed.
 - Add the Optional AI Workflow only after your `route-families.json` manifest is useful enough to trust.
 
+## Dogfood Proof
+
+The current repo includes a full dogfood run at [dogfood/2026-03-28/README.md](dogfood/2026-03-28/README.md).
+
+- [Playwright example](examples/playwright-react/README.md): synthetic auth change -> `impact`, `plan`, and `gate` all behaved as expected
+- [Cypress example](examples/cypress-nextjs/README.md): synthetic dashboard change -> parity proof for the same deterministic flow
+- [Self dogfood](dogfood/2026-03-28/README.md#phase-2-impact-gate-on-itself): heuristic fallback grouped changes truthfully, but still read too optimistically for a package-style repo
+
+Takeaway:
+- the strongest product path is still an app-shaped Playwright/Cypress repo with a maintained manifest
+- zero-config / heuristic fallback is useful for orientation, but it should not be treated as equally trustworthy for release decisions
+
 ## Setup and Calibration
 
 These commands help the core CI workflow become accurate and project-aware.
@@ -517,10 +529,11 @@ All written under `<testsRoot>/.e2e-ai-agents/`.
 
 ## Advanced / Experimental: Autonomous QA Agent (`impact-gate-qa`)
 
-An autonomous QA engineer that opens a real browser, navigates to changed features, tries edge cases, and produces a findings report — all unsupervised. Built on top of `agent-browser` and the Anthropic tool-use API.
+An autonomous QA engineer that can take a diff or a feature prompt, open a real browser, navigate changed features, hunt edge cases, generate follow-up specs, heal failures, and produce a findings report. Built on top of `agent-browser` and the Anthropic tool-use API.
 
-If you want to invoke the same workflow from an agent instead of the raw CLI,
-see the [QA Skill Guide](https://yasserfaraazkhan.github.io/impact-gate/guides/qa-skill/)
+If you want the full product story and the natural-language front door, start
+with the [Autonomous Browser QA guide](https://yasserfaraazkhan.github.io/impact-gate/guides/browser-qa/)
+and the [QA Skill Guide](https://yasserfaraazkhan.github.io/impact-gate/guides/qa-skill/)
 for Codex and Claude examples using `/qa`.
 
 ### Quick Start

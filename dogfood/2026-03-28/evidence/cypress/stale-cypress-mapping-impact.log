@@ -1,0 +1,8 @@
+
+> demo:impact
+> npx impact-gate impact --path . --tests-root cypress --since HEAD~1
+
+Impact: 1 changed files → 0 features impacted
+Unbound files: 1
+  Warning: 1 file(s) not mapped to any route family: src/pages/dashboard.tsx
+Wrote /private/tmp/impact-gate-dogfood/runs/cypress-example-proof/cypress/.e2e-ai-agents/plan.json

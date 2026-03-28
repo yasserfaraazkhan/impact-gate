@@ -1,0 +1,24 @@
+{
+  "families": [
+    {
+      "id": "dashboard",
+      "routes": ["/dashboard", "/dashboard/analytics"],
+      "webappPaths": ["src/pages/dashboard.tsx", "src/components/dashboard/**"],
+      "serverPaths": [],
+      "cypressSpecDirs": ["e2e/dashboard"],
+      "priority": "P0",
+      "userFlows": ["View dashboard overview", "Check analytics"],
+      "components": ["DashboardPage", "AnalyticsPanel"]
+    },
+    {
+      "id": "profile",
+      "routes": ["/profile", "/profile/edit"],
+      "webappPaths": ["src/pages/profile.tsx", "src/components/profile/**"],
+      "serverPaths": [],
+      "cypressSpecDirs": ["e2e/profile"],
+      "priority": "P1",
+      "userFlows": ["View profile", "Edit profile details"],
+      "components": ["ProfilePage", "EditProfileForm"]
+    }
+  ]
+}

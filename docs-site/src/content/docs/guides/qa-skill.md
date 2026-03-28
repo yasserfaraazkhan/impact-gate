@@ -13,6 +13,15 @@ description: "Use the /qa skill as a natural-language front door to impact-gate-
   </p>
 </div>
 
+<div class="docs-panel docs-panel--compact">
+  <span class="docs-panel__eyebrow">Full story</span>
+  <p class="docs-panel__copy">
+    If you want the full product story from diff to browser exploration to
+    generated and healed specs, start with the
+    <a href="./browser-qa/">Autonomous Browser QA guide</a>.
+  </p>
+</div>
+
 <div class="docs-grid">
   <div class="docs-panel">
     <span class="docs-panel__eyebrow">Mental model</span>

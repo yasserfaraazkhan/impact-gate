@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.7] - 2026-03-28
+
+### Release Focus
+
+This patch release turns the launch-time dogfood run into shipped product follow-through: the public install path works, the bundled examples match the current manifest contract, and the docs now describe the strongest path and heuristic fallback more honestly.
+
+### Highlights
+
+- **Public package install fixed** — moved `typescript` into runtime dependencies so the packaged CLI works in real consumer installs instead of only from a dev checkout.
+- **Dogfood proof added** — added a dated dogfood report covering Playwright proof, self-dogfood on `impact-gate`, and Cypress parity, with captured evidence under `dogfood/2026-03-28/`.
+- **Bundled examples corrected** — both bundled examples now use `impact-gate.config.json`, keep their manifests under `<testsRoot>/.e2e-ai-agents/route-families.json`, and match the current manifest schema.
+- **Cypress example schema fixed** — the Cypress example now uses `cypressSpecDirs` and exact page-file bindings so the public demo path reflects the current engine contract.
+- **Docs honesty improved** — README and docs now point to the dogfood proof, explain the manifest location/schema more clearly, and state that heuristic fallback is useful for orientation but not equally trustworthy for release decisions.
+- **Autonomous Browser QA surfaced** — added and linked the browser QA guide so the QA skill and CLI have a clearer product story from diff to browser evidence to generated and healed specs.
+- **Homepage card typography polished** — portal card headings are bolder and more prominent in the docs UI.
+
+### Verification
+
+- `npm run lint` — **passes**
+- `npm test` — **469 passing, 0 failing**
+- `npm run build` in `docs-site` — **passes**
+- bundled example config and manifest files parse cleanly
+
 ## [2.1.6] - 2026-03-28
 
 ### Release Focus

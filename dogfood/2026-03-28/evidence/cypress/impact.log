@@ -1,0 +1,8 @@
+
+> demo:impact
+> npx impact-gate impact --path . --tests-root cypress --since HEAD~1
+
+Impact: 1 changed files → 1 features impacted
+Unbound files: 0
+  [P0] dashboard: partial (PW=0, Cy=1)
+Wrote /private/tmp/impact-gate-dogfood/runs/cypress-example-proof2/cypress/.e2e-ai-agents/plan.json

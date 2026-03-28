@@ -4,7 +4,7 @@ This example demonstrates the `impact-gate` workflow on a minimal Cypress + Next
 
 ## What's Included
 
-- **2 route families** (`dashboard`, `profile`) pre-configured in `.e2e-ai-agents/route-families.json`
+- **2 route families** (`dashboard`, `profile`) pre-configured in `cypress/.e2e-ai-agents/route-families.json`
 - **Next.js page placeholders** in `src/pages/` mapped to each family
 - **Cypress specs** in `cypress/e2e/` covering dashboard overview and profile editing
 - **Config file** (`impact-gate.config.json`) with `framework: "cypress"`
@@ -25,7 +25,7 @@ Determine which test families are affected by recent code changes:
 npm run demo:impact
 ```
 
-This runs `impact-gate impact` against the last commit. It reads the route-families manifest, compares it to the git diff, and reports which families and specs are impacted. No API key needed.
+This runs `impact-gate impact` against the last commit. It reads the route-families manifest from `cypress/.e2e-ai-agents/route-families.json`, compares it to the git diff, and reports which families and specs are impacted. No API key needed.
 
 ### 2. Coverage Plan
 
@@ -35,7 +35,7 @@ Generate a coverage plan with gap analysis:
 npm run demo:plan
 ```
 
-This identifies missing test coverage and recommends scenarios to add. Outputs a structured plan to `.e2e-ai-agents/plan.json`.
+This identifies missing test coverage and recommends scenarios to add. Outputs a structured plan to `cypress/.e2e-ai-agents/plan.json`.
 
 ### 3. Crew Dry Run
 
@@ -58,13 +58,13 @@ This simulates the `quick-check` workflow, showing which agents would run and wh
 
 ```
 cypress-nextjs/
-  impact-gate.config.json     # CLI configuration
-  .e2e-ai-agents/
-    route-families.json          # Pre-trained family manifest
+  impact-gate.config.json        # CLI configuration
   src/pages/
     dashboard.tsx                # Mapped to "dashboard" family
     profile.tsx                  # Mapped to "profile" family
   cypress/e2e/
+    .e2e-ai-agents/
+      route-families.json        # Pre-trained family manifest
     dashboard/overview.cy.ts     # Cypress spec for dashboard
     profile/edit.cy.ts           # Cypress spec for profile
 ```
@@ -74,3 +74,4 @@ cypress-nextjs/
 - See the [main README](../../README.md) for full CLI reference and CI integration
 - Try `impact-gate train --path . --no-enrich` to rebuild the manifest from scratch
 - Compare with the [Playwright + React example](../playwright-react/) for a different framework setup
+- The current manifest shape is `{ "families": [...] }`, and Cypress examples use `cypressSpecDirs` relative to `cypress/`

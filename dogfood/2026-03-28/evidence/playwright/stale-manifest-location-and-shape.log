@@ -1,0 +1,12 @@
+
+> demo:impact
+> npx impact-gate impact --path . --tests-root e2e --since HEAD~1
+
+[2026-03-28T14:06:15.770Z] [INFO] Built 1 heuristic families from 1 changed files (no route-families.json found)
+[2026-03-28T14:06:15.771Z] [INFO] Tip: Run `impact-gate train` to generate a proper route-families manifest for better accuracy.
+Impact: 1 changed files → 1 features impacted
+Unbound files: 0
+  [P2] components: uncovered (PW=0, Cy=0)
+  Warning: Route family manifest not found. Using directory-based heuristics (lower accuracy).
+  Warning: Tip: Run `impact-gate train` to generate a proper manifest.
+Wrote /private/tmp/impact-gate-dogfood/runs/playwright-example-proof/e2e/.e2e-ai-agents/plan.json

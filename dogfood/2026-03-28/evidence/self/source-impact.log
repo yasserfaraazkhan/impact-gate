@@ -1,0 +1,9 @@
+[2026-03-28T15:37:09.091Z] [INFO] Built 2 heuristic families from 13 changed files (no route-families.json found)
+[2026-03-28T15:37:09.092Z] [INFO] Tip: Run `impact-gate train` to generate a proper route-families manifest for better accuracy.
+Impact: 13 changed files → 2 features impacted
+Unbound files: 0
+  [P2] cli: uncovered (PW=0, Cy=0)
+  [P2] qa-agent: uncovered (PW=0, Cy=0)
+  Warning: Route family manifest not found. Using directory-based heuristics (lower accuracy).
+  Warning: Tip: Run `impact-gate train` to generate a proper manifest.
+Wrote /private/tmp/impact-gate-dogfood/runs/self-repo-source2/test/.e2e-ai-agents/plan.json

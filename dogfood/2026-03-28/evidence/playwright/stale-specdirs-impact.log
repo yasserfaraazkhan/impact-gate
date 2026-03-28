@@ -1,0 +1,8 @@
+
+> demo:impact
+> npx impact-gate impact --path . --tests-root e2e --since HEAD~1
+
+Impact: 1 changed files → 1 features impacted
+Unbound files: 0
+  [P0] auth: uncovered (PW=0, Cy=0)
+Wrote /private/tmp/impact-gate-dogfood/runs/playwright-example-proof2/e2e/.e2e-ai-agents/plan.json

@@ -39,3 +39,7 @@ yarn-error.log*
 .mcp.json
 .claude/
 .e2e-ai-agents/
+!examples/playwright-react/e2e/.e2e-ai-agents/
+!examples/playwright-react/e2e/.e2e-ai-agents/route-families.json
+!examples/cypress-nextjs/cypress/.e2e-ai-agents/
+!examples/cypress-nextjs/cypress/.e2e-ai-agents/route-families.json

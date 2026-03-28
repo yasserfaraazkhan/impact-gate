@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "1.0.0",
+  "runId": "plan-mnahsom9",
+  "generatedAt": "2026-03-28T15:35:57.345Z",
+  "source": "impact",
+  "runSet": "full",
+  "confidence": 95,
+  "reasons": [
+    "Warning threshold exceeded."
+  ],
+  "recommendedTests": [],
+  "requiredNewTests": [],
+  "gapDetails": [],
+  "coveredFlows": [],
+  "policy": {
+    "riskyFiles": [],
+    "triggeredRules": [
+      "warning-threshold"
+    ],
+    "applied": {
+      "minConfidenceForTargeted": 60,
+      "safeMergeMinConfidence": 85,
+      "forceFullOnWarningsAtOrAbove": 2,
+      "forceFullOnP0WithGaps": true,
+      "forceFullOnRiskyFiles": true,
+      "riskyFilePatterns": [
+        "**/auth/**",
+        "**/login/**",
+        "**/permissions/**",
+        "**/*permission*",
+        "**/admin/**",
+        "**/security/**",
+        "**/migrations/**",
+        "**/*migration*",
+        "**/schema/**",
+        "**/*.sql",
+        "**/webhook/**"
+      ],
+      "enforcementMode": "advisory",
+      "blockOnActions": [
+        "must-add-tests"
+      ]
+    }
+  },
+  "decision": {
+    "action": "run-now",
+    "title": "Run now",
+    "summary": "Impacted features are covered by existing tests. Verify with the E2E suite before merge."
+  },
+  "enforcement": {
+    "mode": "advisory",
+    "blockOnActions": [
+      "must-add-tests"
+    ],
+    "matchedAction": false,
+    "shouldFail": false,
+    "summary": "Advisory mode active: recommendations do not fail CI by default."
+  },
+  "metrics": {
+    "changedFiles": 13,
+    "impactedFlows": 2,
+    "p0Flows": 0,
+    "p1Flows": 0,
+    "p2Flows": 2,
+    "coveredFlows": 0,
+    "partialFlows": 0,
+    "uncoveredP0P1Flows": 0,
+    "unboundFiles": 0,
+    "warnings": 2
+  }
+}

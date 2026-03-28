@@ -31,6 +31,11 @@ description: "How auto-detection works and when you need a config file"
   </div>
 </div>
 
+<div class="docs-panel docs-panel--compact">
+  <span class="docs-panel__eyebrow">Reality check</span>
+  <h3 class="docs-panel__title">Zero-config is great for first-pass orientation. The highest-confidence release decisions still come from a maintained route-families manifest in an app-shaped Playwright or Cypress repo.</h3>
+</div>
+
 ## What Gets Auto-Detected
 
 ### Test Framework

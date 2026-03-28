@@ -1,0 +1,85 @@
+{
+  "schemaVersion": "1.0.0",
+  "runId": "plan-mnaeyff8",
+  "generatedAt": "2026-03-28T14:16:26.516Z",
+  "source": "ai+deterministic",
+  "runSet": "full",
+  "confidence": 92,
+  "reasons": [
+    "P0 features are impacted by this change set.",
+    "Risky file patterns matched: src/components/auth/LoginForm.tsx"
+  ],
+  "recommendedTests": [
+    "auth/login.spec.ts"
+  ],
+  "requiredNewTests": [],
+  "gapDetails": [],
+  "coveredFlows": [
+    {
+      "id": "auth",
+      "name": "auth",
+      "priority": "P0",
+      "coveredBy": [
+        "1 Playwright spec(s)"
+      ]
+    }
+  ],
+  "policy": {
+    "riskyFiles": [
+      "src/components/auth/LoginForm.tsx"
+    ],
+    "triggeredRules": [
+      "risky-files"
+    ],
+    "applied": {
+      "minConfidenceForTargeted": 60,
+      "safeMergeMinConfidence": 85,
+      "forceFullOnWarningsAtOrAbove": 2,
+      "forceFullOnP0WithGaps": true,
+      "forceFullOnRiskyFiles": true,
+      "riskyFilePatterns": [
+        "**/auth/**",
+        "**/login/**",
+        "**/permissions/**",
+        "**/*permission*",
+        "**/admin/**",
+        "**/security/**",
+        "**/migrations/**",
+        "**/*migration*",
+        "**/schema/**",
+        "**/*.sql",
+        "**/webhook/**"
+      ],
+      "enforcementMode": "advisory",
+      "blockOnActions": [
+        "must-add-tests"
+      ]
+    }
+  },
+  "decision": {
+    "action": "run-now",
+    "title": "Run now",
+    "summary": "Impacted features are covered by existing tests. All 1 impacted feature(s) have test coverage. Verify with the E2E suite before merge."
+  },
+  "enforcement": {
+    "mode": "advisory",
+    "blockOnActions": [
+      "must-add-tests"
+    ],
+    "matchedAction": false,
+    "shouldFail": false,
+    "summary": "Advisory mode active: recommendations do not fail CI by default."
+  },
+  "metrics": {
+    "changedFiles": 2,
+    "impactedFlows": 1,
+    "p0Flows": 1,
+    "p1Flows": 0,
+    "p2Flows": 0,
+    "coveredFlows": 1,
+    "partialFlows": 0,
+    "uncoveredP0P1Flows": 0,
+    "unboundFiles": 1,
+    "warnings": 1
+  }
+}

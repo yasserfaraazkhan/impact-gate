@@ -1,0 +1,11 @@
+
+> demo:plan
+> npx impact-gate plan --path . --tests-root cypress --since HEAD~1
+
+AI enrichment: 1 features enriched (1323 tokens)
+Suggested run set: targeted (confidence 92)
+Decision: run-now - Impacted features are covered by existing tests. All 1 impacted feature(s) have test coverage. Verify with the E2E suite before merge.
+Enforcement: advisory (shouldFail=false)
+Plan data: /private/tmp/impact-gate-dogfood/runs/cypress-example-proof2/cypress/.e2e-ai-agents/plan.json
+CI summary: /private/tmp/impact-gate-dogfood/runs/cypress-example-proof2/cypress/.e2e-ai-agents/ci-summary.md
+Plan metrics: /private/tmp/impact-gate-dogfood/runs/cypress-example-proof2/cypress/.e2e-ai-agents/metrics-summary.json

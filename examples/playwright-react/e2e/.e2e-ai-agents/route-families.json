@@ -1,0 +1,34 @@
+{
+  "families": [
+    {
+      "id": "auth",
+      "routes": ["/login", "/signup"],
+      "webappPaths": ["src/components/auth/**"],
+      "serverPaths": [],
+      "specDirs": ["auth"],
+      "priority": "P0",
+      "userFlows": ["User login", "User signup"],
+      "components": ["LoginForm", "SignupForm"]
+    },
+    {
+      "id": "channels",
+      "routes": ["/channels", "/channels/:id"],
+      "webappPaths": ["src/components/channels/**"],
+      "serverPaths": [],
+      "specDirs": ["channels"],
+      "priority": "P0",
+      "userFlows": ["Create channel", "Browse channels"],
+      "components": ["ChannelList", "ChannelView"]
+    },
+    {
+      "id": "settings",
+      "routes": ["/settings"],
+      "webappPaths": ["src/components/settings/**"],
+      "serverPaths": [],
+      "specDirs": ["settings"],
+      "priority": "P1",
+      "userFlows": ["Update profile", "Change password"],
+      "components": ["ProfileSettings", "PasswordForm"]
+    }
+  ]
+}
