@@ -1,0 +1,62 @@
+<svg width="960" height="260" viewBox="0 0 960 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="banner-bg" x1="40" y1="16" x2="918" y2="254" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0C183A"/>
+      <stop offset="0.52" stop-color="#291549"/>
+      <stop offset="1" stop-color="#0E1B3F"/>
+    </linearGradient>
+    <radialGradient id="banner-glow-left" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(184 66) rotate(43.4) scale(235 154)">
+      <stop stop-color="#40F8FF" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#40F8FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="banner-glow-right" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(776 72) rotate(135.3) scale(214 152)">
+      <stop stop-color="#A855F7" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#A855F7" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="banner-neon" x1="0" y1="0" x2="74" y2="76" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#57F7FF"/>
+      <stop offset="0.52" stop-color="#89C5FF"/>
+      <stop offset="1" stop-color="#A855F7"/>
+    </linearGradient>
+    <linearGradient id="banner-core" x1="6" y1="6" x2="66" y2="68" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F1FFFF"/>
+      <stop offset="1" stop-color="#CFD4F8"/>
+    </linearGradient>
+    <filter id="banner-logo-glow" x="112" y="68" width="142" height="142" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.48 0"/>
+      <feBlend in="SourceGraphic" mode="screen"/>
+    </filter>
+  </defs>
+
+  <rect x="18" y="18" width="924" height="224" rx="28" fill="url(#banner-bg)"/>
+  <rect x="18.75" y="18.75" width="922.5" height="222.5" rx="27.25" stroke="#A5B4FC" stroke-opacity="0.28"/>
+  <rect x="18" y="18" width="924" height="224" rx="28" fill="url(#banner-glow-left)"/>
+  <rect x="18" y="18" width="924" height="224" rx="28" fill="url(#banner-glow-right)"/>
+
+  <g opacity="0.3" stroke="#82DFFF" stroke-width="1.2">
+    <path d="M42 34H204L258 82H418"/>
+    <path d="M720 32H840L920 92"/>
+    <path d="M126 34L92 88L162 116L206 82"/>
+    <path d="M798 34L760 82L816 126L894 86"/>
+    <path d="M676 54L618 118L720 156L788 88"/>
+  </g>
+
+  <g transform="translate(148 84) scale(1.28)" filter="url(#banner-logo-glow)" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17 20H35L28 27H24V70L17 76V20Z" stroke="url(#banner-neon)" stroke-width="4.2"/>
+    <path d="M34 23C44 16 57 16 66 22C73 27 77 35 77 45V49H57" stroke="url(#banner-neon)" stroke-width="6"/>
+    <path d="M32 55C32 68 42 78 56 78C68 78 78 72 82 61" stroke="url(#banner-neon)" stroke-width="6"/>
+    <path d="M56 49H76V62" stroke="url(#banner-neon)" stroke-width="6"/>
+    <path d="M64 77L78 47L92 77H64Z" stroke="url(#banner-neon)" stroke-width="4.2"/>
+    <path d="M70 64H86" stroke="url(#banner-neon)" stroke-width="4"/>
+    <path d="M17 20H35L28 27H24V70L17 76V20Z" stroke="url(#banner-core)" stroke-width="2.2" opacity="0.96"/>
+    <path d="M34 23C44 16 57 16 66 22C73 27 77 35 77 45V49H57" stroke="url(#banner-core)" stroke-width="3.4" opacity="0.96"/>
+    <path d="M32 55C32 68 42 78 56 78C68 78 78 72 82 61" stroke="url(#banner-core)" stroke-width="3.4" opacity="0.96"/>
+    <path d="M56 49H76V62" stroke="url(#banner-core)" stroke-width="3.4" opacity="0.96"/>
+    <path d="M64 77L78 47L92 77H64Z" stroke="url(#banner-core)" stroke-width="2.5" opacity="0.96"/>
+    <path d="M70 64H86" stroke="url(#banner-core)" stroke-width="2.3" opacity="0.96"/>
+  </g>
+
+  <text x="330" y="126" fill="#F1EFEC" font-size="62" font-weight="800" letter-spacing="2.2" font-family="Inter, Arial, sans-serif">IMPACT_GATE</text>
+  <text x="330" y="168" fill="#CFD4F8" font-size="24" font-weight="500" font-family="Inter, Arial, sans-serif">Turn a git diff into a release-ready E2E test plan.</text>
+</svg>

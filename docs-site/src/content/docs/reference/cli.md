@@ -3,6 +3,46 @@ title: "CLI Commands"
 description: "Complete reference for all impact-gate CLI commands"
 ---
 
+<div class="doc-intro">
+  <div class="doc-chip">Command reference</div>
+  <p class="doc-lead">
+    The CLI is built around one deterministic workflow: <code>impact</code>,
+    <code>plan</code>, and <code>gate</code>. Optional AI commands are layered
+    on after the evidence path is already useful.
+  </p>
+</div>
+
+<div class="docs-grid docs-grid--two">
+  <div class="docs-panel">
+    <span class="docs-panel__eyebrow">Core mental model</span>
+    <h2 class="docs-panel__title">Read the CLI as deterministic first, AI second</h2>
+    <p class="docs-panel__copy">
+      Most teams start and stay inside <code>impact</code>, <code>plan</code>,
+      and <code>gate</code> for a while. The AI commands exist to extend that
+      evidence path, not replace it.
+    </p>
+  </div>
+  <div class="docs-panel docs-panel--terminal">
+    <span class="docs-panel__eyebrow">Fast orientation</span>
+    <h2 class="docs-panel__title">The three commands most teams learn first</h2>
+    <div class="docs-terminal">
+      <code>npx impact-gate impact --path . --since origin/main</code>
+      <code>npx impact-gate plan --path . --since origin/main</code>
+      <code>npx impact-gate gate --threshold 80 --path .</code>
+    </div>
+  </div>
+</div>
+
+<div class="command-index">
+  <a href="#core-ci-workflow">Core CI</a>
+  <a href="#optional-ai-workflow">Optional AI</a>
+  <a href="#setup-and-calibration">Setup</a>
+  <a href="#traceability">Traceability</a>
+  <a href="#feedback--diagnostics">Diagnostics</a>
+  <a href="#advanced--experimental">Advanced</a>
+  <a href="#global-flags">Global Flags</a>
+</div>
+
 All commands are invoked via `npx impact-gate <command>`. Start with the core CI workflow first, then layer in optional AI features if the deterministic plan is already useful. The same deterministic flow supports pull-request gating and release-readiness planning from a git diff, while the AI path adds local-API grounding and hallucination guardrails rather than trusting raw generated code.
 
 ## Core CI Workflow
@@ -114,7 +154,7 @@ Key flags: `--no-enrich`, `--validate`, `--server-path`, `--budget-usd`, `--verb
 
 ### `bootstrap`
 
-Generate a route-families manifest from an Understand-Anything knowledge graph. This is the fastest way to onboard a new (non-Mattermost) project: point the tool at an existing knowledge graph and it produces the mapping file that powers impact analysis.
+Generate a route-families manifest from an Understand-Anything knowledge graph. This is the fastest way to onboard a new project: point the tool at an existing knowledge graph and it produces the mapping file that powers impact analysis.
 
 ```bash
 # Default: reads .understand-anything/knowledge-graph.json
@@ -198,12 +238,14 @@ Key flags: `--workflow` (`quick-check`, `design-only`, `full-qa`), `--budget-usd
 
 ## Global Flags
 
+These flags apply across the main CLI surface and are the ones most teams pin in CI, local aliases, or project-level config.
+
 | Flag | Description |
 |------|-------------|
 | `--path` | Project root directory |
 | `--tests-root` | Path to test directory |
 | `--framework` | Test framework (`playwright`, `cypress`, `pytest`, `supertest`, `selenium`, `auto`) |
-| `--profile` | Analysis profile (`default`, `mattermost`) |
+| `--profile` | Analysis profile (`default`, `strict`) |
 | `--since` | Git ref for diff base, such as `origin/main`, a release branch, or a previous shipped tag |
 | `--config` | Path to config file |
 | `--budget-usd` | Max LLM spend in USD |

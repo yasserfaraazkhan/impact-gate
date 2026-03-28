@@ -103,6 +103,7 @@ const FLAGS: Record<string, FlagDef> = {
     '--verbose':                    {key: 'verbose', type: 'boolean', aliases: ['-v']},
     '--json':                       {key: 'jsonOutput', type: 'boolean'},
     '--mattermost':                 {key: 'profile', type: 'boolean', transform: () => 'mattermost'},
+    '--strict':                     {key: 'profile', type: 'boolean', transform: () => 'mattermost'},
 
     // -- string flags --
     '--config':                        {key: 'configPath', type: 'string'},
@@ -156,7 +157,7 @@ const FLAGS: Record<string, FlagDef> = {
     '--pipeline-mcp-retries':   {key: 'pipelineMcpRetries', type: 'number-raw'},
 
     // -- enum flags --
-    '--profile':                  {key: 'profile', type: 'enum', enumValues: ['default', 'mattermost']},
+    '--profile':                  {key: 'profile', type: 'enum', enumValues: ['default', 'strict', 'mattermost'], transform: (v) => v === 'strict' ? 'mattermost' : v},
     '--pipeline-browser':         {key: 'pipelineBrowser', type: 'enum', enumValues: ['chrome', 'chromium', 'firefox', 'webkit']},
     '--policy-enforcement-mode':  {key: 'policyEnforcementMode', type: 'enum', enumValues: ['advisory', 'warn', 'block']},
 
@@ -290,7 +291,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
         case 'enum':
             if (next) {
                 if (def.enumValues!.includes(next)) {
-                    setField(parsed, def.key, next);
+                    setField(parsed, def.key, def.transform ? def.transform(next) : next);
                 }
                 i += 1;
             }

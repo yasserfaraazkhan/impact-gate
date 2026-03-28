@@ -1,7 +1,7 @@
 ---
 name: qa
 description: |
-  Systematically QA test the Mattermost web application and fix bugs found.
+  Systematically QA test a running web application and fix bugs found.
   Runs autonomous browser exploration, computes health scores, fixes bugs with
   atomic commits, and produces structured reports with before/after evidence.
   Use when asked to "qa", "QA", "test this", "find bugs", "test and fix",
@@ -23,15 +23,22 @@ to systematically test the application, find bugs, fix them, and produce a repor
 ## Step 1: Determine parameters
 
 Parse the user's request for:
-- **URL**: The base URL to test (default: `http://localhost:8065`)
+- **URL**: The base URL to test. Prefer the app URL the user provided or the
+  currently running local/staging app URL you can discover. If no app URL is
+  available, ask for it instead of assuming a hard-coded local port.
 - **Mode**: `pr` (feature branch, default), `hunt` (specific area), `release` (full regression), `fix` (verify healed tests)
 - **Fix tier**: `quick` (critical+high), `standard` (default, +medium), `exhaustive` (+low)
 - **Regression**: Whether to compare against a previous baseline
 
 Auto-detect mode:
-- On a feature branch with no URL → `pr` mode
+- On a feature branch with an app URL → `pr` mode
 - User mentions a specific area (e.g., "test channel settings") → `hunt` mode
 - User says "release", "regression", "full test" → `release` mode
+
+Accept any reachable application URL, for example:
+- `http://localhost:3000`
+- `http://127.0.0.1:5173`
+- `https://staging.example.com`
 
 ## Step 2: Check prerequisites
 
@@ -64,16 +71,16 @@ npx impact-gate-qa <mode> \
 Examples:
 ```bash
 # Default: test current branch changes
-npx impact-gate-qa pr --base-url http://localhost:8065
+npx impact-gate-qa pr --base-url <app-url>
 
 # Hunt mode for a specific area
-npx impact-gate-qa hunt "channel settings" --base-url http://localhost:8065
+npx impact-gate-qa hunt "account settings" --base-url <app-url>
 
 # Release readiness with regression comparison
-npx impact-gate-qa release --base-url http://localhost:8065 --regression --time 30
+npx impact-gate-qa release --base-url <app-url> --regression --time 30
 
 # Quick smoke test, no fixes
-npx impact-gate-qa pr --base-url http://localhost:8065 --fix-tier quick --no-fix
+npx impact-gate-qa pr --base-url <app-url> --fix-tier quick --no-fix
 ```
 
 ## Step 4: Read and display the report

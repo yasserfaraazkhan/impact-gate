@@ -1,8 +1,9 @@
 ---
 const baseUrl = import.meta.env.BASE_URL;
-const homeHref = baseUrl;
-const quickStartHref = `${baseUrl}getting-started/quick-start/`;
-const cliHref = `${baseUrl}reference/cli/`;
+const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+const homeHref = normalizedBase;
+const quickStartHref = `${normalizedBase}getting-started/quick-start/`;
+const cliHref = `${normalizedBase}reference/cli/`;
 ---
 
 <!doctype html>
@@ -16,16 +17,20 @@ const cliHref = `${baseUrl}reference/cli/`;
       content="The page you requested could not be found. Start from the Impact Gate docs homepage, quick start, or CLI reference."
     />
     <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
       :root {
-        color-scheme: light dark;
-        --bg: #07111f;
-        --bg-accent: #10223f;
-        --card: rgba(10, 18, 32, 0.78);
-        --text: #f3f7fb;
-        --muted: #bfd0e6;
-        --line: rgba(191, 208, 230, 0.2);
-        --primary: #67d7b5;
-        --primary-strong: #1f9e7a;
+        color-scheme: dark;
+        --bg: #131313;
+        --bg-surface: #1c1b1b;
+        --bg-inset: #0e0e0e;
+        --card: rgba(32, 31, 31, 0.92);
+        --text: #e5e2e1;
+        --muted: #c6c5d2;
+        --soft: #8f909b;
+        --line: rgba(69, 70, 80, 0.18);
+        --primary: #c9d1ff;
+        --primary-strong: #a5b4fc;
       }
 
       * {
@@ -35,71 +40,118 @@ const cliHref = `${baseUrl}reference/cli/`;
       body {
         margin: 0;
         min-height: 100vh;
-        display: grid;
-        place-items: center;
-        padding: 2rem;
+        padding: 2rem 1.5rem;
         font-family:
-          "IBM Plex Sans",
-          "Segoe UI",
+          "Inter",
           sans-serif;
         background:
-          radial-gradient(circle at top, rgba(103, 215, 181, 0.22), transparent 35%),
-          linear-gradient(180deg, var(--bg-accent), var(--bg));
+          radial-gradient(circle at top, rgba(165, 180, 252, 0.12), transparent 30rem),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 12rem),
+          var(--bg);
         color: var(--text);
       }
 
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background-image:
+          linear-gradient(rgba(69, 70, 80, 0.06) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(69, 70, 80, 0.06) 1px, transparent 1px);
+        background-size: 56px 56px;
+        mask-image: radial-gradient(circle at top, black, transparent 70%);
+        opacity: 0.32;
+      }
+
+      .frame {
+        width: min(100%, 1080px);
+        margin: 0 auto;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 2.5rem;
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 0.9rem;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--primary-strong);
+      }
+
+      .brand::before {
+        content: "";
+        width: 0.85rem;
+        height: 0.85rem;
+        border-radius: 0.18rem;
+        background: linear-gradient(145deg, var(--primary), var(--primary-strong));
+        box-shadow: 0 0 0 1px rgba(165, 180, 252, 0.24), 0 12px 26px rgba(165, 180, 252, 0.16);
+      }
+
       main {
-        width: min(100%, 760px);
-        padding: 2.5rem;
+        display: grid;
+        grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
+        gap: 1.25rem;
+      }
+
+      .hero {
+        padding: 2.6rem;
         border: 1px solid var(--line);
-        border-radius: 28px;
-        background: var(--card);
-        backdrop-filter: blur(14px);
-        box-shadow: 0 32px 80px rgba(0, 0, 0, 0.3);
+        border-radius: 0.55rem;
+        background:
+          linear-gradient(180deg, rgba(32, 31, 31, 0.94), rgba(19, 19, 19, 0.82)),
+          var(--card);
+        box-shadow: 0 32px 80px rgba(0, 0, 0, 0.32);
       }
 
       .eyebrow {
         display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
-        margin: 0 0 1rem;
-        padding: 0.35rem 0.8rem;
+        gap: 0.55rem;
+        margin: 0 0 1.1rem;
+        padding: 0.4rem 0.78rem;
         border-radius: 999px;
-        border: 1px solid rgba(103, 215, 181, 0.35);
+        border: 1px solid rgba(165, 180, 252, 0.2);
+        background: rgba(165, 180, 252, 0.08);
         color: var(--primary);
-        font-size: 0.9rem;
-        letter-spacing: 0.02em;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
       }
 
       h1 {
         margin: 0;
-        font-size: clamp(2.4rem, 5vw, 4rem);
-        line-height: 1;
+        font-family: "Space Grotesk", sans-serif;
+        font-size: clamp(2.8rem, 6vw, 4.4rem);
+        line-height: 0.96;
+        letter-spacing: -0.04em;
       }
 
       p {
         margin: 1rem 0 0;
         max-width: 56ch;
         color: var(--muted);
-        font-size: 1.05rem;
-        line-height: 1.7;
+        font-size: 1.03rem;
+        line-height: 1.82;
       }
 
       .actions {
-        display: flex;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 0.9rem;
         margin-top: 2rem;
       }
 
       a {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        min-width: 180px;
-        padding: 0.9rem 1.2rem;
-        border-radius: 999px;
+        display: grid;
+        gap: 0.25rem;
+        padding: 1rem 1rem 1.05rem;
+        border-radius: 0.42rem;
         text-decoration: none;
         font-weight: 600;
         transition:
@@ -113,43 +165,142 @@ const cliHref = `${baseUrl}reference/cli/`;
       }
 
       .primary {
-        background: linear-gradient(135deg, var(--primary), #8fe6cb);
-        color: #052b22;
+        background: linear-gradient(145deg, var(--primary), var(--primary-strong));
+        color: #1a2b6a;
       }
 
       .secondary {
         border: 1px solid var(--line);
         color: var(--text);
-        background: rgba(255, 255, 255, 0.02);
+        background: rgba(28, 27, 27, 0.96);
       }
 
-      .meta {
+      .action-label {
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 0.98rem;
+        color: inherit;
+      }
+
+      .action-copy {
+        font-size: 0.86rem;
+        line-height: 1.55;
+        color: inherit;
+        opacity: 0.82;
+      }
+
+      .meta-panel {
+        padding: 1.25rem;
+        border: 1px solid var(--line);
+        border-radius: 0.42rem;
+        background: rgba(14, 14, 14, 0.92);
+      }
+
+      .meta-panel h2 {
+        margin: 0 0 0.9rem;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.72rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--soft);
+      }
+
+      .meta-panel p {
+        margin: 0;
+        font-size: 0.94rem;
+      }
+
+      .meta-panel code {
+        display: block;
+        margin-top: 1rem;
+        padding: 0.95rem 1rem;
+        border-left: 2px solid var(--primary-strong);
+        background: rgba(28, 27, 27, 0.94);
+        color: var(--primary);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.86rem;
+        line-height: 1.7;
+        white-space: pre-wrap;
+      }
+
+      footer {
         margin-top: 2rem;
-        padding-top: 1.25rem;
-        border-top: 1px solid var(--line);
-        font-size: 0.95rem;
-        color: var(--muted);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.2rem;
+        color: var(--soft);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.72rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      footer a {
+        padding: 0;
+        color: inherit;
+        background: none;
+        border: 0;
+      }
+
+      footer a:hover {
+        color: var(--primary);
+      }
+
+      @media (max-width: 960px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+
+        .actions {
+          grid-template-columns: 1fr;
+        }
       }
     </style>
   </head>
   <body>
-    <main>
-      <div class="eyebrow">404 • Docs Navigation</div>
-      <h1>That page is not in this release.</h1>
-      <p>
-        Impact Gate’s docs are organized around release readiness, diff-aware
-        test planning, and guarded AI workflows. Start from the homepage, jump
-        into the quick start, or use the CLI reference to get back on track.
-      </p>
-      <div class="actions">
-        <a class="primary" href={homeHref}>Docs Home</a>
-        <a class="secondary" href={quickStartHref}>Quick Start</a>
-        <a class="secondary" href={cliHref}>CLI Reference</a>
-      </div>
-      <div class="meta">
-        If you followed an older link, the command or guide may have moved as
-        the docs were reorganized for the public launch.
-      </div>
-    </main>
+    <div class="frame">
+      <div class="brand">Impact Gate</div>
+      <main>
+        <section class="hero">
+          <div class="eyebrow">404 • Docs Navigation</div>
+          <h1>That page is not in this release.</h1>
+          <p>
+            The documentation you were looking for might have moved or is now
+            part of a different guide. Start from the homepage, jump into the
+            quick start, or scan the CLI reference to get back on track.
+          </p>
+          <div class="actions">
+            <a class="primary" href={homeHref}>
+              <span class="action-label">Docs Home</span>
+              <span class="action-copy">Browse the full architectural documentation and API specs.</span>
+            </a>
+            <a class="secondary" href={quickStartHref}>
+              <span class="action-label">Quick Start</span>
+              <span class="action-copy">Get up and running with Impact Gate in under five minutes.</span>
+            </a>
+            <a class="secondary" href={cliHref}>
+              <span class="action-label">CLI Reference</span>
+              <span class="action-copy">Detailed command syntax for the automated testing toolkit.</span>
+            </a>
+          </div>
+        </section>
+
+        <aside class="meta-panel">
+          <h2>Link Trace</h2>
+          <p>
+            Older docs links may point to pre-launch sections that were renamed
+            during the public documentation redesign.
+          </p>
+          <code>[ERR_ROUTE_NOT_FOUND]
+[BASE=/impact-gate]
+[HINT] try quick-start, release-readiness, or cli</code>
+        </aside>
+      </main>
+      <footer>
+        <a href={homeHref}>Docs Home</a>
+        <a href={quickStartHref}>Quick Start</a>
+        <a href={cliHref}>CLI Reference</a>
+        <a href="https://github.com/yasserfaraazkhan/impact-gate">GitHub</a>
+      </footer>
+    </div>
   </body>
 </html>

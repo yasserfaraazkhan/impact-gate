@@ -3,6 +3,43 @@ title: "Configuration"
 description: "Config file format and all available fields"
 ---
 
+<div class="doc-intro">
+  <div class="doc-chip">Reference</div>
+  <p class="doc-lead">
+    Use <code>impact-gate.config.json</code> to pin analysis defaults, route the
+    tool to the right tests root, and make CI behavior predictable across pull
+    requests, release branches, and local runs.
+  </p>
+</div>
+
+<div class="docs-grid docs-grid--two">
+  <div class="docs-panel">
+    <span class="docs-panel__eyebrow">Config purpose</span>
+    <h2 class="docs-panel__title">Use config when you want repeatable team defaults</h2>
+    <p class="docs-panel__copy">
+      Auto-detection is great for onboarding, but config is what makes CI,
+      release branches, and local runs behave the same way across the team.
+    </p>
+  </div>
+  <div class="docs-panel docs-panel--terminal">
+    <span class="docs-panel__eyebrow">File names</span>
+    <h2 class="docs-panel__title">The CLI looks for these files automatically</h2>
+    <div class="docs-terminal">
+      <code>impact-gate.config.json</code>
+      <code>.impact-gate.config.json</code>
+    </div>
+  </div>
+</div>
+
+<div class="command-index">
+  <a href="#top-level">Top-Level</a>
+  <a href="#git"><code>git</code></a>
+  <a href="#impact"><code>impact</code></a>
+  <a href="#pipeline"><code>pipeline</code></a>
+  <a href="#policy"><code>policy</code></a>
+  <a href="#profiles">Profiles</a>
+</div>
+
 Create `impact-gate.config.json` (or `.impact-gate.config.json`) in your project root. The CLI auto-discovers it by walking upward from the current directory.
 
 ## Full Config Example
@@ -50,7 +87,7 @@ Create `impact-gate.config.json` (or `.impact-gate.config.json`) in your project
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `path` | string | `.` | Project root directory |
-| `profile` | string | `default` | Analysis profile: `default` or `mattermost` |
+| `profile` | string | `default` | Analysis profile: `default` or `strict` |
 | `testsRoot` | string | auto-detected | Path to tests directory |
 | `mode` | string | `impact` | Default analysis mode |
 | `framework` | string | `auto` | Test framework (`playwright`, `cypress`, `pytest`, `supertest`, `selenium`, `auto`) |
@@ -89,8 +126,21 @@ Create `impact-gate.config.json` (or `.impact-gate.config.json`) in your project
 
 ## Profiles
 
-- **`default`** -- standard analysis with configurable strictness
-- **`mattermost`** -- strict mode with escalation for heuristic-only mappings, tuned for Mattermost's codebase structure
+<div class="reference-grid">
+  <div class="reference-card">
+    <span class="reference-card__eyebrow">Profile</span>
+    <h3><code>default</code></h3>
+    <p>Standard analysis behavior for most repositories.</p>
+  </div>
+  <div class="reference-card">
+    <span class="reference-card__eyebrow">Profile</span>
+    <h3><code>strict</code></h3>
+    <p>
+      Uses stricter handling for heuristic-only mappings and more opinionated
+      analysis defaults when you want tighter gating.
+    </p>
+  </div>
+</div>
 
 Framework auto-detection is separate from profiles. The CLI can auto-detect Playwright, Cypress, pytest, supertest, and Selenium usage from project files and dependencies.
 

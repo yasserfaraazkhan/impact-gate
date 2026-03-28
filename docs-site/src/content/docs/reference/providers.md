@@ -3,7 +3,33 @@ title: "Providers"
 description: "Configure Anthropic, OpenAI, Ollama, or custom LLM providers"
 ---
 
-Every LLM interaction goes through the `LLMProvider` interface. Four concrete providers are available, plus a factory for auto-detection and hybrid mode.
+<div class="doc-intro">
+  <div class="doc-chip">Provider reference</div>
+  <p class="doc-lead">
+    Every LLM interaction goes through the <code>LLMProvider</code> interface.
+    You can stay fully deterministic, choose one provider, or use hybrid
+    routing once the AI path is worth enabling.
+  </p>
+</div>
+
+<div class="docs-grid docs-grid--two">
+  <div class="docs-panel">
+    <span class="docs-panel__eyebrow">Provider model</span>
+    <h2 class="docs-panel__title">Four concrete providers plus factory auto-detection</h2>
+    <p class="docs-panel__copy">
+      Anthropic, OpenAI, Ollama, and custom OpenAI-compatible endpoints are all
+      supported behind one interface.
+    </p>
+  </div>
+  <div class="docs-panel">
+    <span class="docs-panel__eyebrow">Best practice</span>
+    <h2 class="docs-panel__title">Keep the core CI loop deterministic first</h2>
+    <p class="docs-panel__copy">
+      Add a provider when you want generation, healing, or crew workflows. The
+      product stays useful even when the AI path is off.
+    </p>
+  </div>
+</div>
 
 ## Anthropic (Default)
 
@@ -63,6 +89,25 @@ const provider = LLMProviderFactory.createFromEnv();
 
 ## Hybrid Mode
 
+<div class="docs-grid docs-grid--two">
+  <div class="docs-panel docs-panel--dense">
+    <span class="docs-panel__eyebrow">Hybrid routing</span>
+    <h2 class="docs-panel__title">Mix local and premium providers when cost matters</h2>
+    <ul>
+      <li><strong>Ollama</strong> handles simple classifications and short answers</li>
+      <li><strong>Anthropic / OpenAI</strong> handles generation, vision, and complex analysis</li>
+    </ul>
+  </div>
+  <div class="docs-panel docs-panel--dense">
+    <span class="docs-panel__eyebrow">Budget enforcement</span>
+    <h2 class="docs-panel__title">Every provider respects the same spend controls</h2>
+    <p class="docs-panel__copy">
+      Before every LLM request, accumulated cost is checked against the
+      <code>--budget-usd</code> limit and rejected cleanly if it would exceed it.
+    </p>
+  </div>
+</div>
+
 Combine a free local provider for routine calls with a premium provider for complex tasks:
 
 - **Ollama** handles simple classifications and short answers
@@ -81,8 +126,5 @@ The model router sends different task types to cost-appropriate models:
 | Generation | Capable | Test code generation, healing |
 | Vision | Vision-enabled | Screenshot analysis, UI verification |
 
-This routing happens automatically and helps control costs without sacrificing quality where it matters.
-
-## Budget Enforcement
-
-All providers inherit budget checking from the base provider. Before every LLM request, accumulated cost is checked against the `--budget-usd` limit. If exceeded, the call is rejected with a clear error.
+This routing happens automatically and helps control costs without sacrificing
+quality where it matters.

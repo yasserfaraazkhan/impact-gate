@@ -573,6 +573,9 @@ function normalizeProfile(value: unknown): AnalysisProfile | undefined {
     if (value === 'default' || value === 'mattermost') {
         return value;
     }
+    if (value === 'strict') {
+        return 'mattermost';
+    }
     return undefined;
 }
 

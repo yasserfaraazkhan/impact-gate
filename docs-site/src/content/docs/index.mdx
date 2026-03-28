@@ -17,25 +17,98 @@ hero:
       icon: right-arrow
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+<div class="docs-home">
+  <section class="portal-grid portal-grid--home">
+    <div class="portal-card portal-card--summary">
+      <span class="portal-card__eyebrow">Documentation Portal</span>
+      <h2>Impact Gate starts with deterministic diff analysis.</h2>
+      <div class="portal-copy">
+        Then turns that evidence into a release-ready E2E plan for pull
+        requests, release branches, hotfixes, and shipped tags before you layer
+        in optional AI generation or healing.
+      </div>
+    </div>
 
-<CardGrid stagger>
-  <Card title="Primary: Impact + Gate" icon="magnifier">
-    Start with <code>impact</code>, <code>plan</code>, and <code>gate</code> to make pull-request and release-readiness coverage decisions from a git diff.
-  </Card>
-  <Card title="Detailed Concepts" icon="open-book">
-    Learn the core building blocks: route families, impact analysis, confidence scoring, CI artifacts, and where AI fits into the workflow.
-  </Card>
-  <Card title="Release Readiness" icon="setting">
-    Compare the current branch or release candidate to the last shipped tag and turn that diff into a prioritized test plan before you ship.
-  </Card>
-  <Card title="Hallucination Guardrails" icon="warning">
-    AI-generated specs are grounded against your local API surface and suspicious method calls are blocked into <code>generated-needs-review/</code> instead of silently entering the main suite.
-  </Card>
-  <Card title="Secondary: Optional AI" icon="puzzle">
-    Add generation and healing after your <code>route-families.json</code> manifest is in good shape and the deterministic plan is already useful.
-  </Card>
-  <Card title="Operational Guides" icon="rocket">
-    Use step-by-step guides for PR gating, release diffs, CI setup, AI safety, cost controls, and troubleshooting.
-  </Card>
-</CardGrid>
+    <a class="portal-card portal-card--workflow" href="./getting-started/quick-start/">
+      <span class="portal-card__eyebrow">Primary workflow</span>
+      <h2>Impact → Plan → Gate</h2>
+      <div class="workflow-terminal">
+        <span>npx impact-gate impact --since origin/main</span>
+        <span>npx impact-gate plan --since v2.1.0</span>
+        <span>npx impact-gate gate --threshold 80</span>
+      </div>
+      <div class="portal-copy">
+        Start with impact, plan, and gate to make pull-request and
+        release-readiness coverage decisions from a git diff.
+      </div>
+    </a>
+
+    <a class="portal-card" href="./concepts/how-it-works/">
+      <span class="portal-card__eyebrow">Detailed concepts</span>
+      <h3>How the evidence layer works</h3>
+      <div class="portal-copy">
+        Learn route families, confidence scoring, plan artifacts, and where AI
+        fits into the workflow without becoming the workflow.
+      </div>
+    </a>
+
+    <a class="portal-card" href="./concepts/commercial-comparison/">
+      <span class="portal-card__eyebrow">Commercial comparison</span>
+      <h3>See where it fits against commercial platforms</h3>
+      <div class="portal-copy">
+        Compare Impact Gate honestly against hosted optimization, AI-first E2E,
+        no-code automation, and monitoring-oriented tools.
+      </div>
+    </a>
+
+    <a class="portal-card" href="./guides/release-readiness/">
+      <span class="portal-card__eyebrow">Release readiness</span>
+      <h3>Ship with confidence from one diff</h3>
+      <div class="portal-copy">
+        Compare the current candidate to the last shipped tag and turn that
+        delta into a focused test plan before you ship.
+      </div>
+    </a>
+
+    <a class="portal-card" href="./guides/ai-guardrails/">
+      <span class="portal-card__eyebrow">Hallucination guardrails</span>
+      <h3>Ground generation against what your repo already knows</h3>
+      <div class="portal-copy">
+        AI-generated specs are grounded against your local API surface and
+        suspicious methods are quarantined into
+        <code>generated-needs-review/</code>.
+      </div>
+    </a>
+
+    <a class="portal-card" href="./reference/cli/">
+      <span class="portal-card__eyebrow">Optional AI</span>
+      <h3>Layer generation and healing on after the plan is useful</h3>
+      <div class="portal-copy">
+        Configure providers, inspect artifacts, and add autonomous workflows
+        only after the deterministic path is already trustworthy.
+      </div>
+    </a>
+
+    <a class="portal-card" href="./guides/ci-integration/">
+      <span class="portal-card__eyebrow">Operational guides</span>
+      <h3>CI, troubleshooting, and cost control</h3>
+      <div class="portal-copy">
+        Use focused playbooks for PR gating, release diffs, AI safety, budget
+        controls, and rollout troubleshooting.
+      </div>
+    </a>
+
+    <div class="portal-card portal-card--links">
+      <span class="portal-card__eyebrow">What teams use first</span>
+      <div class="portal-links">
+        <a href="./getting-started/installation/">Installation</a>
+        <a href="./getting-started/zero-config/">Zero Config</a>
+        <a href="./guides/release-readiness/">Release Readiness</a>
+        <a href="./guides/ai-guardrails/">AI Guardrails</a>
+        <a href="./concepts/commercial-comparison/">Commercial Comparison</a>
+        <a href="./reference/cli/">CLI Reference</a>
+        <a href="./reference/artifacts/">Artifacts</a>
+      </div>
+    </div>
+  </section>
+</div>

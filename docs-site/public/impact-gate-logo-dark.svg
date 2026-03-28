@@ -1,0 +1,33 @@
+<svg width="460" height="78" viewBox="0 0 460 78" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="logo-neon-dark" x1="8" y1="8" x2="72" y2="72" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#57F7FF"/>
+      <stop offset="0.52" stop-color="#89C5FF"/>
+      <stop offset="1" stop-color="#A855F7"/>
+    </linearGradient>
+    <linearGradient id="logo-core-dark" x1="14" y1="14" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F1FFFF"/>
+      <stop offset="1" stop-color="#CFD4F8"/>
+    </linearGradient>
+    <filter id="logo-glow-dark" x="0" y="0" width="84" height="78" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="2.8" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.46 0"/>
+      <feBlend in="SourceGraphic" mode="screen"/>
+    </filter>
+  </defs>
+  <g transform="translate(2 4) scale(0.78)" filter="url(#logo-glow-dark)" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17 20H35L28 27H24V70L17 76V20Z" stroke="url(#logo-neon-dark)" stroke-width="4.2"/>
+    <path d="M34 23C44 16 57 16 66 22C73 27 77 35 77 45V49H57" stroke="url(#logo-neon-dark)" stroke-width="6"/>
+    <path d="M32 55C32 68 42 78 56 78C68 78 78 72 82 61" stroke="url(#logo-neon-dark)" stroke-width="6"/>
+    <path d="M56 49H76V62" stroke="url(#logo-neon-dark)" stroke-width="6"/>
+    <path d="M64 77L78 47L92 77H64Z" stroke="url(#logo-neon-dark)" stroke-width="4.2"/>
+    <path d="M70 64H86" stroke="url(#logo-neon-dark)" stroke-width="4"/>
+    <path d="M17 20H35L28 27H24V70L17 76V20Z" stroke="url(#logo-core-dark)" stroke-width="2.2" opacity="0.96"/>
+    <path d="M34 23C44 16 57 16 66 22C73 27 77 35 77 45V49H57" stroke="url(#logo-core-dark)" stroke-width="3.4" opacity="0.96"/>
+    <path d="M32 55C32 68 42 78 56 78C68 78 78 72 82 61" stroke="url(#logo-core-dark)" stroke-width="3.4" opacity="0.96"/>
+    <path d="M56 49H76V62" stroke="url(#logo-core-dark)" stroke-width="3.4" opacity="0.96"/>
+    <path d="M64 77L78 47L92 77H64Z" stroke="url(#logo-core-dark)" stroke-width="2.5" opacity="0.96"/>
+    <path d="M70 64H86" stroke="url(#logo-core-dark)" stroke-width="2.3" opacity="0.96"/>
+  </g>
+  <text x="86" y="49" fill="#ECE9E6" font-size="31" font-weight="800" letter-spacing="1.8" font-family="Inter, Arial, sans-serif">IMPACT_GATE</text>
+</svg>

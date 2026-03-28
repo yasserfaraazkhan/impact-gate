@@ -1,4 +1,10 @@
-# @yasserkhanorg/impact-gate
+<p align="center">
+  <img src="./docs-site/public/impact-gate-readme-banner.svg" alt="Impact Gate" width="720" />
+</p>
+
+# Impact Gate
+
+`@yasserkhanorg/impact-gate`
 
 Diff-aware E2E impact analysis, release-ready test planning, coverage gating, and hallucination-resistant AI generation for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.
 
@@ -48,7 +54,7 @@ Transition note:
 - The clearest, most stable workflow is still **Playwright/Cypress impact analysis and gating**.
 - AI generation and healing work best **after** the project has a good `route-families.json` manifest.
 - Advanced features are improving, but they are **not** the best entry point if you only want dependable CI coverage decisions.
-- The Mattermost profile is still the most opinionated path in the codebase. Generic flows are supported, but the package should be judged first on the core CI workflow above.
+- The strict profile is the most opinionated path in the codebase. Most teams should start with the core CI workflow above and only opt into stricter heuristics once their mappings are mature.
 
 ## Free Tier
 
@@ -346,7 +352,7 @@ Create `impact-gate.config.json` in your project (auto-discovered):
 ```json
 {
   "path": ".",
-  "profile": "mattermost",
+  "profile": "strict",
   "testsRoot": ".",
   "mode": "impact",
   "framework": "auto",
@@ -376,14 +382,14 @@ Profiles are not the same thing as frameworks. They control analysis strictness 
 | Profile | Description |
 |---------|-------------|
 | `default` | Standard analysis behavior for most repositories |
-| `mattermost` | Mattermost-specific conventions and stricter handling of heuristic-only mappings |
+| `strict` | Stricter handling of heuristic-only mappings and more opinionated analysis defaults |
 
 Framework detection is separate. The CLI can auto-detect Playwright, Cypress, pytest, supertest, and Selenium usage from the project structure and dependencies.
 
 ### Key options
 
 - **`testsRoot`** — path to tests when they live outside the app root
-- **`profile`** — `default` or `mattermost`
+- **`profile`** — `default` or `strict`
 - **`impact.dependencyGraph`** — static reverse dependency graph for transitive impact
 - **`impact.traceability`** — file-to-test mapping from CI execution data
 - **`impact.aiFlow`** — LLM-powered flow mapping through the configured provider
@@ -515,16 +521,16 @@ An autonomous QA engineer that opens a real browser, navigates to changed featur
 
 ```bash
 # PR mode — test features changed since origin/main
-npx impact-gate-qa pr --since origin/main --base-url http://localhost:8065
+npx impact-gate-qa pr --since origin/main --base-url http://localhost:3000
 
 # Hunt mode — deep-test a specific area
-npx impact-gate-qa hunt "channel settings" --base-url http://localhost:8065
+npx impact-gate-qa hunt "settings panel" --base-url http://localhost:3000
 
 # Release mode — systematic exploration of all critical flows
-npx impact-gate-qa release --base-url http://localhost:8065 --time 30
+npx impact-gate-qa release --base-url http://localhost:3000 --time 30
 
 # Fix mode — verify healed specs
-npx impact-gate-qa fix --base-url http://localhost:8065
+npx impact-gate-qa fix --base-url http://localhost:3000
 ```
 
 ### Architecture
@@ -537,7 +543,7 @@ npx impact-gate-qa fix --base-url http://localhost:8065
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--base-url` | `http://localhost:8065` | Application URL |
+| `--base-url` | Required | Application URL |
 | `--time` | `15` | Time limit in minutes |
 | `--budget` | `2.00` | Max LLM spend in USD |
 | `--phase` | `all` | Run only `1`, `2`, or `3` |
@@ -549,7 +555,7 @@ Requires `agent-browser` CLI (`npm install -g agent-browser`) and `ANTHROPIC_API
 
 ## Production Usage
 
-The strongest production story today is a repo that maintains a good `route-families.json` manifest and uses the deterministic `impact -> plan -> gate` loop in CI. [Mattermost](https://github.com/mattermost/mattermost) is the most battle-tested public example for coverage gating, generation, and healing. See the [Mattermost Playwright integration](https://github.com/mattermost/mattermost/tree/master/e2e-tests/playwright) for a real-world setup.
+The strongest production story today is a repo that maintains a good `route-families.json` manifest, feeds traceability data back into the plan, and uses the deterministic `impact -> plan -> gate` loop in CI. That evidence-first workflow is the path to trust before layering in optional generation, healing, or autonomous QA.
 
 ## License
 

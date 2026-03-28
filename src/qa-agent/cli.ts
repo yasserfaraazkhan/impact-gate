@@ -40,10 +40,10 @@ Options:
   --help                Show this help
 
 Examples:
-  impact-gate-qa pr --since origin/main --base-url http://localhost:8065
-  impact-gate-qa hunt "channel settings" --base-url http://localhost:8065
-  impact-gate-qa release --base-url http://localhost:8065 --time 30
-  impact-gate-qa fix --base-url http://localhost:8065
+  impact-gate-qa pr --since origin/main --base-url http://localhost:3000
+  impact-gate-qa hunt "settings panel" --base-url http://localhost:3000
+  impact-gate-qa release --base-url http://localhost:3000 --time 30
+  impact-gate-qa fix --base-url http://localhost:3000
 `);
 }
 

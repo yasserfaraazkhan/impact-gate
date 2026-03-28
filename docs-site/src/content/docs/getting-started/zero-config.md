@@ -3,7 +3,33 @@ title: "Zero Config"
 description: "How auto-detection works and when you need a config file"
 ---
 
-The CLI auto-detects most settings so you can run commands without any configuration file. The most battle-tested path is still a Playwright or Cypress repo using the core `impact -> plan -> gate` loop.
+<div class="doc-intro">
+  <div class="doc-chip">Auto-detection</div>
+  <p class="doc-lead">
+    The CLI can infer most of what it needs so you can start with the
+    deterministic <code>impact → plan → gate</code> loop before writing a
+    config file.
+  </p>
+</div>
+
+<div class="docs-grid">
+  <div class="docs-panel">
+    <span class="docs-panel__eyebrow">Best fit</span>
+    <h2 class="docs-panel__title">Zero-config shines in established test repos</h2>
+    <p class="docs-panel__copy">
+      The most battle-tested path is still a Playwright or Cypress repo with a
+      recognizable tests root and a normal git remote.
+    </p>
+  </div>
+  <div class="docs-panel docs-panel--terminal">
+    <span class="docs-panel__eyebrow">Typical first run</span>
+    <h2 class="docs-panel__title">Let the CLI discover the shape of the repo</h2>
+    <div class="docs-terminal">
+      <code>npx impact-gate impact --path . --since origin/main</code>
+      <code>npx impact-gate plan --path . --since origin/main</code>
+    </div>
+  </div>
+</div>
 
 ## What Gets Auto-Detected
 
@@ -18,18 +44,27 @@ The CLI reads your project files and `package.json` dependencies to detect:
 
 ### Tests Root
 
-Scans for common directory conventions in order:
-
-```
-e2e-tests/playwright, e2e-tests, e2e, tests/e2e, test/e2e,
-tests, test, specs, playwright, cypress
-```
-
-The first match becomes `--tests-root`.
-
-### Git Base Branch
-
-Queries `git remote show origin` for the HEAD branch, falling back to the current branch. Used as the default `--since` value for diff-based analysis.
+<div class="docs-grid docs-grid--two">
+  <div class="docs-panel">
+    <span class="docs-panel__eyebrow">Tests root</span>
+    <h2 class="docs-panel__title">Directory discovery follows common conventions</h2>
+    <p class="docs-panel__copy">
+      The first matching directory below becomes <code>--tests-root</code>.
+    </p>
+    <div class="docs-terminal">
+      <code>e2e-tests/playwright, e2e-tests, e2e, tests/e2e</code>
+      <code>test/e2e, tests, test, specs, playwright, cypress</code>
+    </div>
+  </div>
+  <div class="docs-panel">
+    <span class="docs-panel__eyebrow">Git base branch</span>
+    <h2 class="docs-panel__title">Diff base is discovered from the remote</h2>
+    <p class="docs-panel__copy">
+      The CLI queries <code>git remote show origin</code> for the default HEAD
+      branch and falls back to the current branch when needed.
+    </p>
+  </div>
+</div>
 
 ### Project Root
 
@@ -37,20 +72,45 @@ Walks up from the current directory until it finds `package.json` or `.git`.
 
 ## When You Need a Config File
 
-Create `impact-gate.config.json` in your project root when you need to:
+<div class="docs-panel">
+  <span class="docs-panel__eyebrow">Use config when the repo needs stronger intent</span>
+  <h2 class="docs-panel__title">Reach for config once heuristics are no longer enough</h2>
+  <ul>
+    <li>Set a <strong>profile</strong> such as <code>strict</code> for tighter gating</li>
+    <li>Configure <strong>dependency graph</strong> depth or traceability behavior</li>
+    <li>Enable the <strong>pipeline</strong> for test generation</li>
+    <li>Define <strong>policy enforcement</strong> such as advisory, warn, or block</li>
+    <li>Point to a <strong>separate server path</strong> for backend analysis</li>
+    <li>Override framework or tests-root detection when the repo is unusual</li>
+  </ul>
+</div>
 
-- Set a **profile** (e.g., `mattermost` for strict mode)
-- Configure **dependency graph** depth or traceability settings
-- Enable the **pipeline** for test generation
-- Define **policy enforcement** rules (advisory, warn, or block)
-- Point to a **separate server path** for backend analysis
-- Override framework or tests-root detection
+Create `impact-gate.config.json` in your project root when you need to:
 
 If auto-detection gets it wrong, prefer explicit flags or a config file over guessing.
 
 The CLI searches for `impact-gate.config.json` or `.impact-gate.config.json` starting from the current directory and walking upward.
 
 ## Bootstrap: Alternative Setup with a Knowledge Graph
+
+<div class="docs-grid docs-grid--two">
+  <div class="docs-panel">
+    <span class="docs-panel__eyebrow">Knowledge graph</span>
+    <h2 class="docs-panel__title">Bootstrap route families from existing project knowledge</h2>
+    <p class="docs-panel__copy">
+      If you already have an Understand-Anything knowledge graph, bootstrap can
+      generate the manifest automatically instead of training from scratch.
+    </p>
+  </div>
+  <div class="docs-panel docs-panel--terminal">
+    <span class="docs-panel__eyebrow">Bootstrap</span>
+    <h2 class="docs-panel__title">Generate the manifest directly</h2>
+    <div class="docs-terminal">
+      <code>npx impact-gate bootstrap --path .</code>
+      <code>npx impact-gate bootstrap --dry-run --max-families 30</code>
+    </div>
+  </div>
+</div>
 
 If your project already has an [Understand-Anything](https://github.com/nicholasgriffintn/understand-anything) knowledge graph, the `bootstrap` command can generate your route-families manifest automatically instead of running `train`:
 
@@ -63,6 +123,15 @@ Bootstrap reads the knowledge graph, classifies your project (frontend, backend,
 Use `--dry-run` to preview the manifest before writing, or `--max-families 30` to limit the output. See the [CLI reference](../reference/cli/#bootstrap) for all flags.
 
 ## Explicit Flags Always Win
+
+<div class="docs-panel">
+  <span class="docs-panel__eyebrow">Precedence</span>
+  <h2 class="docs-panel__title">CLI flags override both config and heuristics</h2>
+  <p class="docs-panel__copy">
+    When the repo needs a one-off override, use flags directly. They win over
+    auto-detected values and the config file.
+  </p>
+</div>
 
 Any CLI flag overrides both auto-detected values and config file settings:
 

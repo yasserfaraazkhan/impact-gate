@@ -3,8 +3,11 @@
   "private": true,
   "scripts": {
     "dev": "astro dev",
+    "dev:local": "IMPACT_GATE_DOCS_LOCAL=1 astro dev",
     "build": "astro build",
-    "preview": "astro preview"
+    "build:local": "IMPACT_GATE_DOCS_LOCAL=1 astro build",
+    "preview": "astro preview",
+    "preview:local": "IMPACT_GATE_DOCS_LOCAL=1 astro preview"
   },
   "dependencies": {
     "@astrojs/starlight": "^0.32.0",
