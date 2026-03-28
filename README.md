@@ -518,8 +518,8 @@ All written under `<testsRoot>/.e2e-ai-agents/`.
 An autonomous QA engineer that opens a real browser, navigates to changed features, tries edge cases, and produces a findings report — all unsupervised. Built on top of `agent-browser` and the Anthropic tool-use API.
 
 If you want to invoke the same workflow from an agent instead of the raw CLI,
-see the [QA Skill Guide](./docs-site/src/content/docs/guides/qa-skill.md) for
-Codex and Claude examples using `/qa`.
+see the [QA Skill Guide](https://yasserfaraazkhan.github.io/impact-gate/guides/qa-skill/)
+for Codex and Claude examples using `/qa`.
 
 ### Quick Start
 
