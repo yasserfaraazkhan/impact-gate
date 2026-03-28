@@ -12,6 +12,8 @@ Diff-aware E2E impact analysis, release-ready test planning, coverage gating, an
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 [![GitHub](https://img.shields.io/badge/github-repo-blue?logo=github)](https://github.com/yasserfaraazkhan/impact-gate)
 
+[Docs](https://yasserfaraazkhan.github.io/impact-gate/)
+
 ## What It Does
 
 `impact-gate` is built first for one painful CI job: given a git diff, tell us which E2E surface changed, whether the current suite already covers it, and what still needs testing before we merge or ship.
