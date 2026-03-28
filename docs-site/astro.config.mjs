@@ -10,7 +10,7 @@ export default defineConfig({
       description: 'Diff-aware E2E impact analysis, release-ready test planning, coverage gating, and hallucination-resistant AI generation for Playwright/Cypress teams.',
       disable404Route: true,
       editLink: {
-        baseUrl: 'https://github.com/yasserfaraazkhan/impact-gate/blob/master/docs-site/src/content/docs/',
+        baseUrl: 'https://github.com/yasserfaraazkhan/impact-gate/blob/master/docs-site/',
       },
       social: {
         github: 'https://github.com/yasserfaraazkhan/impact-gate',
