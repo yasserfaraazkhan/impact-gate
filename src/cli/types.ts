@@ -21,7 +21,8 @@ export type Command =
     | 'cost-report'
     | 'gate'
     | 'bootstrap'
-    | 'install-skill';
+    | 'install-skill'
+    | 'predict';
 
 export interface ParsedArgs {
     command?: Command;
@@ -118,4 +119,7 @@ export interface ParsedArgs {
     // Observability flags
     verbose?: boolean;
     jsonOutput?: boolean;
+
+    // Predict command
+    threshold?: number;
 }

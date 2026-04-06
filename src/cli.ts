@@ -22,6 +22,7 @@ import {runCostReportCommand} from './cli/commands/cost_report.js';
 import {runGateCommand} from './cli/commands/gate.js';
 import {runBootstrapCommand} from './cli/commands/bootstrap.js';
 import {runInstallSkillCommand} from './cli/commands/install_skill.js';
+import {runPredictCommand} from './cli/commands/predict.js';
 import {classifyError, EXIT_CODES} from './cli/errors.js';
 
 // Commands that skip default resolution (they handle their own setup)
@@ -125,6 +126,11 @@ async function main(): Promise<void> {
 
     if (args.command === 'cost-report') {
         runCostReportCommand(args);
+        return;
+    }
+
+    if (args.command === 'predict') {
+        runPredictCommand(args);
         return;
     }
 

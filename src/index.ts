@@ -170,3 +170,7 @@ export {detectFramework, detectTestMode} from './adapters/framework_adapter.js';
 
 // Route families (additional)
 export {serializeManifest} from './knowledge/route_families.js';
+
+// Defect Prediction
+export {predict, predictFormatted, extractChangeMetrics, extractComplexityMetrics, predictDefect, formatPrediction} from './prediction/index.js';
+export type {ChangeMetrics, ComplexityMetrics, DefectPrediction, PredictionFeatures, RiskFactor} from './prediction/types.js';
