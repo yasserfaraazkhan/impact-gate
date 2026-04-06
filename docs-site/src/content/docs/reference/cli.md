@@ -91,6 +91,48 @@ npx impact-gate gate --threshold 80 --path .
 
 `--threshold` is percentage-style (`0-100`). For example, `80` means 80%.
 
+## Defect Prediction
+
+### `predict`
+
+Research-backed defect risk scoring from a git diff. Works on any repo with zero config and no LLM cost.
+
+```bash
+npx impact-gate predict --path . --since origin/main
+npx impact-gate predict --path . --since origin/main --deep --verbose
+npx impact-gate predict --path . --since origin/main --predict-threshold 0.7
+npx impact-gate predict --path . --since origin/main --json
+```
+
+| Flag | Description |
+|------|-------------|
+| `--since <ref>` | Base git ref for the diff (default: `origin/main`) |
+| `--deep` | Enable LLM semantic analysis (~$0.02/PR) |
+| `--predict-threshold <0-1>` | Exit 1 if defect risk exceeds threshold |
+| `--train` | Retrain weights from labeled feedback data |
+| `--calibration-status` | Show calibration state and exit |
+| `--ref <sha>` | Tag the prediction with a commit SHA for traceability |
+| `--json` | Output structured JSON |
+| `--verbose` | Show full metrics breakdown |
+
+Output includes a defect risk score (0.0-1.0), risk level (low/medium/high/critical), top contributing factors, and a recommendation. The engine uses 14 Kamei change-level metrics, Hassan complexity deltas, and optional LLM semantic analysis.
+
+### `predict-feedback`
+
+Record the actual outcome for a previous prediction. Used to build calibration data that improves accuracy over time.
+
+```bash
+npx impact-gate predict-feedback --outcome defect --ref abc123
+npx impact-gate predict-feedback --outcome clean
+```
+
+| Flag | Description |
+|------|-------------|
+| `--outcome <defect\|clean>` | Whether the change introduced a defect (required) |
+| `--ref <sha>` | Match a specific prediction by commit SHA |
+
+After 50+ labeled samples, run `impact-gate predict --train` to retrain weights on your project's data (~65% -> ~75-80% accuracy).
+
 ## Optional AI Workflow
 
 ### `analyze`

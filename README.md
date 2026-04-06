@@ -47,6 +47,7 @@ Transition note:
 | Level | Commands | What They Are For |
 |------|----------|-------------------|
 | Core CI Workflow | `impact`, `plan`, `gate` | Decide what changed, what is covered, and whether a PR should pass or a release is ready |
+| Defect Prediction | `predict`, `predict-feedback` | Research-backed defect risk scoring from git diffs, with optional LLM semantic analysis and project-specific calibration |
 | Optional AI Workflow | `generate`, `heal`, `analyze`, `finalize-generated-tests` | Suggest, create, or repair tests after impact analysis |
 | Setup and Calibration | `train`, `bootstrap`, `traceability-*`, `feedback`, `cost-report`, `llm-health` | Build the manifest, feed execution data back in, and inspect cost/provider health |
 | Advanced / Experimental | `crew`, MCP mode, plugins, `impact-gate-qa` | Deeper orchestration and browser-driven workflows beyond the core CI loop |
@@ -73,6 +74,8 @@ These commands work with **zero LLM cost** and do not require an API key:
 | `traceability-ingest` | Merge traceability mappings into rolling manifest |
 | `feedback` | Ingest recommendation outcomes for calibration |
 | `cost-report` | View LLM cost breakdown from past runs |
+| `predict` | Research-backed defect risk scoring from a git diff |
+| `predict-feedback` | Record prediction outcomes for calibration |
 
 Optional AI features use [Anthropic](https://console.anthropic.com/), [OpenAI](https://platform.openai.com/), or a local [Ollama](https://ollama.ai/) instance.
 
@@ -123,6 +126,31 @@ Notes:
 - `plan --since <old-release-tag>` is the simplest way to turn a release diff into a prioritized test plan.
 - `gate` expects a threshold in the range `0-100` and exits `1` when the threshold is missed.
 - Add the Optional AI Workflow only after your `route-families.json` manifest is useful enough to trust.
+
+## Defect Prediction
+
+Research-backed defect risk scoring that works on any repo with zero config. No LLM required.
+
+```bash
+# Score a PR against main
+npx impact-gate predict --path . --since origin/main
+
+# With LLM semantic analysis (~$0.02/PR)
+npx impact-gate predict --path . --since origin/main --deep
+
+# CI gate: exit 1 if risk exceeds threshold
+npx impact-gate predict --path . --since origin/main --predict-threshold 0.7
+```
+
+The engine extracts 14 change-level metrics (Kamei et al. 2013), code complexity deltas (Hassan 2009), and an optional LLM semantic layer that flags removed error handling, weakened validation, and risky patterns. Scores improve over time with feedback:
+
+```bash
+# Record outcome after a PR ships
+npx impact-gate predict-feedback --outcome clean --ref abc123
+
+# Retrain weights after 50+ labeled samples
+npx impact-gate predict --train
+```
 
 ## Dogfood Proof
 

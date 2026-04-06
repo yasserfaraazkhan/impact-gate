@@ -172,5 +172,11 @@ export {detectFramework, detectTestMode} from './adapters/framework_adapter.js';
 export {serializeManifest} from './knowledge/route_families.js';
 
 // Defect Prediction
-export {predict, predictFormatted, extractChangeMetrics, extractComplexityMetrics, predictDefect, formatPrediction} from './prediction/index.js';
+export {predict, predictSync, predictFormatted, extractChangeMetrics, extractComplexityMetrics, predictDefect, formatPrediction} from './prediction/index.js';
+export {analyzeSemanticRisk, formatSemanticAnalysis} from './prediction/semantic.js';
+export {recordPrediction, recordOutcome, trainWeights, getCalibrationStatus, formatCalibrationStatus} from './prediction/calibration.js';
 export type {ChangeMetrics, ComplexityMetrics, DefectPrediction, PredictionFeatures, RiskFactor} from './prediction/types.js';
+export type {SemanticAnalysis, SemanticRiskPattern} from './prediction/semantic.js';
+export type {CalibrationEntry, CalibrationStore, CalibrationStatus, TrainingResult} from './prediction/calibration.js';
+export type {PredictOptions} from './prediction/model.js';
+export type {PredictPipelineOptions} from './prediction/index.js';

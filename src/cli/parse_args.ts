@@ -176,6 +176,14 @@ const FLAGS: Record<string, FlagDef> = {
         ),
     },
 
+    // -- predict command --
+    '--deep':                  {key: 'deep', type: 'boolean'},
+    '--train':                 {key: 'predictTrain', type: 'boolean'},
+    '--outcome':               {key: 'predictOutcome', type: 'enum', enumValues: ['defect', 'clean']},
+    '--ref':                   {key: 'predictRef', type: 'string'},
+    '--calibration-status':    {key: 'predictCalibrationStatus', type: 'boolean'},
+    '--predict-threshold':     {key: 'threshold', type: 'number'},
+
     // -- gate command --
     '--threshold':             {key: 'gateThreshold', type: 'number'},
 
@@ -202,7 +210,7 @@ const COMMANDS = new Set<Command>([
     'finalize-generated-tests', 'feedback',
     'traceability-capture', 'traceability-ingest',
     'analyze', 'llm-health', 'train', 'crew', 'cost-report', 'gate',
-    'bootstrap', 'install-skill', 'predict',
+    'bootstrap', 'install-skill', 'predict', 'predict-feedback',
 ]);
 
 // ---------------------------------------------------------------------------

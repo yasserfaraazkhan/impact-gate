@@ -65,4 +65,21 @@ export interface DefectPrediction {
     factors: RiskFactor[];  // top risk factors, sorted by |contribution|
     metrics: PredictionFeatures;
     recommendation: string;
+
+    /** Semantic analysis results (only present when --deep is used) */
+    semantic?: {
+        score: number;
+        patterns: Array<{
+            category: 'error-handling' | 'validation' | 'concurrency' | 'security' | 'state-mutation' | 'logic' | 'resource-leak' | 'other';
+            severity: 'low' | 'medium' | 'high' | 'critical';
+            file: string;
+            description: string;
+            snippet?: string;
+        }>;
+        cost: number;
+        tokens: {input: number; output: number};
+    };
+
+    /** Whether custom calibrated weights were used */
+    calibrated?: boolean;
 }

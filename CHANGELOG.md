@@ -2,6 +2,55 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.0] - 2026-04-07
+
+### Release Focus
+
+Adds a research-backed defect prediction engine to impact-gate. Works on any repo, zero config, zero LLM cost. Scores PRs for defect risk using 14 Kamei change-level metrics, Hassan complexity deltas, optional LLM semantic analysis, and a calibration system that improves accuracy over time with feedback data.
+
+### New Commands
+
+- **`predict`** -- defect risk scoring from a git diff (free, deterministic, no LLM needed)
+- **`predict-feedback`** -- record prediction outcomes for calibration
+
+### New Files
+
+- `src/prediction/semantic.ts` -- LLM semantic layer: reads diff hunks, flags removed error handling, weakened validation, risky concurrency and auth patterns (~$0.02/PR with `--deep`)
+- `src/prediction/calibration.ts` -- stores predictions + outcomes, retrains logistic regression weights via gradient descent after 50+ labeled samples
+
+### New CLI Flags
+
+- `--deep` -- enable LLM semantic analysis on `predict`
+- `--train` -- retrain model weights from feedback data
+- `--calibration-status` -- show calibration state
+- `--outcome <defect|clean>` -- record actual outcome on `predict-feedback`
+- `--ref <sha>` -- tag predictions with commit SHA for traceability
+- `--predict-threshold <0-1>` -- defect risk gate (exit 1 if exceeded)
+
+### Enhancements
+
+- `model.ts` exports `sigmoid`, `normalizeFeature`, and `FEATURE_NAMES` for shared use
+- `model.ts` accepts custom calibrated weights and optional semantic score blending (70/30 weighted average)
+- `DefectPrediction` type extended with `semantic` and `calibrated` fields
+- Public API (`src/index.ts`) exports `predictSync`, semantic, and calibration modules
+- Prediction pipeline records entries for calibration with normalized features
+
+### Security
+
+- Prompt injection mitigation: random per-request boundary, diff sanitization, role-spoofing stripping
+- Git ref validation prevents flag injection via `SAFE_REF_PATTERN`
+- Atomic file writes (write-then-rename) for calibration store
+
+### Removed
+
+- `src/metrics/prometheus.js` -- stale compiled JS file
+
+### Verification
+
+- `npm run lint` -- **passes** (CJS + ESM)
+- `npm run build` -- **passes**
+- Tested against 5 real Mattermost PRs with accurate risk scoring
+
 ## [2.1.7] - 2026-03-28
 
 ### Release Focus

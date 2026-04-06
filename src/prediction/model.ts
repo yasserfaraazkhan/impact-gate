@@ -64,13 +64,20 @@ const DEFAULT_WEIGHTS: Record<string, {weight: number; explanation: string}> = {
 /** Bias term (intercept) for the logistic regression */
 const DEFAULT_BIAS = -1.2;
 
-/** Sigmoid function: maps any number to 0-1 range */
-function sigmoid(x: number): number {
-    return 1 / (1 + Math.exp(-x));
+/** Sigmoid function: maps any number to 0-1 range. Clamped to prevent overflow. */
+export function sigmoid(x: number): number {
+    const clamped = Math.max(-500, Math.min(500, x));
+    return 1 / (1 + Math.exp(-clamped));
 }
 
+/**
+ * Canonical list of feature names used by the model.
+ * Training and inference MUST use the same set.
+ */
+export const FEATURE_NAMES = Object.keys(DEFAULT_WEIGHTS);
+
 /** Normalize a feature value to prevent any single feature from dominating */
-function normalizeFeature(name: string, value: number): number {
+export function normalizeFeature(name: string, value: number): number {
     // Feature-specific normalization (based on empirical distributions)
     const normalizers: Record<string, (v: number) => number> = {
         la: (v) => Math.min(v / 500, 5),          // cap at 2500 lines
@@ -96,12 +103,22 @@ function normalizeFeature(name: string, value: number): number {
     return normalizer ? normalizer(value) : value;
 }
 
+/** Options for prediction — allows injecting custom calibrated weights */
+export interface PredictOptions {
+    /** Custom weights from calibration (overrides defaults) */
+    customWeights?: Record<string, number>;
+    /** Custom bias from calibration */
+    customBias?: number;
+    /** Semantic risk score to blend into the final score (0-1) */
+    semanticScore?: number;
+}
+
 /**
  * Predict defect probability for a set of change metrics.
  *
  * Returns a score between 0.0 and 1.0 with explainable risk factors.
  */
-export function predictDefect(features: PredictionFeatures): DefectPrediction {
+export function predictDefect(features: PredictionFeatures, options?: PredictOptions): DefectPrediction {
     const {change, complexity} = features;
 
     // Build feature map
@@ -124,20 +141,34 @@ export function predictDefect(features: PredictionFeatures): DefectPrediction {
         test_ratio: complexity.test_ratio,
     };
 
+    // Use custom calibrated weights if provided, otherwise defaults
+    const activeWeights = options?.customWeights;
+    const activeBias = options?.customBias ?? DEFAULT_BIAS;
+
     // Calculate weighted sum
-    let linearScore = DEFAULT_BIAS;
+    let linearScore = activeBias;
     const contributions: Array<{name: string; raw: number; normalized: number; weighted: number; explanation: string}> = [];
 
     for (const [name, config] of Object.entries(DEFAULT_WEIGHTS)) {
         const raw = featureMap[name] ?? 0;
         const normalized = normalizeFeature(name, raw);
-        const weighted = normalized * config.weight;
+        const weight = activeWeights?.[name] ?? config.weight;
+        const weighted = normalized * weight;
         linearScore += weighted;
         contributions.push({name, raw, normalized, weighted, explanation: config.explanation});
     }
 
     // Apply sigmoid to get probability
-    const score = Math.round(sigmoid(linearScore) * 1000) / 1000;
+    let score = Math.round(sigmoid(linearScore) * 1000) / 1000;
+
+    // Blend semantic score if available (weighted average: metrics + semantic)
+    // A semanticScore of 0 from a successful analysis means "no risks found" —
+    // we intentionally skip blending to avoid diluting the metrics-only score.
+    const METRICS_BLEND_WEIGHT = 0.7;
+    const SEMANTIC_BLEND_WEIGHT = 0.3;
+    if (options?.semanticScore !== undefined && options.semanticScore > 0) {
+        score = Math.round((METRICS_BLEND_WEIGHT * score + SEMANTIC_BLEND_WEIGHT * options.semanticScore) * 1000) / 1000;
+    }
 
     // Determine risk level
     let level: DefectPrediction['level'];
@@ -161,7 +192,14 @@ export function predictDefect(features: PredictionFeatures): DefectPrediction {
     // Generate recommendation
     const recommendation = generateRecommendation(level, factors, change, complexity);
 
-    return {score, level, factors, metrics: features, recommendation};
+    return {
+        score,
+        level,
+        factors,
+        metrics: features,
+        recommendation,
+        calibrated: activeWeights !== undefined,
+    };
 }
 
 /** Generate a human-readable recommendation based on the prediction */

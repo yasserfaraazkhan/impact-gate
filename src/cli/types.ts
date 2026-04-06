@@ -22,7 +22,8 @@ export type Command =
     | 'gate'
     | 'bootstrap'
     | 'install-skill'
-    | 'predict';
+    | 'predict'
+    | 'predict-feedback';
 
 export interface ParsedArgs {
     command?: Command;
@@ -122,4 +123,9 @@ export interface ParsedArgs {
 
     // Predict command
     threshold?: number;
+    deep?: boolean;
+    predictTrain?: boolean;
+    predictOutcome?: 'defect' | 'clean';
+    predictRef?: string;
+    predictCalibrationStatus?: boolean;
 }

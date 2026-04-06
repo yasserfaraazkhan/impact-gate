@@ -22,11 +22,11 @@ import {runCostReportCommand} from './cli/commands/cost_report.js';
 import {runGateCommand} from './cli/commands/gate.js';
 import {runBootstrapCommand} from './cli/commands/bootstrap.js';
 import {runInstallSkillCommand} from './cli/commands/install_skill.js';
-import {runPredictCommand} from './cli/commands/predict.js';
+import {runPredictCommand, runPredictFeedbackCommand} from './cli/commands/predict.js';
 import {classifyError, EXIT_CODES} from './cli/errors.js';
 
 // Commands that skip default resolution (they handle their own setup)
-const SKIP_DEFAULTS_COMMANDS = new Set(['init', 'llm-health', 'cost-report', 'bootstrap', 'install-skill']);
+const SKIP_DEFAULTS_COMMANDS = new Set(['init', 'llm-health', 'cost-report', 'bootstrap', 'install-skill', 'predict', 'predict-feedback']);
 
 // Commands that need path/testsRoot/framework/since
 const NEEDS_DEFAULTS_COMMANDS = new Set([
@@ -130,7 +130,12 @@ async function main(): Promise<void> {
     }
 
     if (args.command === 'predict') {
-        runPredictCommand(args);
+        await runPredictCommand(args);
+        return;
+    }
+
+    if (args.command === 'predict-feedback') {
+        runPredictFeedbackCommand(args);
         return;
     }
 
