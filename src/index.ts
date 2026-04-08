@@ -180,3 +180,8 @@ export type {SemanticAnalysis, SemanticRiskPattern} from './prediction/semantic.
 export type {CalibrationEntry, CalibrationStore, CalibrationStatus, TrainingResult} from './prediction/calibration.js';
 export type {PredictOptions} from './prediction/model.js';
 export type {PredictPipelineOptions} from './prediction/index.js';
+
+// Unified Review
+export {synthesizeReview} from './engine/review_synthesizer.js';
+export {formatReviewText, formatReviewMarkdown, formatReviewJSON} from './engine/review_formatter.js';
+export type {ReviewReport, ReviewedFlow, ReviewDecision, CoverageGapSummary, RiskSummary, ReviewMetrics} from './engine/review_types.js';

@@ -210,7 +210,7 @@ const COMMANDS = new Set<Command>([
     'finalize-generated-tests', 'feedback',
     'traceability-capture', 'traceability-ingest',
     'analyze', 'llm-health', 'train', 'crew', 'cost-report', 'gate',
-    'bootstrap', 'install-skill', 'predict', 'predict-feedback',
+    'bootstrap', 'install-skill', 'predict', 'predict-feedback', 'review',
 ]);
 
 // ---------------------------------------------------------------------------

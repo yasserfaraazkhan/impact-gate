@@ -23,6 +23,7 @@ import {runGateCommand} from './cli/commands/gate.js';
 import {runBootstrapCommand} from './cli/commands/bootstrap.js';
 import {runInstallSkillCommand} from './cli/commands/install_skill.js';
 import {runPredictCommand, runPredictFeedbackCommand} from './cli/commands/predict.js';
+import {runReviewCommand} from './cli/commands/review.js';
 import {classifyError, EXIT_CODES} from './cli/errors.js';
 
 // Commands that skip default resolution (they handle their own setup)
@@ -32,6 +33,7 @@ const SKIP_DEFAULTS_COMMANDS = new Set(['init', 'llm-health', 'cost-report', 'bo
 const NEEDS_DEFAULTS_COMMANDS = new Set([
     'impact', 'plan', 'suggest', 'crew', 'generate', 'heal', 'analyze', 'train',
     'feedback', 'traceability-capture', 'traceability-ingest', 'finalize-generated-tests',
+    'review',
 ]);
 
 async function main(): Promise<void> {
@@ -203,6 +205,11 @@ async function main(): Promise<void> {
                   }
                 : undefined,
     });
+
+    if (args.command === 'review') {
+        await runReviewCommand(args, config);
+        return;
+    }
 
     if (args.command === 'impact') {
         runImpactCommand(args, config);

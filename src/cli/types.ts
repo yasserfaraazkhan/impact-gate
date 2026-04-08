@@ -23,7 +23,8 @@ export type Command =
     | 'bootstrap'
     | 'install-skill'
     | 'predict'
-    | 'predict-feedback';
+    | 'predict-feedback'
+    | 'review';
 
 export interface ParsedArgs {
     command?: Command;
