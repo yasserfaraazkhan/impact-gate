@@ -122,6 +122,9 @@ export interface ParsedArgs {
     verbose?: boolean;
     jsonOutput?: boolean;
 
+    // Init command
+    scan?: boolean;
+
     // Predict command
     threshold?: number;
     deep?: boolean;

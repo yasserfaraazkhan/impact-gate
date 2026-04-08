@@ -176,6 +176,9 @@ const FLAGS: Record<string, FlagDef> = {
         ),
     },
 
+    // -- init command --
+    '--scan':                  {key: 'scan', type: 'boolean'},
+
     // -- predict command --
     '--deep':                  {key: 'deep', type: 'boolean'},
     '--train':                 {key: 'predictTrain', type: 'boolean'},

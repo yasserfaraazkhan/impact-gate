@@ -56,7 +56,7 @@ async function main(): Promise<void> {
 
     if (args.command === 'init') {
         const hasYes = process.argv.includes('--yes') || process.argv.includes('-y');
-        await runInitCommand(hasYes);
+        await runInitCommand(hasYes, args.scan);
         return;
     }
 
