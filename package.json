@@ -1,6 +1,6 @@
 {
   "name": "@yasserkhanorg/impact-gate",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Diff-aware E2E impact analysis, release-ready test planning, coverage gating, and hallucination-resistant AI generation for Playwright/Cypress teams.",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",

@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.0] - 2026-04-09
+
+### Highlights
+
+- **Unified `review` command** — combines impact analysis, coverage planning, and defect prediction into a single human-readable report organized by user flows.
+- **`init --scan`** — auto-generates `route-families.json` from filesystem scanning. One command bootstraps any repo.
+- **User flow inference** — extracts human-readable flow descriptions from Playwright/Cypress test titles, Go API handler names, and webapp component names. 99/123 Mattermost families got flows populated.
+- **GitHub Action** — `pr-review.yml` example with PR comment upsert (updates existing comment on push, no spam).
+- **CodeRabbit review fixes** — stderr/JSON separation, gate threshold boundary, LLM fallback logging, Rust import comment.
+
 ## [2.2.0] - 2026-04-07
 
 ### Release Focus
