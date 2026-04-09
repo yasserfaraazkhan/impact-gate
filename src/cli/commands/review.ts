@@ -74,8 +74,9 @@ export async function runReviewCommand(
                 projectRoot: config.path,
                 record: true,
             });
-        } catch {
-            // LLM unavailable — fall back to deterministic
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.warn(`Deep prediction unavailable (${msg}), using deterministic fallback.`);
             prediction = predictSync(config.path, baseRef, 'HEAD');
         }
     } else {

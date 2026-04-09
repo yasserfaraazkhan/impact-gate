@@ -23,7 +23,7 @@ export async function runGateCommand(args: ParsedArgs, autoConfig: string | unde
     }
 
     let threshold = args.gateThreshold ?? 80;
-    if (threshold > 0 && threshold < 1) {
+    if (threshold > 0 && threshold <= 1) {
         threshold = threshold * 100;
     }
 

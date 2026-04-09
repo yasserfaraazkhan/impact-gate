@@ -44,7 +44,7 @@ jobs:
             --path . \
             --since origin/${{ github.base_ref }} \
             --ci-comment-path .e2e-ai-agents/pr-comment.md \
-            --json > .e2e-ai-agents/review.json 2>&1 || true
+            --json > .e2e-ai-agents/review.json 2> .e2e-ai-agents/review.log || true
 
       # Optional: defect risk gate (uncomment to block merges above threshold)
       # - name: Defect risk gate

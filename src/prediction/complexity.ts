@@ -181,7 +181,7 @@ const IMPORT_PATTERNS = [
     /^\s*from\s+['"].*['"]\s+import/,
     /^\s*require\s*\(/,
     /^\s*import\s*\(/,           // dynamic import
-    /^\s*use\s+/,                // Go imports
+    /^\s*use\s+/,                // Rust imports
     /^\s*#include\s+/,           // C/C++
 ];
 
