@@ -7,6 +7,7 @@ import * as readline from 'readline';
 
 import {detectFramework, detectTestsRoot, detectGitDefaultBranch} from '../defaults.js';
 import {scanProject} from '../../training/scanner.js';
+import {inferUserFlows} from '../../training/flow_inferrer.js';
 import type {ScannedFamily} from '../../training/types.js';
 import type {RouteFamily} from '../../knowledge/route_families.js';
 
@@ -272,8 +273,16 @@ function runScanPhase(appPath: string, testsRoot: string): void {
         return;
     }
 
-    // Convert to RouteFamily format with priorities
-    const families = scanResult.families.map(scannedToRouteFamilyWithPriority);
+    // Convert to RouteFamily format with priorities and inferred user flows
+    console.log('Inferring user flows from test titles, API handlers, and component names...');
+    const families = scanResult.families.map((scanned) => {
+        const family = scannedToRouteFamilyWithPriority(scanned);
+        const flows = inferUserFlows(scanned, appPath, testsRoot);
+        if (flows.length > 0) {
+            family.userFlows = flows;
+        }
+        return family;
+    });
 
     // Sort: P0 first, then P1, then P2
     families.sort((a, b) => {
@@ -299,15 +308,22 @@ function runScanPhase(appPath: string, testsRoot: string): void {
     console.log('');
     console.log(`Discovered ${families.length} families (${p0} P0, ${p1} P1, ${p2} P2):`);
 
-    for (const family of families.slice(0, 20)) {
-        const srcCount = (family.webappPaths?.length || 0) + (family.serverPaths?.length || 0);
+    const withFlows = families.filter((f) => f.userFlows && f.userFlows.length > 0).length;
+
+    for (const family of families.slice(0, 15)) {
         const specCount = (family.specDirs?.length || 0) + (family.cypressSpecDirs?.length || 0);
         const specLabel = specCount > 0 ? `${specCount} spec dir${specCount !== 1 ? 's' : ''}` : 'no specs';
-        console.log(`  [${family.priority || 'P2'}] ${family.id.padEnd(30)} ${srcCount} source path${srcCount !== 1 ? 's' : ''}, ${specLabel}`);
+        const flowCount = family.userFlows?.length || 0;
+        console.log(`  [${family.priority || 'P2'}] ${family.id.padEnd(30)} ${specLabel}, ${flowCount} flow${flowCount !== 1 ? 's' : ''}`);
+        if (family.userFlows && family.userFlows.length > 0) {
+            const preview = family.userFlows.slice(0, 3).join(', ');
+            const more = family.userFlows.length > 3 ? `, +${family.userFlows.length - 3} more` : '';
+            console.log(`       ${preview}${more}`);
+        }
     }
 
-    if (families.length > 20) {
-        console.log(`  ... and ${families.length - 20} more`);
+    if (families.length > 15) {
+        console.log(`  ... and ${families.length - 15} more`);
     }
 
     console.log('');
@@ -319,6 +335,7 @@ function runScanPhase(appPath: string, testsRoot: string): void {
     }
 
     console.log(`Families with test coverage: ${withSpecs}/${families.length}`);
+    console.log(`Families with user flows: ${withFlows}/${families.length}`);
     console.log('');
     console.log(`Wrote ${manifestPath} (${families.length} families)`);
 }

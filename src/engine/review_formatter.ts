@@ -30,6 +30,11 @@ export function formatReviewText(report: ReviewReport): string {
     for (const flow of report.impactedFlows) {
         lines.push(formatFlowLine(flow));
         lines.push(`     Changed: ${summarizeFiles(flow.changedFiles)}`);
+        if (flow.userFlows.length > 0) {
+            const flowPreview = flow.userFlows.slice(0, 4).join(', ');
+            const more = flow.userFlows.length > 4 ? `, +${flow.userFlows.length - 4} more` : '';
+            lines.push(`     Flows: ${flowPreview}${more}`);
+        }
         if (flow.existingTests.length > 0) {
             lines.push(`     Tests: ${summarizeFiles(flow.existingTests)}`);
         }
