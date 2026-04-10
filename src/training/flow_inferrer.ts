@@ -209,7 +209,7 @@ const SKIP_HANDLER_NAMES = new Set([
  * getChannelMembers → "Get channel members"
  * pinPost → "Pin a post"
  */
-function camelCaseToFlow(name: string): string {
+export function camelCaseToFlow(name: string): string {
     const words = name
         .replace(/([A-Z])/g, ' $1')
         .trim()
@@ -312,7 +312,7 @@ const COMPONENT_SUFFIX_VERBS: Array<[string, string]> = [
  * channel_settings_modal → "Configure channel settings"
  * emoji_picker → "Select from emoji picker"
  */
-function componentNameToFlow(name: string): string {
+export function componentNameToFlow(name: string): string {
     for (const [suffix, verb] of COMPONENT_SUFFIX_VERBS) {
         if (name.endsWith(suffix)) {
             const stem = name.slice(0, -suffix.length).replace(/_/g, ' ');
@@ -383,7 +383,7 @@ function deduplicateFlows(flows: string[]): string[] {
 }
 
 /** Check if two flow descriptions are semantically similar via word overlap */
-function isSimilarFlow(a: string, b: string): boolean {
+export function isSimilarFlow(a: string, b: string): boolean {
     const wordsA = new Set(a.toLowerCase().split(/\s+/));
     const wordsB = new Set(b.toLowerCase().split(/\s+/));
 

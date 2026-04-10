@@ -16,6 +16,7 @@ import type {PlanReport, GapDetail} from '../agent/plan.js';
 import type {DefectPrediction} from '../prediction/types.js';
 import type {KGImpactResult, AffectedFunction} from './kg_impact.js';
 import {formatAffectedFunction} from './kg_impact.js';
+import type {BehaviorAnalysisResult} from './behavior_analyzer.js';
 import type {
     ReviewReport,
     ReviewedFlow,
@@ -37,6 +38,7 @@ export function synthesizeReview(
     plan: PlanReport,
     prediction: DefectPrediction,
     kgImpact?: KGImpactResult,
+    behaviorAnalysis?: BehaviorAnalysisResult,
 ): ReviewReport {
     const impactedFlows = buildReviewedFlows(impact, plan, prediction);
     const coverageGaps = buildCoverageGaps(plan);
@@ -50,7 +52,39 @@ export function synthesizeReview(
         affectedFunctions = kgImpact.affectedFunctions;
     }
 
-    return {impactedFlows, coverageGaps, riskAssessment, decision, metrics, affectedFunctions};
+    // Enrich with behavior analysis when available
+    const report: ReviewReport = {impactedFlows, coverageGaps, riskAssessment, decision, metrics, affectedFunctions};
+
+    if (behaviorAnalysis) {
+        report.behaviorSummary = behaviorAnalysis.behaviorSummary;
+        report.recommendations = behaviorAnalysis.recommendations;
+        report.relevantExistingTests = behaviorAnalysis.relevantTests.map((t) => ({
+            file: t.file,
+            matchReason: t.matchReason,
+        }));
+
+        if (behaviorAnalysis.prIncludedTests.length > 0) {
+            report.prIncludedTestSummary = {
+                files: behaviorAnalysis.prIncludedTests.map((t) => t.file),
+                scenarioCount: behaviorAnalysis.prIncludedTests.reduce((sum, t) => sum + t.scenarios.length, 0),
+            };
+        }
+
+        // Upgrade decision when PR includes tests that cover the gaps
+        if (report.prIncludedTestSummary && report.prIncludedTestSummary.scenarioCount > 0
+            && report.decision.action === 'must-add-tests') {
+            report.decision = {
+                ...report.decision,
+                action: 'review-recommended',
+                summary: report.decision.summary.replace(
+                    /Add tests before merging/,
+                    'PR includes tests. Review recommended.',
+                ),
+            };
+        }
+    }
+
+    return report;
 }
 
 // ─── Impacted Flows ───

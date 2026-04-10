@@ -112,6 +112,24 @@ export interface ReviewReport {
     /** Summary metrics */
     metrics: ReviewMetrics;
 
+    /** Behavior-aware analysis (when diffs are available) */
+    behaviorSummary?: string[];
+    prIncludedTestSummary?: {
+        files: string[];
+        scenarioCount: number;
+    };
+    recommendations?: Array<{
+        scenario: string;
+        priority: 'P0' | 'P1' | 'P2';
+        rationale: string;
+        dimension?: string;
+        alreadyCoveredBy?: string;
+    }>;
+    relevantExistingTests?: Array<{
+        file: string;
+        matchReason: string;
+    }>;
+
     /** Function-level affected analysis from knowledge graph (when available) */
     affectedFunctions?: Array<{
         node: {id: string; name: string; kind: string; filePath?: string};

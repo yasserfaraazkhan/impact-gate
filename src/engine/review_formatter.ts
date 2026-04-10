@@ -22,6 +22,39 @@ export function formatReviewText(report: ReviewReport): string {
     lines.push('================');
     lines.push('');
 
+    // Section 0: What this PR changes (behavior-aware)
+    if (report.behaviorSummary && report.behaviorSummary.length > 0) {
+        lines.push('What this PR changes (user-visible):');
+        for (const behavior of report.behaviorSummary) {
+            lines.push(`  - ${behavior}`);
+        }
+        lines.push('');
+    }
+
+    // Section 0.5: Existing test coverage
+    if (report.relevantExistingTests && report.relevantExistingTests.length > 0) {
+        lines.push('Existing test coverage:');
+        for (const test of report.relevantExistingTests.slice(0, 5)) {
+            lines.push(`  ✅ ${shortPath(test.file)} (${test.matchReason})`);
+        }
+        if (report.relevantExistingTests.length > 5) {
+            lines.push(`  ... and ${report.relevantExistingTests.length - 5} more`);
+        }
+        lines.push('');
+    }
+
+    // Section 0.7: Tests included in this PR
+    if (report.prIncludedTestSummary) {
+        lines.push('Tests included in this PR:');
+        for (const file of report.prIncludedTestSummary.files) {
+            lines.push(`  ✅ ${shortPath(file)}`);
+        }
+        if (report.prIncludedTestSummary.scenarioCount > 0) {
+            lines.push(`  (${report.prIncludedTestSummary.scenarioCount} test scenarios)`);
+        }
+        lines.push('');
+    }
+
     // Section 1: Impacted User Flows
     lines.push('Impacted User Flows:');
     if (report.impactedFlows.length === 0) {
@@ -100,6 +133,30 @@ export function formatReviewText(report: ReviewReport): string {
         lines.push(`  Top factors: ${risk.topFactors.slice(0, 3).join(', ')}`);
     }
     lines.push('');
+
+    // Section 3.5: Recommended tests
+    if (report.recommendations && report.recommendations.length > 0) {
+        const uncovered = report.recommendations.filter((r) => !r.alreadyCoveredBy);
+        const covered = report.recommendations.filter((r) => r.alreadyCoveredBy);
+
+        if (uncovered.length > 0) {
+            lines.push('Recommended tests to add:');
+            for (let i = 0; i < uncovered.length && i < 5; i++) {
+                const r = uncovered[i];
+                const dim = r.dimension ? ` (${r.dimension})` : '';
+                lines.push(`  ${i + 1}. [${r.priority}] ${r.scenario}${dim}`);
+            }
+            lines.push('');
+        }
+
+        if (covered.length > 0) {
+            lines.push('Already covered by PR tests:');
+            for (const r of covered.slice(0, 3)) {
+                lines.push(`  ✅ ${r.scenario} -- ${shortPath(r.alreadyCoveredBy!)}`);
+            }
+            lines.push('');
+        }
+    }
 
     // Section 4: Decision
     const d = report.decision;

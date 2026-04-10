@@ -22,6 +22,10 @@ import {analyzeImpact} from '../../engine/impact_engine.js';
 import {buildPlanFromImpact} from '../../engine/plan_builder.js';
 import {expandChangedFilesViaKG} from '../../engine/kg_impact.js';
 import type {KGImpactResult} from '../../engine/kg_impact.js';
+import {analyzeBehavior} from '../../engine/behavior_analyzer.js';
+import type {BehaviorAnalysisResult} from '../../engine/behavior_analyzer.js';
+import {loadDiffs} from '../../engine/diff_loader.js';
+import {loadRouteFamilyManifest} from '../../knowledge/route_families.js';
 import {predict, predictSync} from '../../prediction/index.js';
 import {synthesizeReview} from '../../engine/review_synthesizer.js';
 import {formatReviewText, formatReviewMarkdown, formatReviewJSON} from '../../engine/review_formatter.js';
@@ -74,6 +78,21 @@ export async function runReviewCommand(
         expandedFiles,
     });
 
+    // Step 2.5: Behavior analysis (deterministic, no LLM)
+    let behaviorAnalysis: BehaviorAnalysisResult | undefined;
+    try {
+        const diffs = loadDiffs(config.path, baseRef, gitResult.files);
+        const manifest = loadRouteFamilyManifest(reportRoot, config.routeFamilies);
+        if (diffs.size > 0) {
+            behaviorAnalysis = analyzeBehavior(diffs, impact, manifest, reportRoot);
+            if (behaviorAnalysis.signals.length > 0) {
+                console.log(`Behavior analysis: ${behaviorAnalysis.signals.length} signals, ${behaviorAnalysis.recommendations.length} recommendations`);
+            }
+        }
+    } catch {
+        // Non-fatal: behavior analysis is additive
+    }
+
     // Step 3: Build plan (deterministic — no AI for the plan layer)
     const plan = buildPlanFromImpact(impact, config.policy);
 
@@ -106,7 +125,7 @@ export async function runReviewCommand(
     }
 
     // Step 5: Synthesize
-    const report = synthesizeReview(impact, plan, prediction, kgImpact);
+    const report = synthesizeReview(impact, plan, prediction, kgImpact, behaviorAnalysis);
 
     // Step 6: Output
     if (args.jsonOutput) {
