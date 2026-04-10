@@ -152,6 +152,30 @@ npx impact-gate predict-feedback --outcome clean --ref abc123
 npx impact-gate predict --train
 ```
 
+### Function-Level Accuracy (Knowledge Graph)
+
+For function-level impact analysis, generate a code knowledge graph:
+
+```bash
+# Graphify: deterministic AST extraction, 20 languages, no LLM cost
+pip install graphifyy
+graphify .
+
+# impact-gate auto-detects the KG and enables function-level output
+npx impact-gate review --path . --since origin/main
+```
+
+With a KG, the review shows which specific functions are untested:
+
+```
+Untested Functions:
+  ❌ ClearChannelManagedCategory (channel_category.go) -- called by: patchChannel
+Tested Functions:
+  ✅ SetChannelManagedCategory -- tested by: managed_categories.spec.ts
+```
+
+Also supports [Understand-Anything](https://github.com/Lum1104/Understand-Anything) knowledge graphs. See the [Knowledge Graph Guide](https://yasserfaraazkhan.github.io/impact-gate/guides/knowledge-graph/) for details.
+
 ## Dogfood Proof
 
 The current repo includes a full dogfood run at [dogfood/2026-03-28/README.md](dogfood/2026-03-28/README.md).

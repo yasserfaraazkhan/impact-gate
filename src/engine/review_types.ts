@@ -111,4 +111,13 @@ export interface ReviewReport {
 
     /** Summary metrics */
     metrics: ReviewMetrics;
+
+    /** Function-level affected analysis from knowledge graph (when available) */
+    affectedFunctions?: Array<{
+        node: {id: string; name: string; kind: string; filePath?: string};
+        impact: 'direct' | 'transitive';
+        calledBy: Array<{name: string; filePath?: string}>;
+        testedBy: Array<{name: string; filePath?: string}>;
+        depth: number;
+    }>;
 }

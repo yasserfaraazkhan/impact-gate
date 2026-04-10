@@ -14,6 +14,8 @@
 import type {ImpactResult, ImpactedFeature} from './impact_engine.js';
 import type {PlanReport, GapDetail} from '../agent/plan.js';
 import type {DefectPrediction} from '../prediction/types.js';
+import type {KGImpactResult, AffectedFunction} from './kg_impact.js';
+import {formatAffectedFunction} from './kg_impact.js';
 import type {
     ReviewReport,
     ReviewedFlow,
@@ -34,6 +36,7 @@ export function synthesizeReview(
     impact: ImpactResult,
     plan: PlanReport,
     prediction: DefectPrediction,
+    kgImpact?: KGImpactResult,
 ): ReviewReport {
     const impactedFlows = buildReviewedFlows(impact, plan, prediction);
     const coverageGaps = buildCoverageGaps(plan);
@@ -41,7 +44,13 @@ export function synthesizeReview(
     const decision = buildDecision(impact, plan, prediction);
     const metrics = buildMetrics(impact, plan, prediction, impactedFlows);
 
-    return {impactedFlows, coverageGaps, riskAssessment, decision, metrics};
+    // Enrich with KG function-level data when available
+    let affectedFunctions: AffectedFunction[] | undefined;
+    if (kgImpact) {
+        affectedFunctions = kgImpact.affectedFunctions;
+    }
+
+    return {impactedFlows, coverageGaps, riskAssessment, decision, metrics, affectedFunctions};
 }
 
 // ─── Impacted Flows ───

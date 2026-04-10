@@ -20,9 +20,13 @@ import type {resolveConfig} from '../../agent/config.js';
 import {getChangedFiles} from '../../agent/git.js';
 import {analyzeImpact} from '../../engine/impact_engine.js';
 import {buildPlanFromImpact} from '../../engine/plan_builder.js';
+import {expandChangedFilesViaKG} from '../../engine/kg_impact.js';
+import type {KGImpactResult} from '../../engine/kg_impact.js';
 import {predict, predictSync} from '../../prediction/index.js';
 import {synthesizeReview} from '../../engine/review_synthesizer.js';
 import {formatReviewText, formatReviewMarkdown, formatReviewJSON} from '../../engine/review_formatter.js';
+import {loadKnowledgeGraph} from '../../knowledge/kg_bridge.js';
+import {loadGraphifyGraph} from '../../knowledge/graphify_bridge.js';
 import {LLMProviderFactory} from '../../provider_factory.js';
 
 import type {ParsedArgs} from '../types.js';
@@ -48,11 +52,26 @@ export async function runReviewCommand(
         return;
     }
 
+    // Step 1.5: Load knowledge graph if available (Graphify or Understand-Anything)
+    let kgImpact: KGImpactResult | undefined;
+    const kg = loadGraphifyGraph(config.path) || loadKnowledgeGraph(config.path);
+    let expandedFiles: string[] | undefined;
+
+    if (kg) {
+        console.log(`Knowledge graph loaded (${kg.nodes.length} nodes, ${kg.edges.length} edges)`);
+        kgImpact = expandChangedFilesViaKG(gitResult.files, kg, 3);
+        expandedFiles = kgImpact.expandedFiles;
+        console.log(`KG expansion: ${kgImpact.stats.directFunctions} direct, ${kgImpact.stats.transitiveFunctions} transitive functions affected`);
+        console.log(`Function test coverage: ${kgImpact.stats.testedFunctions}/${kgImpact.stats.directFunctions + kgImpact.stats.transitiveFunctions} functions tested`);
+        console.log('');
+    }
+
     // Step 2: Impact analysis
     const impact = analyzeImpact(gitResult.files, {
         testsRoot: reportRoot,
         routeFamilies: config.routeFamilies,
         filteredTestFiles: gitResult.filteredTestFiles,
+        expandedFiles,
     });
 
     // Step 3: Build plan (deterministic — no AI for the plan layer)
@@ -87,7 +106,7 @@ export async function runReviewCommand(
     }
 
     // Step 5: Synthesize
-    const report = synthesizeReview(impact, plan, prediction);
+    const report = synthesizeReview(impact, plan, prediction, kgImpact);
 
     // Step 6: Output
     if (args.jsonOutput) {

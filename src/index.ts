@@ -185,3 +185,8 @@ export type {PredictPipelineOptions} from './prediction/index.js';
 export {synthesizeReview} from './engine/review_synthesizer.js';
 export {formatReviewText, formatReviewMarkdown, formatReviewJSON} from './engine/review_formatter.js';
 export type {ReviewReport, ReviewedFlow, ReviewDecision, CoverageGapSummary, RiskSummary, ReviewMetrics} from './engine/review_types.js';
+
+// Knowledge Graph
+export {loadGraphifyGraph} from './knowledge/graphify_bridge.js';
+export {expandChangedFilesViaKG, formatAffectedFunction} from './engine/kg_impact.js';
+export type {KGImpactResult, AffectedFunction} from './engine/kg_impact.js';

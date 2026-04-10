@@ -59,6 +59,39 @@ export function formatReviewText(report: ReviewReport): string {
         lines.push('');
     }
 
+    // Section 2.5: Affected Functions (when KG available)
+    if (report.affectedFunctions && report.affectedFunctions.length > 0) {
+        const untested = report.affectedFunctions.filter((f) => f.testedBy.length === 0);
+        const tested = report.affectedFunctions.filter((f) => f.testedBy.length > 0);
+
+        if (untested.length > 0) {
+            lines.push('Untested Functions (need coverage):');
+            for (const af of untested.slice(0, 10)) {
+                const loc = af.node.filePath ? ` (${shortPath(af.node.filePath)})` : '';
+                const callers = af.calledBy.length > 0
+                    ? ` -- called by: ${af.calledBy.slice(0, 2).map((c) => c.name).join(', ')}`
+                    : '';
+                lines.push(`  ❌ ${af.node.name}${loc}${callers}`);
+            }
+            if (untested.length > 10) {
+                lines.push(`  ... and ${untested.length - 10} more untested functions`);
+            }
+            lines.push('');
+        }
+
+        if (tested.length > 0) {
+            lines.push('Tested Functions:');
+            for (const af of tested.slice(0, 5)) {
+                const tests = af.testedBy.slice(0, 2).map((t) => t.name).join(', ');
+                lines.push(`  ✅ ${af.node.name} -- tested by: ${tests}`);
+            }
+            if (tested.length > 5) {
+                lines.push(`  ... and ${tested.length - 5} more tested functions`);
+            }
+            lines.push('');
+        }
+    }
+
     // Section 3: Defect Risk
     const risk = report.riskAssessment;
     const levelEmoji = {low: '🟢', medium: '🟡', high: '🟠', critical: '🔴'};

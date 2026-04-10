@@ -8,6 +8,8 @@ import * as readline from 'readline';
 import {detectFramework, detectTestsRoot, detectGitDefaultBranch} from '../defaults.js';
 import {scanProject} from '../../training/scanner.js';
 import {inferUserFlows} from '../../training/flow_inferrer.js';
+import {loadGraphifyGraph} from '../../knowledge/graphify_bridge.js';
+import {loadKnowledgeGraph} from '../../knowledge/kg_bridge.js';
 import type {ScannedFamily} from '../../training/types.js';
 import type {RouteFamily} from '../../knowledge/route_families.js';
 
@@ -336,6 +338,18 @@ function runScanPhase(appPath: string, testsRoot: string): void {
 
     console.log(`Families with test coverage: ${withSpecs}/${families.length}`);
     console.log(`Families with user flows: ${withFlows}/${families.length}`);
+
+    // Check for knowledge graph (Graphify or Understand-Anything)
+    const kg = loadGraphifyGraph(appPath) || loadKnowledgeGraph(appPath);
+    if (kg) {
+        console.log(`Knowledge graph detected: ${kg.nodes.length} nodes, ${kg.edges.length} edges`);
+        console.log('  Function-level impact analysis enabled for review command.');
+    } else {
+        console.log('');
+        console.log('  Optional: Generate a knowledge graph for function-level accuracy:');
+        console.log('    pip install graphifyy && graphify .    # deterministic, no LLM cost');
+        console.log('    Or use /understand with Understand-Anything');
+    }
     console.log('');
     console.log(`Wrote ${manifestPath} (${families.length} families)`);
 }
