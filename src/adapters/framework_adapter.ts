@@ -17,7 +17,7 @@ import type {KnowledgeGraph} from '../knowledge/kg_types.js';
 import type {TestType} from '../knowledge/route_families.js';
 
 /** Shared framework name lists used for test-mode detection across the codebase. */
-export const UI_FRAMEWORKS = ['playwright', '@playwright/test', 'cypress', 'selenium'] as const;
+export const UI_FRAMEWORKS = ['playwright', '@playwright/test', 'cypress', 'selenium', 'webdriverio'] as const;
 export const API_FRAMEWORKS = ['supertest', 'pytest', 'requests', 'vitest', 'jest'] as const;
 
 export interface RunOptions {

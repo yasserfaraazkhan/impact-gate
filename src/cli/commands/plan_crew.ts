@@ -103,9 +103,10 @@ export async function runPlanCrewAnalysis(plan: PlanReport, config: AgentConfig,
  * Match a strategy/design entry against a set of gap family IDs.
  */
 function matchesGapFamily(flowId: string, flowName: string, gapFamilies: Set<string>): boolean {
-    return Array.from(gapFamilies).some((fam) =>
-        flowId.startsWith(fam) || flowName.toLowerCase().includes(fam.replace(/_/g, ' ')),
-    );
+    return Array.from(gapFamilies).some((fam) => {
+        const famLower = fam.toLowerCase();
+        return flowId.toLowerCase().startsWith(famLower) || flowName.toLowerCase().includes(famLower.replace(/_/g, ' '));
+    });
 }
 
 export function buildCrewMarkdown(crew: CrewPlanInsights, plan?: PlanReport): string {

@@ -92,7 +92,7 @@ export class TestDesignerAgent implements Agent {
                 }
 
                 const validatedCases: TestCase[] = parsed.testDesign.testCases
-                    .filter((tc) => tc.name && tc.steps && tc.steps.length > 0)
+                    .filter((tc) => tc.name && Array.isArray(tc.steps) && tc.steps.length > 0)
                     .map((tc) => ({
                         name: tc.name,
                         type: VALID_TYPES.has(tc.type as TestCaseType) ? tc.type as TestCaseType : 'happy-path',

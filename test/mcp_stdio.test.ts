@@ -82,10 +82,11 @@ describe('parseJsonRpcFrames', () => {
         assert.equal(remainder.length, 0);
     });
 
-    it('should clear buffer on missing Content-Length header', () => {
+    it('should skip past malformed header without discarding valid data', () => {
         const {messages, remainder} = parseJsonRpcFrames(Buffer.from('Bad-Header: 5\r\n\r\nhello'));
         assert.equal(messages.length, 0);
-        assert.equal(remainder.length, 0);
+        // Remainder contains data after the malformed header (not discarded)
+        assert.ok(remainder.length > 0);
     });
 });
 

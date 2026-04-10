@@ -31,25 +31,27 @@ export interface FailureHistory {
     updatedAt: string;
 }
 
-const DEFAULT_HISTORY: FailureHistory = {
-    correlations: [],
-    totalRuns: 0,
-    updatedAt: new Date().toISOString(),
-};
+function createDefaultHistory(): FailureHistory {
+    return {
+        correlations: [],
+        totalRuns: 0,
+        updatedAt: new Date().toISOString(),
+    };
+}
 
 export function loadFailureHistory(testsRoot: string): FailureHistory {
     const historyPath = join(testsRoot, '.e2e-ai-agents', 'failure-history.json');
     if (!existsSync(historyPath)) {
-        return {...DEFAULT_HISTORY};
+        return createDefaultHistory();
     }
     try {
         const raw = JSON.parse(readFileSync(historyPath, 'utf-8')) as FailureHistory;
         if (!Array.isArray(raw.correlations)) {
-            return {...DEFAULT_HISTORY};
+            return createDefaultHistory();
         }
         return raw;
     } catch {
-        return {...DEFAULT_HISTORY};
+        return createDefaultHistory();
     }
 }
 

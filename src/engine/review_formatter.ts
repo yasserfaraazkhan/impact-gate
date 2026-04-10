@@ -147,6 +147,11 @@ function shortPath(path: string): string {
     return `.../${parts.slice(-2).join('/')}`;
 }
 
+/** Escape pipe characters for markdown table cells */
+function escapeTableCell(text: string): string {
+    return text.replace(/\|/g, '\\|');
+}
+
 // ─── Markdown Output (for PR comments) ───
 
 /**
@@ -179,7 +184,7 @@ export function formatReviewMarkdown(report: ReviewReport): string {
             const statusIcon = flow.status === 'covered' ? '✅' : flow.status === 'partial' ? '⚠️' : '❌';
             const testCount = flow.existingTests.length > 0 ? `${flow.existingTests.length} test${flow.existingTests.length !== 1 ? 's' : ''}` : 'none';
             const gapText = flow.gaps.length > 0 ? flow.gaps[0] : '-';
-            lines.push(`| ${statusIcon} ${flow.status} | ${flow.priority} | ${flow.name} | ${testCount} | ${gapText} |`);
+            lines.push(`| ${statusIcon} ${flow.status} | ${flow.priority} | ${escapeTableCell(flow.name)} | ${testCount} | ${escapeTableCell(gapText)} |`);
         }
         lines.push('');
     }

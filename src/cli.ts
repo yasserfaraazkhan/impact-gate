@@ -61,7 +61,12 @@ async function main(): Promise<void> {
     }
 
     if (args.command === 'install-skill') {
-        const skillName = process.argv[3]; // impact-gate install-skill <name>
+        const positionals = process.argv.slice(3).filter((arg) => !arg.startsWith('-'));
+        const skillName = positionals[0];
+        if (!skillName) {
+            console.error('Error: skill name is required. Usage: impact-gate install-skill <name>');
+            process.exit(1);
+        }
         runInstallSkillCommand(skillName);
         return;
     }

@@ -53,7 +53,7 @@ export const junitReporter: Reporter = {
         // Each strategy entry becomes a test suite
         for (const entry of results.strategyEntries) {
             const testCases = designsByFlow.get(entry.flowName) ?? [];
-            const failures = highFindings.filter((f) => f.title.includes(entry.flowName));
+            const failures = highFindings.filter((f) => f.title === entry.flowName || f.title.startsWith(entry.flowName + ':') || f.title.startsWith(entry.flowName + ' '));
             const totalTests = testCases.length + failures.length;
 
             const casesXml = testCases.map((tc) => buildTestCase(tc, entry.flowName)).join('\n');
@@ -81,7 +81,7 @@ export const junitReporter: Reporter = {
 
         // Remaining high findings not tied to a strategy entry
         const coveredFlowNames = new Set(results.strategyEntries.map((e) => e.flowName));
-        const uncoveredFindings = highFindings.filter((f) => !Array.from(coveredFlowNames).some((name) => f.title.includes(name)));
+        const uncoveredFindings = highFindings.filter((f) => !Array.from(coveredFlowNames).some((name) => f.title === name || f.title.startsWith(name + ':') || f.title.startsWith(name + ' ')));
         if (uncoveredFindings.length > 0) {
             const failureCases = uncoveredFindings.map((f) => buildFailureCase(f)).join('\n');
             suites.push(
@@ -91,7 +91,7 @@ export const junitReporter: Reporter = {
             );
         }
 
-        const totalTests = results.testDesigns.reduce((sum, d) => sum + d.testCases.length, 0) + highFindings.length;
+        const totalTests = results.testDesigns.reduce((sum, d) => sum + d.testCases.length, 0) + uncoveredFindings.length;
         const totalFailures = highFindings.length;
 
         return `<?xml version="1.0" encoding="UTF-8"?>\n` +

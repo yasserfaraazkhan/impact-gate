@@ -21,6 +21,8 @@ export const TTL = {
 export interface CacheEntry {
     /** Content-addressed cache key (SHA-256 hex) */
     key: string;
+    /** The route-family name for invalidation purposes */
+    family?: string;
     /** The LLM response text */
     response: string;
     /** Token usage and cost snapshot */

@@ -19,7 +19,7 @@
  */
 
 import {existsSync, readFileSync} from 'fs';
-import {join} from 'path';
+import {basename, join} from 'path';
 
 import type {KnowledgeGraph, KGNode, KGNodeKind, KGEdge, KGEdgeType, KGProject} from './kg_types.js';
 
@@ -141,7 +141,7 @@ function convertGraphifyToKG(graph: GraphifyGraph, projectRoot: string): Knowled
     }
 
     const project: KGProject = {
-        name: projectRoot.split('/').pop() || 'unknown',
+        name: basename(projectRoot) || 'unknown',
         frameworks: [],
         languages: [...languages],
     };
@@ -198,12 +198,12 @@ function inferNodeKind(gNode: GraphifyNode): KGNodeKind {
         return 'function';
     }
 
-    // Infer from file type
-    if (sourceFile.endsWith('.ts') || sourceFile.endsWith('.tsx') || sourceFile.endsWith('.jsx')) {
+    // Infer from file type — only .tsx/.jsx are components, plain .ts is a module
+    if (sourceFile.endsWith('.tsx') || sourceFile.endsWith('.jsx')) {
         return 'component';
     }
 
-    return 'function';
+    return 'module';
 }
 
 // ─── Edge conversion ───

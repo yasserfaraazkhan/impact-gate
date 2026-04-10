@@ -160,7 +160,7 @@ function formatTokens(tokens: number): string {
         return `${(tokens / 1_000_000).toFixed(1)}M tokens`;
     }
     if (tokens >= 1_000) {
-        return `${(tokens / 1_000).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')} tokens`;
+        return `${(tokens / 1_000).toFixed(1)}K tokens`;
     }
     return `${tokens} tokens`;
 }

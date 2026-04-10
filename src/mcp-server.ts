@@ -572,8 +572,9 @@ export function parseJsonRpcFrames(input: Buffer): {messages: Array<{id?: unknow
         const headerText = buffer.slice(0, headerEnd).toString('utf8');
         const match = headerText.match(/Content-Length:\s*(\d+)/i);
         if (!match) {
-            buffer = Buffer.alloc(0);
-            break;
+            // Skip past this malformed header and try to find the next valid frame
+            buffer = buffer.slice(headerEnd + 4);
+            continue;
         }
 
         const contentLength = Number(match[1]);
@@ -669,6 +670,8 @@ export async function handleJsonRpcMessage(
 /**
  * Start MCP server over stdio using Content-Length framed JSON-RPC messages.
  */
+const MAX_BUFFER_SIZE = 10 * 1024 * 1024; // 10MB
+
 export function startStdioServer(repoRoot: string = process.cwd()): void {
     const server = new E2EAgentsMCPServer(repoRoot);
     let buffer = Buffer.alloc(0);
@@ -698,6 +701,11 @@ export function startStdioServer(repoRoot: string = process.cwd()): void {
 
     process.stdin.on('data', (chunk: Buffer) => {
         buffer = Buffer.concat([buffer, chunk]);
+        if (buffer.length > MAX_BUFFER_SIZE) {
+            sendError(null, -32600, 'Request too large');
+            buffer = Buffer.alloc(0);
+            return;
+        }
         processBuffer();
     });
 
