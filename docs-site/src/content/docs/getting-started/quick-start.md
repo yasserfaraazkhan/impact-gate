@@ -22,11 +22,11 @@ description: "Get from install to impact results and release-ready test planning
     </p>
   </div>
   <div class="docs-panel docs-panel--terminal">
-    <span class="docs-panel__eyebrow">Three commands</span>
-    <h2 class="docs-panel__title">The default path stays deterministic</h2>
+    <span class="docs-panel__eyebrow">Two commands</span>
+    <h2 class="docs-panel__title">Review your PR, then gate it</h2>
     <div class="docs-terminal">
-      <code>npx impact-gate impact --path . --since origin/main</code>
-      <code>npx impact-gate plan --path . --since origin/main</code>
+      <code>npx impact-gate review --path . --since origin/main</code>
+      <code>npx impact-gate review --path . --since origin/main --generate</code>
       <code>npx impact-gate gate --threshold 80 --path .</code>
     </div>
   </div>
@@ -49,15 +49,15 @@ description: "Get from install to impact results and release-ready test planning
 npm install -D @yasserkhanorg/impact-gate
 ```
 
-## Step 2: Run Impact Analysis
+## Step 2: Review Your PR
 
 <div class="docs-step">
   <div class="docs-step__index">02</div>
   <div>
-    <h3 class="docs-step__title">Compare the current branch to a known baseline</h3>
+    <h3 class="docs-step__title">See what changed, what's tested, and what's missing</h3>
     <p class="docs-step__copy">
-      Start with the base branch for pull requests, then swap in the previous
-      shipped tag when you want release-readiness planning.
+      The review command combines impact analysis, behavior analysis, coverage
+      planning, and defect prediction into one report. No API key needed.
     </p>
   </div>
 </div>
@@ -65,47 +65,51 @@ npm install -D @yasserkhanorg/impact-gate
 Point the tool at your project and diff against your base branch:
 
 ```bash
-npx impact-gate impact --path . --since origin/main
+npx impact-gate review --path . --since origin/main
 ```
 
-This parses the git diff, maps changed files to route families, and reports which E2E test flows are impacted.
+This outputs: which user flows changed, existing test coverage, coverage gaps, defect risk score, and specific test recommendations.
 
-For release readiness, point the same workflow at the previous shipped tag or release branch:
+For release readiness, diff against the previous shipped tag:
 
 ```bash
-npx impact-gate impact --path . --since v2.1.0
+npx impact-gate review --path . --since v2.1.0
 ```
 
-## Step 3: View the Results
+## Step 3: Generate Missing Tests (Optional)
 
 <div class="docs-step">
   <div class="docs-step__index">03</div>
   <div>
-    <h3 class="docs-step__title">Turn the same diff into a written coverage plan</h3>
+    <h3 class="docs-step__title">Turn coverage gaps into ready-to-run test files</h3>
     <p class="docs-step__copy">
-      The plan command writes the artifacts you can inspect in CI, release
-      review, and downstream automation.
+      Add <code>--generate</code> to produce E2E test files for uncovered flows.
+      Requires an LLM API key.
     </p>
   </div>
 </div>
 
-The `impact` command prints a deterministic summary to stdout. To write coverage artifacts with gap analysis, run `plan`:
-
 ```bash
-npx impact-gate plan --path . --since origin/main
+npx impact-gate review --path . --since origin/main --generate
 ```
 
-This produces:
-- **`.e2e-ai-agents/plan.json`** -- structured plan with run sets and confidence scores
-- **`.e2e-ai-agents/ci-summary.md`** -- markdown summary suitable for PR comments
+The generator uses your project's existing test patterns, page objects, and API surface to produce grounded test code. Generated files go through compile checks and smoke runs.
 
-Use the exact same command for a release-diff test plan:
+For CI PR comments, add `--ci-comment-path`:
 
 ```bash
-npx impact-gate plan --path . --since v2.1.0
+npx impact-gate review --path . --since origin/main --ci-comment-path comment.md
 ```
 
-That gives you a release-focused view of impacted flows, current coverage, and what still needs tests or manual validation before shipping.
+### Lower-level commands
+
+The `review` command combines `impact`, `plan`, and `predict`. You can still use them individually for granular CI pipelines:
+
+```bash
+npx impact-gate impact --path . --since origin/main   # just impact analysis
+npx impact-gate plan --path . --since origin/main      # coverage plan + artifacts
+npx impact-gate gate --threshold 80 --path .           # CI pass/fail gate
+```
 
 ## Why The AI Path Is Safer Than Raw Generation
 

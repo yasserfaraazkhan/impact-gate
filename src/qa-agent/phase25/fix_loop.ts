@@ -118,18 +118,22 @@ export async function runFixLoop(
         pendingWrittenFiles: new Set(),
     };
 
-    for (const finding of fixable) {
+    for (let i = 0; i < fixable.length; i++) {
+        const finding = fixable[i];
         if (wtf.shouldStop()) {
             logger.warn(`WTF heuristic triggered (score: ${wtf.score}), stopping fix loop`);
-            // Mark remaining as skipped
-            fixes.push({findingId: finding.id, status: 'skipped'});
-            continue;
+            for (let j = i; j < fixable.length; j++) {
+                fixes.push({findingId: fixable[j].id, status: 'skipped'});
+            }
+            break;
         }
 
         if (costUSD >= budgetUSD) {
             logger.info('Fix loop budget exhausted');
-            fixes.push({findingId: finding.id, status: 'skipped'});
-            continue;
+            for (let j = i; j < fixable.length; j++) {
+                fixes.push({findingId: fixable[j].id, status: 'skipped'});
+            }
+            break;
         }
 
         logger.info(`Fixing: [${finding.severity}] ${finding.summary}`);

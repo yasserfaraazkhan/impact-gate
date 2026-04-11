@@ -6,36 +6,38 @@ description: "Complete reference for all impact-gate CLI commands"
 <div class="doc-intro">
   <div class="doc-chip">Command reference</div>
   <p class="doc-lead">
-    The CLI is built around one deterministic workflow: <code>impact</code>,
-    <code>plan</code>, and <code>gate</code>. Optional AI commands are layered
-    on after the evidence path is already useful.
+    The recommended entry point is <code>review</code>, which combines impact
+    analysis, behavior analysis, coverage planning, and defect prediction. Add
+    <code>--generate</code> to produce ready-to-run test files for uncovered flows.
   </p>
 </div>
 
 <div class="docs-grid docs-grid--two">
   <div class="docs-panel">
     <span class="docs-panel__eyebrow">Core mental model</span>
-    <h2 class="docs-panel__title">Read the CLI as deterministic first, AI second</h2>
+    <h2 class="docs-panel__title">Review first, generate second</h2>
     <p class="docs-panel__copy">
-      Most teams start and stay inside <code>impact</code>, <code>plan</code>,
-      and <code>gate</code> for a while. The AI commands exist to extend that
-      evidence path, not replace it.
+      Start with <code>review</code> to understand what changed and what's
+      missing. Add <code>--generate</code> when you want test code. The lower-level
+      <code>impact</code>, <code>plan</code>, and <code>gate</code> commands
+      are still available for granular CI pipelines.
     </p>
   </div>
   <div class="docs-panel docs-panel--terminal">
     <span class="docs-panel__eyebrow">Fast orientation</span>
-    <h2 class="docs-panel__title">The three commands most teams learn first</h2>
+    <h2 class="docs-panel__title">The commands most teams learn first</h2>
     <div class="docs-terminal">
-      <code>npx impact-gate impact --path . --since origin/main</code>
-      <code>npx impact-gate plan --path . --since origin/main</code>
+      <code>npx impact-gate review --path . --since origin/main</code>
+      <code>npx impact-gate review --path . --since origin/main --generate</code>
       <code>npx impact-gate gate --threshold 80 --path .</code>
     </div>
   </div>
 </div>
 
 <div class="command-index">
+  <a href="#review">Review</a>
   <a href="#core-ci-workflow">Core CI</a>
-  <a href="#optional-ai-workflow">Optional AI</a>
+  <a href="#ai-test-generation">AI Generation</a>
   <a href="#setup-and-calibration">Setup</a>
   <a href="#traceability">Traceability</a>
   <a href="#feedback--diagnostics">Diagnostics</a>
@@ -43,7 +45,44 @@ description: "Complete reference for all impact-gate CLI commands"
   <a href="#global-flags">Global Flags</a>
 </div>
 
-All commands are invoked via `npx impact-gate <command>`. Start with the core CI workflow first, then layer in optional AI features if the deterministic plan is already useful. The same deterministic flow supports pull-request gating and release-readiness planning from a git diff, while the AI path adds local-API grounding and hallucination guardrails rather than trusting raw generated code.
+All commands are invoked via `npx impact-gate <command>`. The `review` command is the recommended starting point. It combines all analysis into one report and optionally generates test code. Lower-level commands (`impact`, `plan`, `gate`) are available for granular CI pipelines.
+
+## Review
+
+### `review`
+
+Unified PR review: behavior analysis, coverage gaps, defect risk, and test recommendations. Free tier (no LLM required).
+
+```bash
+# Full review report
+npx impact-gate review --path . --since origin/main
+
+# Generate test files for uncovered flows (requires LLM API key)
+npx impact-gate review --path . --since origin/main --generate
+
+# Dry run: generate files without executing them
+npx impact-gate review --path . --since origin/main --generate --dry-run
+
+# Deep mode: add LLM semantic risk analysis
+npx impact-gate review --path . --since origin/main --deep
+
+# Write PR comment for CI
+npx impact-gate review --path . --since origin/main --ci-comment-path comment.md
+
+# JSON output
+npx impact-gate review --path . --since origin/main --json
+```
+
+| Flag | Description |
+|------|-------------|
+| `--generate` | Feed uncovered recommendations into agentic test generation (requires LLM) |
+| `--generate-output <dir>` | Custom output directory for generated test files |
+| `--deep` | Enable LLM-powered semantic risk analysis |
+| `--ci-comment-path <path>` | Write markdown report for PR comments |
+| `--predict-threshold <0-1>` | Exit 1 if defect risk exceeds threshold |
+| `--dry-run` | Generate test files without executing them |
+| `--max-attempts <n>` | Max fix attempts per scenario (default: 3) |
+| `--json` | Output structured JSON |
 
 ## Core CI Workflow
 
@@ -133,11 +172,13 @@ npx impact-gate predict-feedback --outcome clean
 
 After 50+ labeled samples, run `impact-gate predict --train` to retrain weights on your project's data (~65% -> ~75-80% accuracy).
 
-## Optional AI Workflow
+## AI Test Generation
+
+The recommended way to generate tests is `review --generate` (see above). These standalone commands are available for advanced pipelines:
 
 ### `analyze`
 
-Convenience wrapper that runs impact + plan, and optionally generation and healing.
+Legacy wrapper that runs impact + plan + optional generation/healing.
 
 ```bash
 npx impact-gate analyze --path . --generate --heal
@@ -145,7 +186,7 @@ npx impact-gate analyze --path . --generate --heal
 
 ### `generate`
 
-LLM-powered spec generation with iterative run-fix loops.
+Standalone LLM-powered spec generation from a plan or scenario file.
 
 ```bash
 npx impact-gate generate --path . --max-attempts 3

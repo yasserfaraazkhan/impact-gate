@@ -1,9 +1,9 @@
 ---
 title: Documentation
 template: splash
-description: Diff-aware E2E impact analysis, release-ready test planning, coverage gating, and hallucination-resistant AI generation for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.
+description: Shift QA left. Analyze your PR diff, identify affected user flows, and generate the exact E2E tests you need. One command takes you from git diff to a ready-to-run test file.
 hero:
-  tagline: Turn a git diff into a release-ready E2E test plan.
+  tagline: From git diff to ready-to-run E2E tests in one command.
   actions:
     - text: Quick Start
       link: ./getting-started/quick-start/
@@ -31,15 +31,15 @@ hero:
 
     <a class="portal-card portal-card--workflow" href="./getting-started/quick-start/">
       <span class="portal-card__eyebrow">Primary workflow</span>
-      <h2>Impact → Plan → Gate</h2>
+      <h2>Review → Generate → Gate</h2>
       <div class="workflow-terminal">
-        <span>npx impact-gate impact --since origin/main</span>
-        <span>npx impact-gate plan --since v2.1.0</span>
+        <span>npx impact-gate review --since origin/main</span>
+        <span>npx impact-gate review --since origin/main --generate</span>
         <span>npx impact-gate gate --threshold 80</span>
       </div>
       <div class="portal-copy">
-        Start with impact, plan, and gate to make pull-request and
-        release-readiness coverage decisions from a git diff.
+        Review your PR, generate tests for uncovered flows, and gate
+        merges on coverage. One command from diff to test file.
       </div>
     </a>
 

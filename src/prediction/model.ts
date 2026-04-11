@@ -186,7 +186,7 @@ export function predictDefect(features: PredictionFeatures, options?: PredictOpt
             value: c.raw,
             contribution: Math.round(c.weighted * 100) / 100,
             direction: c.weighted > 0 ? 'risk' as const : 'safe' as const,
-            explanation: `${c.explanation} (${c.raw}${c.name === 'entropy' || c.name === 'test_ratio' ? '' : ''})`,
+            explanation: `${c.explanation} (${c.raw})`,
         }));
 
     // Generate recommendation

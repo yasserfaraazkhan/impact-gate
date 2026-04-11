@@ -177,9 +177,11 @@ export class PrometheusMetrics {
         }
         existing.sum += value;
         existing.count++;
+        // Increment only the smallest fitting bucket; export() accumulates cumulatively
         for (const bucket of DURATION_BUCKETS) {
             if (value <= bucket) {
                 existing.buckets.set(bucket, (existing.buckets.get(bucket) || 0) + 1);
+                break;
             }
         }
     }

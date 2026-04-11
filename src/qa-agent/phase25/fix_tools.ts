@@ -140,7 +140,7 @@ export interface FixToolResult {
 // Security: path and command validation
 // ---------------------------------------------------------------------------
 
-const BLOCKED_PATHS = new Set(['.env', '.env.local', '.env.production', 'node_modules']);
+const BLOCKED_PATHS = new Set(['node_modules']);
 
 function isPathSafe(projectRoot: string, filePath: string): boolean {
     const resolved = resolve(projectRoot, filePath);
@@ -155,6 +155,10 @@ function isPathSafe(projectRoot: string, filePath: string): boolean {
     const parts = rel.split(sep);
     for (const part of parts) {
         if (BLOCKED_PATHS.has(part)) {
+            return false;
+        }
+        // Block all .env variants (.env, .env.local, .env.staging, etc.)
+        if (part === '.env' || part.startsWith('.env.')) {
             return false;
         }
     }

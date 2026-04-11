@@ -145,10 +145,15 @@ export function detectGitDefaultBranch(appPath: string): string {
             stdio: ['pipe', 'pipe', 'pipe'],
             timeout: 5000,
         }).trim();
-        return `origin/${result}`;
+        // Only use current branch if it's a well-known default; local-only branches
+        // may not have a remote tracking ref
+        if (result === 'main' || result === 'master') {
+            return `origin/${result}`;
+        }
     } catch {
-        return 'origin/main';
+        // fall through to default
     }
+    return 'origin/main';
 }
 
 /**

@@ -143,14 +143,16 @@ function buildReviewedFlows(
         });
     }
 
-    // Sort: uncovered P0 first, then by priority, then by status
+    // Sort: uncovered first, then by priority (P0 > P1 > P2)
     flows.sort((a, b) => {
         const statusOrder = {uncovered: 0, partial: 1, covered: 2};
         const priorityOrder = {P0: 0, P1: 1, P2: 2};
+        const aStatus = statusOrder[a.status] ?? 2;
+        const bStatus = statusOrder[b.status] ?? 2;
+        if (aStatus !== bStatus) return aStatus - bStatus;
         const aPriority = priorityOrder[a.priority] ?? 2;
         const bPriority = priorityOrder[b.priority] ?? 2;
-        if (aPriority !== bPriority) return aPriority - bPriority;
-        return (statusOrder[a.status] ?? 2) - (statusOrder[b.status] ?? 2);
+        return aPriority - bPriority;
     });
 
     return flows;

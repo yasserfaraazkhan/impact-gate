@@ -11,13 +11,17 @@ These commands run without any LLM calls or API keys:
 
 | Command | What It Does |
 |---------|-------------|
+| `review` | Unified PR review: behavior analysis, coverage gaps, defect risk, recommendations |
 | `impact` | Deterministic impact analysis from git diff |
 | `plan` | Coverage gap detection and test recommendations |
+| `predict` | Research-backed defect risk scoring |
 | `train --no-enrich` | Build route-families manifest (scanner only) |
 | `feedback` | Ingest recommendation outcomes |
 | `cost-report` | View past LLM cost breakdown |
 | `traceability-capture` | Extract test-file relationships |
 | `traceability-ingest` | Merge traceability mappings |
+
+AI-powered features like `review --generate`, `review --deep`, `generate`, and `heal` require an LLM API key.
 
 ## Budget Flag
 

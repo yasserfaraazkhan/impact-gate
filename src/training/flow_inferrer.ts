@@ -178,7 +178,7 @@ function extractGoHandlerFlows(filePath: string): string[] {
     }
 
     const flows: string[] = [];
-    const handlerRe = /func\s+\([^)]+\)\s+([a-z][a-zA-Z0-9]+)\s*\(/g;
+    const handlerRe = /func\s+\([^)]+\)\s+([a-zA-Z][a-zA-Z0-9]+)\s*\(/g;
     let match: RegExpExecArray | null;
 
     while ((match = handlerRe.exec(content)) !== null) {

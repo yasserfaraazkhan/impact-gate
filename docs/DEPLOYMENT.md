@@ -79,9 +79,9 @@ npx impact-gate plan --path /path/to/project
 
 In degraded mode:
 
-- **Deterministic analysis continues working.** The `impact` and `plan` commands use the route-families manifest, dependency graph, and traceability data to produce results without any LLM calls.
-- **AI-powered features are skipped.** Crew workflows, test generation, healing, and LLM enrichment during training will not run.
-- **Free-tier commands are unaffected.** Commands like `impact`, `plan`, `train --no-enrich`, `traceability-capture`, `traceability-ingest`, `feedback`, and `cost-report` all work without API keys.
+- **Deterministic analysis continues working.** The `review`, `impact`, and `plan` commands use the route-families manifest, dependency graph, and traceability data to produce results without any LLM calls.
+- **AI-powered features are skipped.** `review --generate`, `review --deep`, crew workflows, test generation, healing, and LLM enrichment during training will not run.
+- **Free-tier commands are unaffected.** Commands like `review`, `impact`, `plan`, `predict`, `train --no-enrich`, `traceability-capture`, `traceability-ingest`, `feedback`, and `cost-report` all work without API keys.
 
 This makes it safe to gate CI pipelines on impact analysis even if the LLM provider is temporarily unreachable.
 
@@ -110,13 +110,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run impact analysis
+      - name: PR Impact Review
         run: |
-          npx impact-gate plan \
+          npx impact-gate review \
             --path . \
             --since origin/${{ github.base_ref }} \
-            --fail-on-must-add-tests \
-            --github-output "$GITHUB_OUTPUT"
+            --ci-comment-path comment.md
+
+      - name: Coverage Gate
+        run: |
+          npx impact-gate gate --path . --threshold 80
 
       - name: Run crew analysis (optional)
         if: success()

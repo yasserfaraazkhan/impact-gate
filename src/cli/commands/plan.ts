@@ -79,7 +79,9 @@ export async function runPlanCommand(args: ParsedArgs, autoConfig: string | unde
         }
     }
 
+    // Always write CI summary to the default location
     writeCiSummary(reportRoot, combinedSummaryMarkdown);
+    // Optionally write to a custom path for PR comments
     const summaryPath = args.ciCommentPath
         ? writeCiSummary(reportRoot, combinedSummaryMarkdown, args.ciCommentPath)
         : ciSummaryPath;

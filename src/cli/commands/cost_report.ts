@@ -51,7 +51,10 @@ function parseMetricsFile(filePath: string): CrewMetricEvent[] {
 
 function filterByDays(events: CrewMetricEvent[], days: number): CrewMetricEvent[] {
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
-    return events.filter((e) => new Date(e.timestamp).getTime() >= cutoff);
+    return events.filter((e) => {
+        const ts = new Date(e.timestamp).getTime();
+        return !Number.isNaN(ts) && ts >= cutoff;
+    });
 }
 
 export function runCostReportCommand(args: ParsedArgs): void {

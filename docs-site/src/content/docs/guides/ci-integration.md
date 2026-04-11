@@ -24,8 +24,7 @@ description: "Run impact analysis and coverage gating in GitHub Actions"
     <span class="docs-panel__eyebrow">Core CI loop</span>
     <h2 class="docs-panel__title">The same workflow works in pull requests and releases</h2>
     <div class="docs-terminal">
-      <code>npx impact-gate impact --path . --since origin/main</code>
-      <code>npx impact-gate plan --path . --since origin/main</code>
+      <code>npx impact-gate review --path . --since origin/main --ci-comment-path comment.md</code>
       <code>npx impact-gate gate --threshold 80 --path .</code>
     </div>
   </div>
@@ -54,12 +53,15 @@ jobs:
       - name: Install impact-gate
         run: npm install -D @yasserkhanorg/impact-gate
 
-      - name: Run coverage check
+      - name: PR Impact Review
         run: |
-          npx impact-gate plan \
+          npx impact-gate review \
+            --path . \
             --since origin/${{ github.base_ref }} \
-            --fail-on-must-add-tests \
-            --github-output "$GITHUB_OUTPUT"
+            --ci-comment-path comment.md
+
+      - name: Coverage Gate
+        run: npx impact-gate gate --path . --threshold 80
 ```
 
 ## Gate Command

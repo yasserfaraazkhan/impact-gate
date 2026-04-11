@@ -107,7 +107,7 @@ const BEHAVIOR_RULES: BehaviorRule[] = [
     // Go API handler additions
     {
         filePattern: /\.go$/,
-        diffPattern: /^\+func\s+\([^)]+\)\s+([a-z][a-zA-Z0-9]+)\s*\(/m,
+        diffPattern: /^\+func\s+\([^)]+\)\s+([a-zA-Z][a-zA-Z0-9]+)\s*\(/m,
         type: 'api-change',
         descriptionFn: (_file, match) => {
             const handler = match?.[1] || 'unknown handler';

@@ -6,7 +6,7 @@
 
 `@yasserkhanorg/impact-gate`
 
-Diff-aware E2E impact analysis, release-ready test planning, coverage gating, and hallucination-resistant AI generation for Playwright/Cypress teams. Optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest.
+Shift QA left: analyze your PR diff, identify affected user flows, and generate the exact E2E tests you need. One command takes you from `git diff` to a ready-to-run test file.
 
 [![npm](https://img.shields.io/npm/v/%40yasserkhanorg%2Fimpact-gate)](https://www.npmjs.com/package/@yasserkhanorg/impact-gate)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
@@ -16,48 +16,38 @@ Diff-aware E2E impact analysis, release-ready test planning, coverage gating, an
 
 ## What It Does
 
-`impact-gate` is built first for one painful CI job: given a git diff, tell us which E2E surface changed, whether the current suite already covers it, and what still needs testing before we merge or ship.
+`impact-gate review --generate` is the primary workflow. Given a git diff, it:
 
-That same workflow works for:
+1. Identifies which user flows your PR affects (behavior analysis)
+2. Finds existing test coverage for those flows
+3. Generates the actual E2E test files for uncovered flows
+4. Outputs ready-to-run test code
 
-- pull requests against `main`
-- release branches against the previous release tag
-- hotfixes against the last shipped version
-- any "what changed between these refs?" release-readiness check
+```bash
+npx impact-gate review --path . --since origin/main --generate
+```
 
-Product priorities:
+That's it. The developer runs the test, commits it, done.
 
-- **Primary**: diff-aware E2E impact analysis and coverage gating
-- **Secondary**: optional AI features can suggest, generate, and heal tests once your project has a route-families.json manifest
-- **Tertiary**: crew workflows, MCP integrations, plugins, and the autonomous QA agent
-
-The clearest path today is a Playwright or Cypress repository with a maintained `route-families.json` manifest. That is the path this package is optimized to make unusually clear and useful.
-
-AI-specific note:
-- Generated tests are grounded against the discovered local API surface and verified before they are trusted. The package is designed to reduce hallucinated page-object methods, fabricated helpers, and low-evidence test generation.
-
-Transition note:
-- The package and primary CLI are being renamed to `impact-gate`.
-- Legacy CLI aliases (`e2e-ai-agents`, `e2e-qa-agent`, `e2e-agents-mcp`) still work during migration.
-- Legacy config filenames are still supported.
-- The `.e2e-ai-agents/` artifact directory remains unchanged for compatibility.
+The same diff-aware engine works for pull requests against `main`, release branches, hotfixes, and any "what changed between these refs?" check. Without `--generate`, the `review` command outputs a human-readable report (or a CI PR comment with `--ci-comment-path`).
 
 ## Product Shape
 
 | Level | Commands | What They Are For |
 |------|----------|-------------------|
-| Core CI Workflow | `impact`, `plan`, `gate` | Decide what changed, what is covered, and whether a PR should pass or a release is ready |
-| Defect Prediction | `predict`, `predict-feedback` | Research-backed defect risk scoring from git diffs, with optional LLM semantic analysis and project-specific calibration |
-| Optional AI Workflow | `generate`, `heal`, `analyze`, `finalize-generated-tests` | Suggest, create, or repair tests after impact analysis |
-| Setup and Calibration | `train`, `bootstrap`, `traceability-*`, `feedback`, `cost-report`, `llm-health` | Build the manifest, feed execution data back in, and inspect cost/provider health |
-| Advanced / Experimental | `crew`, MCP mode, plugins, `impact-gate-qa` | Deeper orchestration and browser-driven workflows beyond the core CI loop |
+| **Recommended** | `review`, `review --generate` | Unified PR review: what changed, what's tested, what's missing, and optionally generate the missing tests |
+| Core CI Workflow | `impact`, `plan`, `gate` | Lower-level building blocks: impact analysis, coverage planning, and CI gating |
+| Defect Prediction | `predict`, `predict-feedback` | Research-backed defect risk scoring from git diffs, with optional LLM semantic analysis and calibration |
+| AI Generation | `generate`, `heal`, `analyze`, `finalize-generated-tests` | Standalone test generation and healing (review --generate is the preferred entry point) |
+| Setup and Calibration | `init`, `train`, `bootstrap`, `traceability-*`, `feedback`, `cost-report`, `llm-health` | Build the manifest, feed execution data back in, and inspect cost/provider health |
+| Advanced / Experimental | `crew`, MCP mode, plugins, `impact-gate-qa` | Deeper orchestration and browser-driven workflows |
 
 ## Known Limitations
 
-- The clearest, most stable workflow is still **Playwright/Cypress impact analysis and gating**.
-- AI generation and healing work best **after** the project has a good `route-families.json` manifest.
-- Advanced features are improving, but they are **not** the best entry point if you only want dependable CI coverage decisions.
-- The strict profile is the most opinionated path in the codebase. Most teams should start with the core CI workflow above and only opt into stricter heuristics once their mappings are mature.
+- AI test generation requires an LLM API key (Anthropic, OpenAI, or local Ollama). The review report works without one.
+- Generation quality improves with a good `route-families.json` manifest and a knowledge graph.
+- The `review` command without `--generate` is fully deterministic and free.
+- The strict profile is the most opinionated path. Start with defaults and opt into stricter heuristics once your mappings are mature.
 
 ## Free Tier
 
@@ -65,25 +55,24 @@ These commands work with **zero LLM cost** and do not require an API key:
 
 | Command | What It Does |
 |---------|-------------|
+| `review` | Unified PR review: behavior analysis, coverage gaps, defect risk, test recommendations |
 | `impact` | Deterministic impact analysis from a git diff |
 | `plan` | Coverage-gap detection and recommended run set |
 | `gate` | CI coverage gate that exits non-zero below a threshold |
+| `predict` | Research-backed defect risk scoring from a git diff |
 | `train --no-enrich` | Build `route-families.json` with the scanner only |
 | `bootstrap` | Generate `route-families.json` from a knowledge graph |
 | `traceability-capture` | Extract test-file relationships from Playwright JSON |
 | `traceability-ingest` | Merge traceability mappings into rolling manifest |
 | `feedback` | Ingest recommendation outcomes for calibration |
-| `cost-report` | View LLM cost breakdown from past runs |
-| `predict` | Research-backed defect risk scoring from a git diff |
 | `predict-feedback` | Record prediction outcomes for calibration |
+| `cost-report` | View LLM cost breakdown from past runs |
 
-Optional AI features use [Anthropic](https://console.anthropic.com/), [OpenAI](https://platform.openai.com/), or a local [Ollama](https://ollama.ai/) instance.
+AI features (`review --generate`, `review --deep`, `generate`, `heal`) use [Anthropic](https://console.anthropic.com/), [OpenAI](https://platform.openai.com/), or a local [Ollama](https://ollama.ai/) instance.
 
 ## Start Here
 
-The fastest way to evaluate the package is the deterministic CI path. These commands do not require an API key.
-
-Install the package:
+Install:
 
 ```bash
 npm install -D @yasserkhanorg/impact-gate
@@ -91,41 +80,75 @@ npm install -D @yasserkhanorg/impact-gate
 
 Requires Node.js >= 20. Ships both CommonJS and ESM builds.
 
-Verify the CLI:
+### Review a PR (recommended starting point)
 
 ```bash
-npx impact-gate --help
+# See what your PR changes, what's tested, and what's missing
+npx impact-gate review --path . --since origin/main
 ```
 
-Then run the core CI workflow:
+This outputs a behavior-aware report: which user flows changed, existing test coverage, coverage gaps, defect risk score, and specific test recommendations. No API key needed.
+
+### Generate tests for uncovered flows
 
 ```bash
-# 1. See what changed in a PR or branch diff
-npx impact-gate impact --path /path/to/project --since origin/main
+# Review + generate ready-to-run test files for the gaps
+npx impact-gate review --path . --since origin/main --generate
 
-# 2. Build a coverage plan and CI summary artifacts
-npx impact-gate plan --path /path/to/project --since origin/main
-
-# 3. Fail the job if coverage is below a threshold
-npx impact-gate gate --path /path/to/project --threshold 80
+# Dry run: generate test files without executing them
+npx impact-gate review --path . --since origin/main --generate --dry-run
 ```
 
-Use the same `plan` command for release readiness:
+Requires an LLM API key (`ANTHROPIC_API_KEY` or `OPENAI_API_KEY`). The generator uses your project's existing test patterns, page objects, and API surface to produce grounded test code.
+
+### Review options
 
 ```bash
-# Compare the current branch or release candidate to the last shipped tag
-npx impact-gate plan --path /path/to/project --since v2.1.0
+# Deep mode: add LLM-powered semantic risk analysis
+npx impact-gate review --path . --since origin/main --deep
+
+# JSON output for tooling
+npx impact-gate review --path . --since origin/main --json
+
+# Write a PR comment file for CI
+npx impact-gate review --path . --since origin/main --ci-comment-path comment.md
+
+# Custom output directory for generated tests
+npx impact-gate review --path . --since origin/main --generate --generate-output ./generated-tests
 ```
 
-That gives you a release-focused test plan showing impacted flows, current coverage, and where you still need tests or validation before shipping.
+### CI gating
+
+For CI pipelines that need a pass/fail gate:
+
+```bash
+# Exit non-zero if coverage is below threshold
+npx impact-gate gate --path . --threshold 80
+
+# Exit non-zero if defect risk exceeds threshold
+npx impact-gate review --path . --since origin/main --predict-threshold 0.7
+```
+
+### Lower-level commands
+
+The `review` command combines `impact`, `plan`, and `predict` into one. You can still use them individually:
+
+```bash
+# Just the impact analysis
+npx impact-gate impact --path . --since origin/main
+
+# Just the coverage plan
+npx impact-gate plan --path . --since origin/main
+
+# Release readiness check against a tag
+npx impact-gate plan --path . --since v2.1.0
+```
 
 Notes:
 
 - `impact` prints a deterministic summary to stdout.
 - `plan` writes `.e2e-ai-agents/plan.json` and `.e2e-ai-agents/ci-summary.md`.
-- `plan --since <old-release-tag>` is the simplest way to turn a release diff into a prioritized test plan.
 - `gate` expects a threshold in the range `0-100` and exits `1` when the threshold is missed.
-- Add the Optional AI Workflow only after your `route-families.json` manifest is useful enough to trust.
 
 ## Defect Prediction
 
@@ -209,25 +232,29 @@ npx impact-gate cost-report --path /path/to/project
 npx impact-gate llm-health
 ```
 
-## Optional AI Workflow
+## AI-Powered Test Generation
 
-Once impact analysis is useful and the manifest is in place, you can layer on AI assistance.
+The recommended way to generate tests is through `review --generate`, which feeds the review's uncovered recommendations directly into the test generator:
 
 ```bash
-# All-in-one wrapper: impact + coverage + optional generation/healing
-npx impact-gate analyze --path /path/to/project [--generate] [--heal]
+npx impact-gate review --path . --since origin/main --generate
+```
 
-# Generate tests for uncovered gaps
-npx impact-gate generate --path /path/to/project
+For standalone generation (e.g., from a pre-built plan), the individual commands are still available:
+
+```bash
+# Generate tests from a plan or scenario file
+npx impact-gate generate --path /path/to/project [--scenarios <path>]
 
 # Heal flaky or failing specs from a Playwright report
 npx impact-gate heal --path /path/to/project --traceability-report ./playwright-report.json
 
 # Stage generated tests, commit, and optionally open a PR
 npx impact-gate finalize-generated-tests --path /path/to/project --create-pr
-```
 
-`plan` and `suggest` are aliases. `analyze` is the convenience wrapper when you want the full path in one invocation.
+# All-in-one wrapper (legacy): impact + coverage + optional generation/healing
+npx impact-gate analyze --path /path/to/project [--generate] [--heal]
+```
 
 ### How Hallucinations Are Tackled
 
@@ -467,7 +494,24 @@ Framework detection is separate. The CLI can auto-detect Playwright, Cypress, py
 ### GitHub Actions
 
 ```yaml
-- name: Run E2E coverage check
+- name: PR Impact Review
+  run: |
+    npx impact-gate review \
+      --path . \
+      --since origin/${{ github.base_ref }} \
+      --ci-comment-path comment.md
+
+- name: Coverage Gate
+  run: |
+    npx impact-gate gate --path . --threshold 80
+```
+
+The `review` command with `--ci-comment-path` writes a markdown summary for PR comments. The `gate` command exits non-zero when coverage is below the threshold.
+
+For the full plan artifacts (`plan.json`, `ci-summary.md`, `metrics-summary.json`), use the `plan` command:
+
+```yaml
+- name: Build coverage plan
   run: |
     npx impact-gate plan \
       --config ./impact-gate.config.json \
@@ -475,15 +519,6 @@ Framework detection is separate. The CLI can auto-detect Playwright, Cypress, py
       --fail-on-must-add-tests \
       --github-output "$GITHUB_OUTPUT"
 ```
-
-The `plan` command writes:
-- `.e2e-ai-agents/plan.json` — structured plan with `runSet`, `confidence`, `decision`
-- `.e2e-ai-agents/ci-summary.md` — markdown summary for PR comments
-- `.e2e-ai-agents/metrics-summary.json` — run metrics
-
-Use `--fail-on-must-add-tests` to exit non-zero when uncovered P0/P1 gaps exist. Use `--github-output` to expose outputs to subsequent workflow steps.
-
-If you want AI enrichment on top of the deterministic plan, add your provider environment variables to the workflow separately.
 
 See [examples/github-actions/pr-impact.yml](examples/github-actions/pr-impact.yml) for a complete workflow template.
 
@@ -576,6 +611,7 @@ Schemas: [schemas/traceability-input.schema.json](schemas/traceability-input.sch
 | `calibration.json` | `feedback` | Precision/recall calibration |
 | `flaky-tests.json` | `feedback` | Flaky test scores |
 | `agentic-summary.json` | `generate` | Agentic generation results |
+| `review-generate-summary.json` | `review --generate` | Review-driven generation results with scenario mapping |
 
 All written under `<testsRoot>/.e2e-ai-agents/`.
 
@@ -626,7 +662,12 @@ Requires `agent-browser` CLI (`npm install -g agent-browser`) and `ANTHROPIC_API
 
 ## Production Usage
 
-The strongest production story today is a repo that maintains a good `route-families.json` manifest, feeds traceability data back into the plan, and uses the deterministic `impact -> plan -> gate` loop in CI. That evidence-first workflow is the path to trust before layering in optional generation, healing, or autonomous QA.
+The recommended production workflow:
+
+1. **Developer runs** `review --generate` locally before pushing. Gets a report of what changed and ready-to-run tests for uncovered flows.
+2. **CI runs** `review --ci-comment-path comment.md` to post a PR comment with coverage status and risk.
+3. **CI gate** uses `gate --threshold` to block merges with insufficient coverage.
+4. Traceability data from test runs feeds back into the manifest, improving accuracy over time.
 
 ## License
 

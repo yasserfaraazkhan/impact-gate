@@ -8,6 +8,7 @@ export function printUsage(): void {
             '  impact-gate <command> [options]',
             '',
             'Core CI workflow:',
+            '  review --path <app-root> --since <ref> [--generate] [--deep] [--json] [--ci-comment-path <path>]',
             '  impact --path <app-root> [options]',
             '  plan --path <app-root> [options]',
             '  suggest --path <app-root> [options]',

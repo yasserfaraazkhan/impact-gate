@@ -24,11 +24,23 @@ channel.go changed
 
 ## Running Impact Analysis
 
+The recommended way to run impact analysis is through the `review` command, which combines impact analysis, behavior analysis, coverage planning, and defect prediction:
+
+```bash
+# Unified review: impact + coverage gaps + defect risk + recommendations
+npx impact-gate review --path . --since origin/main
+
+# Review + generate test files for uncovered flows
+npx impact-gate review --path . --since origin/main --generate
+```
+
+For lower-level access, the `impact` command outputs just the impact analysis:
+
 ```bash
 npx impact-gate impact --path . --since origin/main
 ```
 
-The `impact` command prints a deterministic summary to stdout. Use `plan` when you want `.e2e-ai-agents/plan.json` and `.e2e-ai-agents/ci-summary.md` artifacts with `impactedFamilies`, `runSet`, `confidence`, and `decision`.
+Use `plan` when you want `.e2e-ai-agents/plan.json` and `.e2e-ai-agents/ci-summary.md` artifacts with `impactedFamilies`, `runSet`, `confidence`, and `decision`.
 
 ## Building the Route Families Manifest
 

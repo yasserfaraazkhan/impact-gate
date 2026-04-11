@@ -48,10 +48,12 @@ description: "The files impact-gate writes and how to use them in CI and release
 | `traceability-state.json` | `traceability-ingest` | Hit counts and rolling ingest state |
 | `failure-history.json` | failure correlation | Historical file-to-failure relationships used for confidence boosts |
 
-## AI And QA Artifacts
+## Review And Generation Artifacts
 
 | File or Directory | Produced By | What It Is For |
 |-------------------|-------------|----------------|
+| `review-generate-summary.json` | `review --generate` | Review-driven generation results with scenario mapping |
+| `agentic-summary.json` | `generate` | Standalone agentic generation results |
 | `generated-needs-review/` | generation stage | Quarantine area for specs blocked by hallucination guardrails or verification failures |
 | `qa-screenshots/` | `impact-gate-qa` | Browser screenshots captured during exploratory testing or fix verification |
 | `reports/` | reporting flows | Structured outputs consumed by downstream tooling or humans |

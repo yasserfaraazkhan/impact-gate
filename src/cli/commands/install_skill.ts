@@ -4,8 +4,22 @@
 import {existsSync, mkdirSync, cpSync, readdirSync} from 'fs';
 import {join} from 'path';
 
-// skills/ lives at the package root, two levels up from dist/cli/commands/
-const SKILLS_SOURCE = join(__dirname, '..', '..', '..', 'skills');
+// Resolve the package root: this file compiles to dist/cli/commands/install_skill.js
+// so three levels up is the package root where skills/ lives.
+// Use require.resolve to find the package.json, then derive the root.
+function getPackageRoot(): string {
+    // Works in both CJS (where __dirname is defined) and bundled contexts
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const pkgPath = require.resolve('@yasserkhanorg/impact-gate/package.json');
+        return join(pkgPath, '..');
+    } catch {
+        // Fallback: assume dist/cli/commands/ structure
+        return join(__dirname, '..', '..', '..');
+    }
+}
+
+const SKILLS_SOURCE = join(getPackageRoot(), 'skills');
 
 function getSkillsDir(): string {
     if (existsSync(SKILLS_SOURCE)) {
@@ -56,6 +70,10 @@ export function runInstallSkillCommand(skillName?: string): void {
         console.log(`  /${skillName} is already installed at .claude/skills/${skillName}/`);
         console.log('  To reinstall, remove the directory first and re-run.');
         return;
+    }
+
+    if (existsSync(dest) && !existsSync(join(dest, 'SKILL.md'))) {
+        console.log(`  Directory .claude/skills/${skillName}/ exists but SKILL.md is missing. Reinstalling...`);
     }
 
     mkdirSync(dest, {recursive: true});

@@ -13,6 +13,10 @@ The deterministic analysis core. Handles the full impact-to-plan pipeline withou
 
 - **diff_loader** -- parses git diffs into structured changed-file lists
 - **impact_engine** -- maps changed files to impacted route families
+- **behavior_analyzer** -- extracts user-visible behavior changes from diffs and maps them to test recommendations (deterministic, no LLM)
+- **review_synthesizer** -- combines impact, coverage planning, and defect prediction into a unified ReviewReport
+- **review_formatter** -- formats ReviewReport as text, markdown (PR comments), or JSON
+- **review_types** -- TypeScript interfaces for the review report structure
 - **ai_enrichment** -- optional LLM pass for refining impact mappings
 - **plan_builder** -- produces coverage plans with gap analysis and confidence scores
 
@@ -57,6 +61,11 @@ CLI args
   -> parse_args: validate and normalize
   -> defaults: apply config + environment defaults
   -> command dispatch
+       |
+       |-- Review path (recommended):
+       |     diff_loader -> impact_engine -> behavior_analyzer -> plan_builder
+       |     -> predict -> review_synthesizer -> report output
+       |     -> [--generate]: recommendations -> agentic runner -> test files
        |
        |-- Engine path: diff_loader -> impact_engine -> plan_builder -> artifacts
        |

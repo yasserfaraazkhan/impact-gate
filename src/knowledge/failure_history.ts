@@ -79,7 +79,7 @@ export function recordFailures(
     failedSpecs: string[],
 ): FailureHistory {
     const now = new Date().toISOString();
-    const updated = {...history, totalRuns: history.totalRuns + 1, correlations: [...history.correlations]};
+    const updated = {...history, totalRuns: history.totalRuns + 1, correlations: history.correlations.map((c) => ({...c}))};
 
     for (const changedFile of changedFiles) {
         for (const specFile of failedSpecs) {

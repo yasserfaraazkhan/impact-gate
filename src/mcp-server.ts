@@ -584,7 +584,12 @@ export function parseJsonRpcFrames(input: Buffer): {messages: Array<{id?: unknow
         const body = buffer.slice(headerEnd + 4, messageEnd).toString('utf8');
         buffer = buffer.slice(messageEnd);
 
-        messages.push(JSON.parse(body) as {id?: unknown; method?: string; params?: Record<string, unknown>});
+        try {
+            messages.push(JSON.parse(body) as {id?: unknown; method?: string; params?: Record<string, unknown>});
+        } catch {
+            // Skip malformed JSON frames rather than crashing the parsing loop
+            continue;
+        }
     }
 
     return {messages, remainder: buffer};
@@ -685,17 +690,22 @@ export function startStdioServer(repoRoot: string = process.cwd()): void {
     };
 
     const processBuffer = (): void => {
-        const {messages, remainder} = parseJsonRpcFrames(buffer);
-        buffer = remainder;
+        try {
+            const {messages, remainder} = parseJsonRpcFrames(buffer);
+            buffer = remainder;
 
-        for (const parsed of messages) {
-            void handleJsonRpcMessage(server, parsed)
-                .then((response) => {
-                    if (response) sendMessage(response);
-                })
-                .catch((error) => {
-                    sendError(parsed.id ?? null, -32603, error instanceof Error ? error.message : String(error));
-                });
+            for (const parsed of messages) {
+                void handleJsonRpcMessage(server, parsed)
+                    .then((response) => {
+                        if (response) sendMessage(response);
+                    })
+                    .catch((error) => {
+                        sendError(parsed.id ?? null, -32603, error instanceof Error ? error.message : String(error));
+                    });
+            }
+        } catch {
+            sendError(null, -32700, 'Parse error');
+            buffer = Buffer.alloc(0);
         }
     };
 

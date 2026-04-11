@@ -43,8 +43,12 @@ export function saveBaseline(
     };
 
     const filePath = resolve(outputDir, BASELINE_FILENAME);
-    writeFileSync(filePath, JSON.stringify(baseline, null, 2), 'utf-8');
-    logger.info(`Baseline saved: ${filePath}`);
+    try {
+        writeFileSync(filePath, JSON.stringify(baseline, null, 2), 'utf-8');
+        logger.info(`Baseline saved: ${filePath}`);
+    } catch (err) {
+        logger.warn(`Failed to save baseline: ${err instanceof Error ? err.message : String(err)}`);
+    }
 }
 
 /**
