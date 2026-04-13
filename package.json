@@ -1,7 +1,7 @@
 {
   "name": "@yasserkhanorg/impact-gate",
-  "version": "2.3.0",
-  "description": "Diff-aware E2E impact analysis, release-ready test planning, coverage gating, and hallucination-resistant AI generation for Playwright/Cypress teams.",
+  "version": "2.4.0",
+  "description": "Shift QA left: analyze your PR diff, identify affected user flows, and generate the exact E2E tests you need.",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
   "types": "dist/index.d.ts",
@@ -74,6 +74,7 @@
     }
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/node": "^22.0.0"
   },
   "repository": {
