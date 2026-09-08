@@ -458,7 +458,7 @@ describe('advisory CLI isolation and coverage gates', () => {
 it('malformed advisory CLI arguments fail closed with one JSON error', () => {
     const cwd = mkdtempSync(join(tmpdir(), 'impact-invalid-args-'));
     try {
-        for (const args of [['plan', '--advisory', '--json'], ['plan', '--suite', '--advisory', '--json'], ['plan', '--path', '--advisory', '--json'], ['--json']]) {
+        for (const args of [['plan', '--advisory', '--json'], ['plan', '--suite', '--advisory', '--json'], ['plan', '--path', '--advisory', '--json'], ['plan', '--advisory=true', '--json'], ['gate', '--since=nonexistent', '--json'], ['gate', '--threshold', 'NaN', '--json'], ['gate', '--threshold', 'Infinity', '--json'], ['--json']]) {
             const result = spawnSync(process.execPath, [resolve(__dirname, '../dist/cli.js'), ...args], {cwd, encoding: 'utf8', env: {PATH: process.env.PATH}});
             assert.notEqual(result.status, 0);
             const report = JSON.parse(result.stdout);

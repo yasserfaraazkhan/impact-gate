@@ -5,7 +5,6 @@ import {existsSync} from 'fs';
 import {dirname, join, resolve} from 'path';
 
 import type {FrameworkType} from '../agent/config.js';
-import {logger} from '../logger.js';
 
 import type {Command, ParsedArgs} from './types.js';
 
@@ -245,7 +244,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
         const canonical = ALIAS_MAP[arg];
         if (!canonical) {
             if (arg.startsWith('--')) {
-                logger.warn(`Unknown flag "${arg}" (ignored)`);
+                throw new Error(`Unknown flag ${arg}; use separate flag and value arguments.`);
             }
             continue;
         }
@@ -275,9 +274,8 @@ export function parseArgs(argv: string[]): ParsedArgs {
         case 'number':
             if (next) {
                 const value = Number(next);
-                if (Number.isFinite(value)) {
-                    setField(parsed, def.key, value);
-                }
+                if (!Number.isFinite(value)) throw new Error(`Invalid number for ${arg}: ${next}`);
+                setField(parsed, def.key, value);
                 i += 1;
             }
             break;
@@ -287,9 +285,8 @@ export function parseArgs(argv: string[]): ParsedArgs {
                 const rawValue = def.transform ? def.transform(next) : Number(next);
                 // Allow non-number transforms through; reject NaN/Infinity for numbers
                 if (typeof rawValue === 'number') {
-                    if (Number.isFinite(rawValue)) {
-                        setField(parsed, def.key, rawValue);
-                    }
+                    if (!Number.isFinite(rawValue)) throw new Error(`Invalid number for ${arg}: ${next}`);
+                    setField(parsed, def.key, rawValue);
                 } else {
                     setField(parsed, def.key, rawValue);
                 }
@@ -306,9 +303,8 @@ export function parseArgs(argv: string[]): ParsedArgs {
 
         case 'enum':
             if (next) {
-                if (def.enumValues!.includes(next)) {
-                    setField(parsed, def.key, def.transform ? def.transform(next) : next);
-                }
+                if (!def.enumValues!.includes(next)) throw new Error(`Invalid value for ${arg}: ${next}`);
+                setField(parsed, def.key, def.transform ? def.transform(next) : next);
                 i += 1;
             }
             break;
