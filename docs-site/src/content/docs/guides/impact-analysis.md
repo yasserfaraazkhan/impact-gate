@@ -20,7 +20,7 @@ channel.go changed
 
 1. **Route families** -- the `route-families.json` manifest maps source file patterns to features
 2. **Dependency graph** -- static reverse-dependency analysis catches transitive impacts (a utility changed, so all consumers are affected)
-3. **Traceability** -- file-to-test mappings from CI execution history provide empirical evidence of which tests exercise which files
+3. **Traceability** -- explicit per-test source-file coverage maps can supply file-to-test links; execution history alone does not prove those links
 
 ## Running Impact Analysis
 
@@ -40,7 +40,9 @@ For lower-level access, the `impact` command outputs just the impact analysis:
 npx impact-gate impact --path . --since origin/main
 ```
 
-Use `plan` when you want `.e2e-ai-agents/plan.json` and `.e2e-ai-agents/ci-summary.md` artifacts with `impactedFamilies`, `runSet`, `confidence`, and `decision`.
+Use `plan --no-ai` for deterministic `.e2e-ai-agents/plan.json` and `.e2e-ai-agents/ci-summary.md` artifacts with a run set, heuristic confidence and a decision. The complete diff retains CI, dependency, config, E2E and unknown files; unassessed changes request the full suite. Invalid refs fail rather than becoming empty diffs.
+
+For the isolated JSON-only caller, use [Mattermost advisory planning](../mattermost-advisory/). It reads explicit suite configuration, selects committed static spec paths and keeps every nonempty diff on full fallback without model, test or status writes.
 
 ## Building the Route Families Manifest
 
@@ -58,8 +60,9 @@ The scanner uses directory matching, test-derived discovery, server-derived grou
 
 ## Interpreting Results
 
-Each impacted family in the output includes:
-- **confidence** -- how certain the mapping is (heuristic, traceability, or AI-confirmed)
-- **impactLevel** -- direct change vs. transitive dependency
-- **runSet** -- the specific spec files to execute
-- **gaps** -- user flows with no test coverage for the changed code
+Interpret family mappings as candidate relationships, not proof of behavior coverage. The plan contains:
+
+- **confidence** -- a heuristic score, not a measured probability; advisory reports use `null` and `confidenceKind: "unavailable"`
+- **runSet** -- a run-set category such as `full` or `targeted`
+- **recommendedTests** -- selected spec paths
+- **requiredNewTests** and **gapDetails** -- mapping gaps requiring review; spec presence alone does not prove a changed behavior is asserted

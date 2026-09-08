@@ -8,14 +8,14 @@ Thank you for your interest in contributing! This document provides guidelines a
 - Node.js >= 20
 - npm or yarn
 - TypeScript knowledge
-- Familiarity with LLM APIs (Anthropic Claude, Ollama)
+- LLM API familiarity only for provider or generation changes; deterministic/advisory tests need no API key
 
 ### Setup for Development
 
 ```bash
 git clone https://github.com/yasserfaraazkhan/impact-gate
 cd impact-gate
-npm install
+npm ci
 npm run build
 ```
 
@@ -30,7 +30,7 @@ npm run build
 
 3. **Build and test**
    ```bash
-   npm run build
+   npm run lint
    npm test
    ```
 
@@ -117,12 +117,17 @@ export class YourProvider implements LLMProvider {
 - Verify cost calculations are accurate
 - Test streaming and non-streaming modes
 
+The test command builds CommonJS, ESM, scripts and compiled tests before running them. After a build, compile tests with `npm run build:test` and run one file with `node --test test-dist/advisory_planning.test.js`. Keep advisory regressions free of provider calls, test execution and status writes; include invalid refs, complete diffs, provenance and path validation when those contracts change.
+
 ## Documentation
 
 - Update README.md for user-facing changes
 - Add CHANGELOG entry for each version
 - Document configuration options
 - Include usage examples
+- Update the Astro guides and references under `docs-site/src/content/docs/` for public behavior changes
+- Validate documentation with `npm ci --prefix docs-site` and `npm run build --prefix docs-site`
+- See [Development](docs-site/src/content/docs/contributing/development.md) and the [Mattermost advisory guide](docs-site/src/content/docs/guides/mattermost-advisory.md)
 
 ## Pull Request Process
 

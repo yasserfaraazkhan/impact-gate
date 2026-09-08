@@ -43,9 +43,9 @@ The product is not "an AI test generator" first. Its strongest path is determini
 - determine what changed
 - determine what should run
 - determine what is missing
-- decide whether the current PR or release candidate is ready
+- provide a test plan and mapping evidence for PR or release review
 
-That deterministic path is why `impact`, `plan`, and `gate` are the core commands.
+Use `impact`, `plan --no-ai`, and `gate` for that deterministic path. Spec mappings and heuristic scores do not establish measured behavior coverage or release readiness.
 
 ## Step 1: Diff In
 
@@ -63,7 +63,7 @@ That deterministic path is why `impact`, `plan`, and `gate` are the core command
     <span class="docs-panel__eyebrow">Example</span>
     <h2 class="docs-panel__title">Release-ready plan from one tag</h2>
     <div class="docs-terminal">
-      <code>npx impact-gate plan --path . --since v2.1.0</code>
+      <code>npx impact-gate plan --no-ai --path . --since v2.1.0</code>
     </div>
   </div>
 </div>
@@ -79,7 +79,7 @@ Everything starts with a git comparison. In practice, teams use:
     <ul>
       <li><strong>route families</strong> map code paths to product areas and flows</li>
       <li><strong>dependency graph</strong> catches transitive impacts</li>
-      <li><strong>traceability</strong> adds file-to-test evidence from CI history</li>
+      <li><strong>traceability</strong> imports file-to-test evidence from an explicit per-test source coverage map; a passing result or Git diff alone creates no coverage edges</li>
       <li><strong>historical failure data</strong> can raise confidence that an area needs attention</li>
     </ul>
   </div>
@@ -109,23 +109,21 @@ The diff is interpreted through project knowledge:
   </ul>
 </div>
 
-`plan` produces a structured answer to:
-
-The main artifacts are written under `.e2e-ai-agents/`.
+Ordinary `plan --no-ai` writes these artifacts under `<testsRoot>/.e2e-ai-agents/`. Its confidence is heuristic. The separate [Mattermost advisory path](../../guides/mattermost-advisory/) emits JSON on stdout with unavailable confidence and retains the full suite for every nonempty diff.
 
 ## Step 4: Gate Decision
 
 <div class="docs-panel">
   <span class="docs-panel__eyebrow">Decision layer</span>
-  <h2 class="docs-panel__title">Gate turns the plan into a CI policy decision</h2>
+  <h2 class="docs-panel__title">Gate checks a spec-mapping threshold</h2>
   <ul>
-    <li>advisory while onboarding</li>
-    <li>threshold-based blocking once the manifest is trustworthy</li>
-    <li>stronger enforcement for release branches or critical paths</li>
+    <li>fully mapped impacted features count toward the threshold</li>
+    <li>partial mappings do not count as fully covered</li>
+    <li>unassessed files fail the ordinary gate; invalid Git refs return errors</li>
   </ul>
 </div>
 
-`gate` turns the plan into a CI decision. This is where you decide how strict to be:
+`gate` independently analyzes the diff and compares the percentage of fully mapped features to `--threshold`; it does not consume a saved plan or measure executed assertions. A valid empty Git diff can pass with no coverage percentage. `gate --advisory` requires the configured advisory suite and emits an advisory plan instead. Ordinary plan policy enforcement is a separate mechanism.
 
 ## Step 5: Optional AI With Guardrails
 
@@ -149,7 +147,7 @@ AI enters after the deterministic evidence is already established.
 
 The AI layer is used to:
 
-See [AI Guardrails](../guides/ai-guardrails/) for the full safety model.
+See [AI Guardrails](../../guides/ai-guardrails/) for the full safety model.
 
 ## Why This Matters
 
@@ -160,8 +158,8 @@ See [AI Guardrails](../guides/ai-guardrails/) for the full safety model.
     <ul>
       <li>the diff explains why you are testing</li>
       <li>the manifest explains what feature was affected</li>
-      <li>the plan explains what is covered</li>
-      <li>the gate explains whether confidence is high enough</li>
+      <li>the plan explains spec mappings and gaps</li>
+      <li>the gate explains whether the spec-mapping threshold is met</li>
       <li>the AI layer helps only after that foundation is already in place</li>
     </ul>
   </div>

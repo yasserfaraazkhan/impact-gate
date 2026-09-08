@@ -37,6 +37,7 @@ description: "Config file format and all available fields"
   <a href="#impact"><code>impact</code></a>
   <a href="#pipeline"><code>pipeline</code></a>
   <a href="#policy"><code>policy</code></a>
+  <a href="#advisory"><code>advisory</code></a>
   <a href="#profiles">Profiles</a>
 </div>
 
@@ -123,6 +124,22 @@ Create `impact-gate.config.json` (or `.impact-gate.config.json`) in your project
 |-------|------|---------|-------------|
 | `enforcementMode` | string | `advisory` | `advisory`, `warn`, or `block` |
 | `blockOnActions` | string[] | `[]` | Actions that trigger blocking (`run-now`, `must-add-tests`, `safe-to-merge`) |
+
+### `advisory`
+
+The isolated `plan --advisory` caller requires this top-level object and a `--suite` ID. See the [Mattermost guide](../../guides/mattermost-advisory/) and [source configuration](https://github.com/yasserfaraazkhan/impact-gate/blob/master/examples/mattermost/advisory.config.json).
+
+| Field | Required value |
+| --- | --- |
+| `repository` | GitHub `owner/repo`, matching the checkout origin |
+| `sourcePatterns` | Repository-relative product-source globs |
+| `crossCuttingPatterns` | Repository-relative globs that require full fallback |
+| `suites` | Distinct entries with `id`, `framework`, `root`, `configFile`, `project`, `browser`, `variant`, `specPattern`, and optional `exclude` |
+| `mappings` | Candidate entries with `sourcePattern`, suite ID, exact `specs`, and declared `provenance: {kind, evidence}`; may be empty |
+
+Spec patterns and exclusions are relative to the suite root and include dot paths. Absolute paths, traversal and leading `!`/`#` patterns are rejected. Configuration is read as data, not evaluated as framework code. Declared human review, static inference and co-change evidence remain unverified; every nonempty diff retains full fallback. The report fingerprints the inputs but does not authenticate their reviewer or runtime environment.
+
+`policy.enforcementMode: "advisory"` only changes ordinary plan enforcement. It does not activate the isolated, provider-free, no-write contract; use the CLI `--advisory` flag for that.
 
 ## Profiles
 

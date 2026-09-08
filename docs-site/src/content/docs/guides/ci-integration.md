@@ -6,8 +6,8 @@ description: "Run impact analysis and coverage gating in GitHub Actions"
 <div class="doc-intro">
   <div class="doc-chip">Operational guide</div>
   <p class="doc-lead">
-    Add diff-aware E2E coverage checks to your pull request and release
-    workflows so untested changes are caught before they merge or ship.
+    Add diff-aware spec-mapping checks to pull request and release workflows.
+    Review missing mappings and execution evidence before making release decisions.
   </p>
 </div>
 
@@ -25,7 +25,7 @@ description: "Run impact analysis and coverage gating in GitHub Actions"
     <h2 class="docs-panel__title">The same workflow works in pull requests and releases</h2>
     <div class="docs-terminal">
       <code>npx impact-gate review --path . --since origin/main --ci-comment-path comment.md</code>
-      <code>npx impact-gate gate --threshold 80 --path .</code>
+      <code>npx impact-gate gate --threshold 80 --path . --since origin/main</code>
     </div>
   </div>
 </div>
@@ -61,7 +61,7 @@ jobs:
             --ci-comment-path comment.md
 
       - name: Coverage Gate
-        run: npx impact-gate gate --path . --threshold 80
+        run: npx impact-gate gate --path . --since origin/${{ github.base_ref }} --threshold 80
 ```
 
 ## Gate Command
@@ -71,24 +71,29 @@ jobs:
     <span class="docs-panel__eyebrow">Thresholds</span>
     <h2 class="docs-panel__title">Use gate when you want an explicit pass/fail decision</h2>
     <p class="docs-panel__copy">
-      The gate command exits non-zero if overall coverage falls below the
-      configured threshold, making it suitable as a required status check.
+      The gate fails unassessed changes and missed spec-mapping thresholds.
+      Partial mappings do not count as fully covered. This is spec presence,
+      not measured behavior coverage or release approval.
     </p>
   </div>
   <div class="docs-panel docs-panel--terminal">
     <span class="docs-panel__eyebrow">Gate example</span>
     <h2 class="docs-panel__title">Thresholds use percentage-style values</h2>
     <div class="docs-terminal">
-      <code>npx impact-gate gate --threshold 80 --path .</code>
+      <code>npx impact-gate gate --threshold 80 --path . --since origin/main</code>
     </div>
   </div>
 </div>
 
-`--threshold` uses percentage-style values (`0-100`).
+`--threshold` accepts percentage-style values (`0-100`); legacy fractions in `(0, 1]` are converted (`1` means `100`). Invalid Git refs return nonzero. A valid empty diff is separate from a nonempty diff with zero matching features, which fails.
+
+## Mattermost shadow planning
+
+Use [the Mattermost advisory guide](../mattermost-advisory/) for `plan --advisory --json`. This isolated caller reads a pinned source checkout and explicit suite configuration, emits one report, and retains full-suite execution. `gate --advisory` also emits a nonblocking report; it does not evaluate the ordinary coverage threshold or declare a coverage pass. Keep the artifact job independent of the existing E2E runner and statuses.
 
 ## CI Artifacts
 
-Every run produces files under `.e2e-ai-agents/`:
+Ordinary `plan` runs write the following files under `<testsRoot>/.e2e-ai-agents/`. Advisory runs bypass these writers; save their stdout explicitly:
 
 <div class="docs-grid docs-grid--two">
   <div class="docs-panel docs-panel--dense">
@@ -124,10 +129,10 @@ Every run produces files under `.e2e-ai-agents/`:
   </p>
 </div>
 
-Use `--json` to get structured log output suitable for CI pipelines:
+For `plan --json`, stdout contains the plan JSON and diagnostics go to stderr. An error returns nonzero and a JSON error object. Ordinary planning still writes its usual artifacts:
 
 ```bash
-npx impact-gate plan --json --path . --since origin/main
+npx impact-gate plan --no-ai --json --path . --since origin/main
 ```
 
 ## Free-Tier CI
@@ -145,7 +150,7 @@ For zero-cost CI runs, skip AI enrichment:
 
 ```bash
 npx impact-gate impact --path . --since origin/${{ github.base_ref }}
-npx impact-gate plan --path . --since origin/${{ github.base_ref }}
+npx impact-gate plan --no-ai --path . --since origin/${{ github.base_ref }}
 ```
 
-These commands use deterministic analysis only and require no API key. Add provider env vars only when you intentionally want AI enrichment on top of this baseline.
+These commands use deterministic analysis only and require no API key. Ordinary `plan` without `--no-ai` can use a configured provider. For the stricter no-write pilot contract, use `--advisory` with its suite configuration.

@@ -36,7 +36,8 @@ The same diff-aware engine works for pull requests against `main`, release branc
 | Level | Commands | What They Are For |
 |------|----------|-------------------|
 | **Recommended** | `review`, `review --generate` | Unified PR review: what changed, what's tested, what's missing, and optionally generate the missing tests |
-| Core CI Workflow | `impact`, `plan`, `gate` | Lower-level building blocks: impact analysis, coverage planning, and CI gating |
+| Core CI Workflow | `impact`, `plan`, `gate` | Impact analysis, spec-mapping plans, and mapping thresholds |
+| Advisory Pilot | `plan --advisory` | Read-only Mattermost spec recommendations with full-suite execution retained |
 | Defect Prediction | `predict`, `predict-feedback` | Research-backed defect risk scoring from git diffs, with optional LLM semantic analysis and calibration |
 | AI Generation | `generate`, `heal`, `analyze`, `finalize-generated-tests` | Standalone test generation and healing (review --generate is the preferred entry point) |
 | Setup and Calibration | `init`, `train`, `bootstrap`, `traceability-*`, `feedback`, `cost-report`, `llm-health` | Build the manifest, feed execution data back in, and inspect cost/provider health |
@@ -57,8 +58,9 @@ These commands work with **zero LLM cost** and do not require an API key:
 |---------|-------------|
 | `review` | Unified PR review: behavior analysis, coverage gaps, defect risk, test recommendations |
 | `impact` | Deterministic impact analysis from a git diff |
-| `plan` | Coverage-gap detection and recommended run set |
-| `gate` | CI coverage gate that exits non-zero below a threshold |
+| `plan --no-ai` | Deterministic spec-mapping plan; writes normal artifacts |
+| `plan --advisory` | Isolated JSON report; no model, test, metric or status writes |
+| `gate` | Spec-mapping threshold; fails unassessed changes and invalid Git refs |
 | `predict` | Research-backed defect risk scoring from a git diff |
 | `train --no-enrich` | Build `route-families.json` with the scanner only |
 | `bootstrap` | Generate `route-families.json` from a knowledge graph |
@@ -122,8 +124,8 @@ npx impact-gate review --path . --since origin/main --generate --generate-output
 For CI pipelines that need a pass/fail gate:
 
 ```bash
-# Exit non-zero if coverage is below threshold
-npx impact-gate gate --path . --threshold 80
+# Fail unassessed changes or a missed spec-mapping threshold
+npx impact-gate gate --path . --since origin/main --threshold 80
 
 # Exit non-zero if defect risk exceeds threshold
 npx impact-gate review --path . --since origin/main --predict-threshold 0.7
@@ -137,18 +139,37 @@ The `review` command combines `impact`, `plan`, and `predict` into one. You can 
 # Just the impact analysis
 npx impact-gate impact --path . --since origin/main
 
-# Just the coverage plan
-npx impact-gate plan --path . --since origin/main
+# Deterministic plan, with normal artifact writes
+npx impact-gate plan --no-ai --path . --since origin/main
 
 # Release readiness check against a tag
-npx impact-gate plan --path . --since v2.1.0
+npx impact-gate plan --no-ai --path . --since v2.1.0
 ```
 
 Notes:
 
 - `impact` prints a deterministic summary to stdout.
 - `plan` writes `.e2e-ai-agents/plan.json` and `.e2e-ai-agents/ci-summary.md`.
-- `gate` expects a threshold in the range `0-100` and exits `1` when the threshold is missed.
+- `gate` counts fully mapped features; partial mappings do not count as fully covered. Unassessed changes fail even when no features match. Invalid Git refs exit nonzero; a valid empty diff is reported separately.
+- The gate measures `manifest-spec-presence`, with behavior coverage unavailable and release safety not assessed. Use percentage values such as `80`; legacy fractions in `(0, 1]` are converted to percentages (`1` means `100`).
+
+## Mattermost Advisory Planning
+
+From a reviewed Impact Gate source checkout, build the CLI and run:
+
+```sh
+env -i PATH="$PATH" GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null \
+  node dist/cli.js plan --advisory --json \
+  --config examples/mattermost/advisory.config.json \
+  --path /path/to/isolated/mattermost \
+  --since FULL_BASE_SHA --suite cypress-full-enterprise > plan.json
+```
+
+Use `playwright-full-enterprise` for Playwright; FIPS suites have separate IDs. The report preserves the complete diff, exact committed spec paths, source/base identities and declared mapping provenance. Every nonempty diff currently requests full fallback: even a manifest that declares human review remains unverified. A successful report makes no coverage or release assertion.
+
+This mode also works through `suggest` and `gate`. It requires no API key, evaluates no PR code and writes only JSON to stdout; the shell saves the file. It bypasses ordinary plan artifacts, metrics and CI outputs. `--no-ai` and `policy.enforcementMode: "advisory"` do not provide this isolation by themselves. Keep the existing full-suite runner.
+
+See the [Mattermost example](examples/mattermost/README.md) and [advisory guide](docs-site/src/content/docs/guides/mattermost-advisory.md) for setup, report fields, validation errors and evidence requirements. The example config is supplied in the source repository, not the npm package; merging does not publish a package release.
 
 ## Defect Prediction
 
@@ -377,7 +398,7 @@ channel.go changed
       → flag if coverage is missing for the affected user flows
 ```
 
-Every downstream command (`impact`, `plan`, `generate`, `heal`, `impact-gate-qa`) reads this manifest to understand the codebase.
+The ordinary impact and generation workflows use this manifest. The isolated advisory caller uses its explicit suite configuration instead and does not load route-family or adaptive-history evidence.
 
 ### How scanning works
 
@@ -400,13 +421,13 @@ This metadata makes impact analysis smarter — it can prioritize P0 flows and s
 
 ### What validation does
 
-The `--validate` flag measures manifest accuracy against **real git history**. It's not training data — it's a quality check:
+The `--validate` flag measures source-file binding against **real git history**. It does not measure behavioral test coverage:
 
 ```
 835 commits → 5105 changed files → 3223 bound to a family = 63% coverage
 ```
 
-This tells you the manifest is complete enough. If coverage were 30%, impact analysis would be blind to most code changes.
+This is a 63% file-to-family binding rate for that sample. It does not establish that the manifest is sufficient, that mapped specs assert changed behavior, or that unmapped changes are safe.
 
 ### Usage
 
@@ -503,10 +524,10 @@ Framework detection is separate. The CLI can auto-detect Playwright, Cypress, py
 
 - name: Coverage Gate
   run: |
-    npx impact-gate gate --path . --threshold 80
+    npx impact-gate gate --path . --since origin/${{ github.base_ref }} --threshold 80
 ```
 
-The `review` command with `--ci-comment-path` writes a markdown summary for PR comments. The `gate` command exits non-zero when coverage is below the threshold.
+The `review` command with `--ci-comment-path` writes a markdown summary for PR comments. The `gate` command fails unassessed changes or a missed spec-mapping threshold. Its pass does not prove measured coverage or release safety.
 
 For the full plan artifacts (`plan.json`, `ci-summary.md`, `metrics-summary.json`), use the `plan` command:
 
@@ -587,9 +608,11 @@ Security: `write_file` is restricted to test spec files (`*.spec.ts`, `*.test.ts
 
 Build file-to-test mappings from CI execution data:
 
-1. **Capture** — extract test-file relationships from Playwright JSON reports
+1. **Capture** — combine executed specs from Playwright JSON with an explicit per-test source-file coverage map
 2. **Ingest** — merge into a rolling manifest (`.e2e-ai-agents/traceability.json`)
 3. **Query** — impact analysis uses the manifest to map changed files to relevant tests
+
+Supply the map with `--traceability-coverage-map ./coverage-map.json`. A Playwright execution report or Git diff alone does not provide source coverage: without a map, capture emits no mapped runs or coverage edges. The advisory pilot does not ingest this evidence.
 
 Tuning flags: `--traceability-min-hits`, `--traceability-max-files-per-test`, `--traceability-max-age-days`.
 
@@ -613,7 +636,7 @@ Schemas: [schemas/traceability-input.schema.json](schemas/traceability-input.sch
 | `agentic-summary.json` | `generate` | Agentic generation results |
 | `review-generate-summary.json` | `review --generate` | Review-driven generation results with scenario mapping |
 
-All written under `<testsRoot>/.e2e-ai-agents/`.
+These ordinary workflow artifacts are written under `<testsRoot>/.e2e-ai-agents/`. `plan --advisory` bypasses these writers and emits its report to stdout.
 
 ## Advanced / Experimental: Autonomous QA Agent (`impact-gate-qa`)
 
@@ -666,7 +689,7 @@ The recommended production workflow:
 
 1. **Developer runs** `review --generate` locally before pushing. Gets a report of what changed and ready-to-run tests for uncovered flows.
 2. **CI runs** `review --ci-comment-path comment.md` to post a PR comment with coverage status and risk.
-3. **CI gate** uses `gate --threshold` to block merges with insufficient coverage.
+3. **CI gate** uses `gate --threshold` to enforce spec-mapping requirements; measured behavior coverage remains a separate question.
 4. Traceability data from test runs feeds back into the manifest, improving accuracy over time.
 
 ## License

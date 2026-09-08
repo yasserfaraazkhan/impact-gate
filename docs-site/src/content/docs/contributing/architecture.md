@@ -9,7 +9,7 @@ The codebase is organized into focused modules under `src/`, each with a single 
 
 ### Engine (`src/engine/`)
 
-The deterministic analysis core. Handles the full impact-to-plan pipeline without LLM calls:
+The impact-to-plan pipeline supports deterministic analysis and optional enrichment:
 
 - **diff_loader** -- parses git diffs into structured changed-file lists
 - **impact_engine** -- maps changed files to impacted route families
@@ -19,6 +19,9 @@ The deterministic analysis core. Handles the full impact-to-plan pipeline withou
 - **review_types** -- TypeScript interfaces for the review report structure
 - **ai_enrichment** -- optional LLM pass for refining impact mappings
 - **plan_builder** -- produces coverage plans with gap analysis and confidence scores
+- **advisory** -- validates immutable Git inputs and configured suite inventories, preserving declared mapping provenance and full-suite fallback
+
+Ordinary `plan --no-ai` disables model enrichment. `plan --advisory` also bypasses providers, history, metrics and artifact writers. Advisory confidence is unavailable; ordinary confidence is heuristic.
 
 ### Crew (`src/crew/`)
 
@@ -67,7 +70,9 @@ CLI args
        |     -> predict -> review_synthesizer -> report output
        |     -> [--generate]: recommendations -> agentic runner -> test files
        |
-       |-- Engine path: diff_loader -> impact_engine -> plan_builder -> artifacts
+       |-- Engine path: agent/git.getChangedFiles -> impact_engine -> plan_builder -> artifacts
+       |
+       |-- Advisory path: agent/git.getChangedFiles -> advisory -> plan_builder -> JSON stdout
        |
        |-- Crew path: orchestrator.run(workflow)
        |     -> understand: impact-analyst, cross-impact, regression-advisor
@@ -80,7 +85,7 @@ CLI args
        |-- Pipeline path: stage0 -> stage1 -> stage2 -> stage3 -> stage4
 ```
 
-All artifacts are written to `<testsRoot>/.e2e-ai-agents/`.
+Ordinary planning artifacts are written to `<testsRoot>/.e2e-ai-agents/`. Advisory commands emit one JSON report on stdout and leave persistence to the caller. See the [Mattermost advisory guide](../../guides/mattermost-advisory/).
 
 ## Key Interfaces
 
