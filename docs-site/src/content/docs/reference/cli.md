@@ -104,7 +104,7 @@ Use `--since` with a previous release tag or branch when you want to compare the
 
 ### `plan` (alias: `suggest`)
 
-Generate a coverage plan with gap analysis, run sets, and confidence scores. Free tier.
+Generate a spec-mapping plan with gap analysis, run sets and heuristic confidence scores. Use `--no-ai` to disable optional model enrichment; ordinary planning still writes artifacts.
 
 ```bash
 npx impact-gate plan --path . --since origin/main --fail-on-must-add-tests
@@ -118,17 +118,23 @@ npx impact-gate plan --path . --since v2.1.0
 
 This is the easiest way to turn a release diff into a test plan that shows impacted areas, current coverage, and where new tests or manual checks are still needed before ship.
 
-Key flags: `--fail-on-must-add-tests`, `--github-output`, `--ci-comment-path`, `--json`
+Key flags: `--no-ai`, `--fail-on-must-add-tests`, `--github-output`, `--ci-comment-path`, `--json`
+
+### `plan --advisory` (also `suggest --advisory`, `gate --advisory`)
+
+Produce one deterministic JSON report for existing specs without model calls, test execution, metrics or status writes. Requires an `advisory` configuration and `--suite`. Pass `--config`, `--path` and `--since` explicitly in CI to identify the intended inputs. See the [Mattermost advisory guide](../../guides/mattermost-advisory/) for a complete source-checkout example and suite IDs.
+
+Every nonempty diff currently recommends full fallback, including mappings declaring human review. A successful report never asserts coverage or release safety. Rejects generation, execution, crew and explicit CI-output flags. `--json` does not make ordinary planning read-only; `--advisory` selects this separate contract.
 
 ### `gate`
 
-Pass/fail check against a coverage threshold. Exits non-zero on failure.
+Pass/fail check against a spec-mapping threshold. Only fully mapped features count toward the numerator; partial mappings stay separate. Unassessed changes fail even when zero features match. A valid empty diff succeeds with an explicit empty-diff reason, while an invalid ref returns nonzero. Behavior coverage is unavailable and release safety is not assessed.
 
 ```bash
 npx impact-gate gate --threshold 80 --path .
 ```
 
-`--threshold` is percentage-style (`0-100`). For example, `80` means 80%.
+`--threshold` is percentage-style (`0-100`). For example, `80` means 80%. Legacy fractions in `(0, 1]` are converted to percentages, so `1` means 100%. `gate --advisory` uses the report contract above instead of this threshold gate.
 
 ## Defect Prediction
 
@@ -170,7 +176,7 @@ npx impact-gate predict-feedback --outcome clean
 | `--outcome <defect\|clean>` | Whether the change introduced a defect (required) |
 | `--ref <sha>` | Match a specific prediction by commit SHA |
 
-After 50+ labeled samples, run `impact-gate predict --train` to retrain weights on your project's data (~65% -> ~75-80% accuracy).
+After 50+ labeled samples, run `impact-gate predict --train` to retrain weights on your project's data. Evaluate the result against independent labeled data; the command does not establish a fixed accuracy or improvement.
 
 ## AI Test Generation
 
@@ -263,10 +269,11 @@ Key flags:
 
 ### `traceability-capture`
 
-Extract test-file relationships from Playwright JSON reports.
+Combine executed specs from Playwright JSON with an explicit per-test source-file coverage map. A report or Git diff alone does not supply coverage links; without a map, capture emits no mapped runs or source-coverage edges.
 
 ```bash
-npx impact-gate traceability-capture --path . --traceability-report ./report.json
+npx impact-gate traceability-capture --path . --traceability-report ./report.json \
+  --traceability-coverage-map ./coverage-map.json
 ```
 
 ### `traceability-ingest`
@@ -321,7 +328,7 @@ Key flags: `--workflow` (`quick-check`, `design-only`, `full-qa`), `--budget-usd
 
 ## Global Flags
 
-These flags apply across the main CLI surface and are the ones most teams pin in CI, local aliases, or project-level config.
+Flag support varies by command. Pass names and values as separate arguments: `--since origin/main`, not `--since=origin/main`. Unknown long flags, missing values and invalid numeric/enum values return errors.
 
 | Flag | Description |
 |------|-------------|
@@ -333,6 +340,7 @@ These flags apply across the main CLI surface and are the ones most teams pin in
 | `--config` | Path to config file |
 | `--budget-usd` | Max LLM spend in USD |
 | `--verbose` / `-v` | Debug-level output |
-| `--json` | Structured JSON output |
-| `--degraded-mode` | Skip all AI calls |
+| `--json` | Structured JSON output; `plan` emits one report, with diagnostics on stderr |
+| `--no-ai` | Disable model enrichment for ordinary `plan`/`suggest`; artifacts are still written |
+| `--degraded-mode` | Degraded behavior in supporting workflows; use `--no-ai` or `--advisory` for planning |
 | `--dry-run` | Preview without executing |

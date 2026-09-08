@@ -247,7 +247,7 @@ describe('impact_engine', () => {
         assert.equal(result.impactedFeatures[0].changedFiles.length, 2);
     });
 
-    it('filters out snapshot files (.snap) from changed files', () => {
+    it('retains snapshots in changed files but leaves them unassessed', () => {
         const result = analyzeImpact(
             [
                 'webapp/channels/src/components/post_view/__snapshots__/post.test.tsx.snap',
@@ -256,17 +256,18 @@ describe('impact_engine', () => {
             ],
             {testsRoot: env.testsRoot, cypressRoot: env.cypressRoot},
         );
-        // Only the non-snapshot source file should survive filtering
-        assert.equal(result.changedFiles.length, 1);
-        assert.equal(result.changedFiles[0], 'webapp/channels/src/components/channel_header.tsx');
+        assert.equal(result.changedFiles.length, 3);
+        assert.equal(result.unassessedFiles.length, 2);
+        assert.ok(result.impactedFeatures.every((f) => f.changedFiles.every((file) => !file.endsWith('.snap'))));
     });
 
-    it('filters out files in __snapshots__ directories', () => {
+    it('retains snapshot directory changes without feature bindings', () => {
         const result = analyzeImpact(
             ['webapp/channels/src/components/__snapshots__/anything.snap'],
             {testsRoot: env.testsRoot},
         );
-        assert.equal(result.changedFiles.length, 0);
+        assert.equal(result.changedFiles.length, 1);
+        assert.equal(result.unassessedFiles.length, 1);
         assert.equal(result.impactedFeatures.length, 0);
     });
 
@@ -298,7 +299,7 @@ describe('impact_engine', () => {
         );
 
         // Only source file survives filtering
-        assert.equal(result.changedFiles.length, 1);
+        assert.equal(result.changedFiles.length, 6);
         assert.equal(result.changedFiles[0], 'webapp/channels/src/components/channel_header.tsx');
 
         // All test files classified

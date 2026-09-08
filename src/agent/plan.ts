@@ -1,6 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import type {AdvisoryAssessment} from '../engine/advisory.js';
 import {appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync} from 'fs';
 import {join} from 'path';
 import type {PolicyConfig} from './config.js';
@@ -70,13 +71,15 @@ export interface CrewPlanInsights {
 }
 
 export interface PlanReport {
+    advisory?: AdvisoryAssessment;
+    confidenceKind?: 'heuristic' | 'unavailable';
     schemaVersion: '1.0.0';
     runId: string;
     sourceRunId?: string;
     generatedAt: string;
     source: 'impact' | 'ai+deterministic';
     runSet: RecommendedRunSet;
-    confidence: number;
+    confidence: number | null;
     reasons: string[];
     recommendedTests: string[];
     requiredNewTests: string[];
@@ -203,7 +206,7 @@ export function appendPlanMetrics(appRoot: string, plan: PlanReport): {eventsPat
         sourceRunId: plan.sourceRunId,
         action: plan.decision.action,
         runSet: plan.runSet,
-        confidence: plan.confidence,
+        confidence: plan.confidence ?? 0,
         changedFiles: plan.metrics.changedFiles,
         impactedFlows: plan.metrics.impactedFlows,
         uncoveredP0P1Flows: plan.metrics.uncoveredP0P1Flows,

@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Mattermost advisory planning
+
+- Add `plan --advisory` (also `suggest` and `gate`) with complete Git changes, exact committed Cypress/Playwright spec paths, suite/project identity, declared mapping provenance and JSON-only stdout. The caller makes no model calls, executes no tests and writes no metrics or CI statuses.
+- Retain the full suite for every nonempty pilot diff, including candidate mappings that declare human review. Coverage/execution evidence remains unavailable; report success is not a coverage pass or release assertion.
+- Validate requested base, unique merge base, HEAD, origin, complete diff and committed file bytes. Reject invalid refs, fabricated API identities, missing/sparse files, dirty hidden index entries, escaping paths and ambiguous merge bases. Preserve submodule and both rename paths.
+- Repair ordinary gate false passes: fail unassessed changes and zero matches, count partial mappings separately, and label the threshold as spec presence. Preserve genuine empty-diff behavior.
+- Stop creating source-coverage links from changed files when a per-test coverage map is absent. Label ordinary plan confidence as heuristic.
+- Reject unknown long flags, missing values and invalid numeric/enum values instead of silently continuing. Flag values use separate arguments, such as `--since origin/master`.
+- Apply compatible locked dependency fixes for brace-expansion and form-data, including the required hasown patch.
+- Add the Mattermost advisory guide and refresh README, CLI/config/artifact references, CI evidence guidance and contributor commands. This merge does not publish a new npm version.
+
 ## [2.3.0] - 2026-04-09
 
 ### Highlights

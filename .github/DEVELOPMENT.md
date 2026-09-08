@@ -10,14 +10,14 @@ This guide covers the practical setup and workflow for contributing to `@yasserk
 - **Git** for version control
 
 Optional for testing LLM features:
-- An Anthropic, OpenAI, or Ollama API key (see README for environment variable names)
+- An Anthropic or OpenAI API key, or a reachable Ollama instance (see README for environment variable names)
 
 ## Setup
 
 ```bash
 git clone https://github.com/yasserfaraazkhan/impact-gate.git
 cd impact-gate
-npm install
+npm ci
 npm run build
 ```
 
@@ -65,7 +65,9 @@ node --test --test-name-pattern="impact" test-dist/*.test.js
 - **Runner**: Node.js built-in test runner (`node:test`) — no Jest, Mocha, or other frameworks
 - **Assertions**: Node.js built-in `node:assert/strict`
 - **Test files**: Live in `test/` as `.test.ts` files, compiled to `test-dist/` as `.test.js`
-- **Count**: 469+ tests across the full suite
+- **Results**: `npm test` reports the current test and suite counts
+
+The advisory regression suite covers complete Git diffs, immutable suite inventories, conservative fallback and absence of output side effects. After building, run it with `node --test test-dist/advisory_planning.test.js`.
 
 ### Adding a New Test
 
@@ -159,3 +161,6 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for PR process details and code standa
 | Run one test | `node --test test-dist/your_file.test.js` |
 | Clean build artifacts | `npm run clean` |
 | Start MCP server locally | `npm run mcp:server` |
+| Build documentation | `npm ci --prefix docs-site && npm run build --prefix docs-site` |
+
+Documentation pages live under `docs-site/src/content/docs/`. Keep CLI examples, configuration and artifact contracts aligned with the implementation; see the [Mattermost advisory guide](../docs-site/src/content/docs/guides/mattermost-advisory.md) for the isolated planning contract.

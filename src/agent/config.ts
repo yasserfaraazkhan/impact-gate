@@ -1,6 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {validateAdvisoryConfig, type AdvisoryConfig} from '../engine/advisory.js';
 import {existsSync, readFileSync} from 'fs';
 import {dirname, resolve} from 'path';
 
@@ -169,6 +170,7 @@ export interface ApiSurfaceConfig {
 }
 
 export interface AgentConfig {
+    advisory?: AdvisoryConfig;
     path: string;
     profile: AnalysisProfile;
     testsRoot?: string;
@@ -994,6 +996,7 @@ function extractConfigPatch(raw: Record<string, unknown>): Partial<AgentConfig> 
         };
     }
 
+    if (raw.advisory !== undefined) patch.advisory = validateAdvisoryConfig(raw.advisory);
     return patch;
 }
 

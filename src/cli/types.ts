@@ -91,6 +91,8 @@ export interface ParsedArgs {
     analyzeHeal?: boolean;
     analyzeHealReport?: string;
     noAi?: boolean;
+    advisory?: boolean;
+    suite?: string;
     maxAttempts?: number;
     generateScenarios?: string;
 

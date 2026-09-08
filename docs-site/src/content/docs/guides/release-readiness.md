@@ -18,8 +18,8 @@ description: "Use impact-gate to compare releases and build a ship-focused test 
     <h2 class="docs-panel__title">Use the last shipped tag as the baseline</h2>
     <div class="docs-terminal">
       <code>npx impact-gate impact --path . --since v2.1.0</code>
-      <code>npx impact-gate plan --path . --since v2.1.0</code>
-      <code>npx impact-gate gate --threshold 80 --path .</code>
+      <code>npx impact-gate plan --no-ai --path . --since v2.1.0</code>
+      <code>npx impact-gate gate --threshold 80 --path . --since v2.1.0</code>
     </div>
   </div>
   <div class="docs-panel">
@@ -34,7 +34,9 @@ description: "Use impact-gate to compare releases and build a ship-focused test 
   </div>
 </div>
 
-That tells the tool: "treat `v2.1.0` as the already-shipped baseline, and build the test plan for everything that changed after it."
+These commands compare HEAD against its merge base with `v2.1.0`. When the tag is an ancestor, that is the tag itself. Invalid or ambiguous histories fail explicitly; the report must not be treated as an empty comparison.
+
+The gate enforces spec-mapping presence, not measured behavior coverage or release approval. Partial mappings are separate, and unassessed changes fail. The [Mattermost advisory pilot](../mattermost-advisory/) emits a nonblocking report and retains the existing full suite.
 
 ## When Teams Use This
 

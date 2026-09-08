@@ -13,6 +13,12 @@ import {appendCrewToSummary, runPlanCrewAnalysis, writeCrewArtifacts} from './pl
 import type {ParsedArgs} from '../types.js';
 
 export async function runPlanCommand(args: ParsedArgs, autoConfig: string | undefined, config: ReturnType<typeof resolveConfig>['config']): Promise<void> {
+    if (args.advisory) {
+        if (args.crew || args.pipeline || args.apply || args.analyzeGenerate || args.analyzeHeal || args.githubOutputPath || args.ciCommentPath) throw new Error('Advisory planning cannot generate, execute, heal, or write CI/status outputs.');
+        const {plan} = recommendTestsDeterministic({cwd: process.cwd(), configPath: autoConfig, path: args.path, gitSince: args.gitSince, advisory: true, suite: args.suite});
+        console.log(JSON.stringify(plan, null, 2));
+        return;
+    }
     const reportRoot = config.testsRoot || config.path;
     const apiOptions = {
         cwd: process.cwd(),
@@ -40,6 +46,7 @@ export async function runPlanCommand(args: ParsedArgs, autoConfig: string | unde
                 : undefined,
     };
 
+    const progress = args.jsonOutput ? console.error : console.log;
     let result: Awaited<ReturnType<typeof recommendTestsAI>>;
     if (args.noAi) {
         result = recommendTestsDeterministic(apiOptions);
@@ -47,9 +54,9 @@ export async function runPlanCommand(args: ParsedArgs, autoConfig: string | unde
         result = await recommendTestsAI(apiOptions);
         if (result.aiEnrichment) {
             const {aiEnrichment} = result;
-            console.log(`AI enrichment: ${aiEnrichment.enrichedFeatures.length} features enriched (${aiEnrichment.tokenUsage.input + aiEnrichment.tokenUsage.output} tokens)`);
+            progress(`AI enrichment: ${aiEnrichment.enrichedFeatures.length} features enriched (${aiEnrichment.tokenUsage.input + aiEnrichment.tokenUsage.output} tokens)`);
         } else if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY && !process.env.LLM_PROVIDER) {
-            console.log('Tip: configure ANTHROPIC_API_KEY, OPENAI_API_KEY, or LLM_PROVIDER to enable AI-powered enrichment');
+            progress('Tip: configure ANTHROPIC_API_KEY, OPENAI_API_KEY, or LLM_PROVIDER to enable AI-powered enrichment');
         }
     }
 
@@ -110,17 +117,18 @@ export async function runPlanCommand(args: ParsedArgs, autoConfig: string | unde
         appendFileSync(ghaOutput, `crew_strategy_entries=${planReport.crew?.summary.strategyEntries || 0}\n`);
         appendFileSync(ghaOutput, `crew_test_designs=${planReport.crew?.summary.testDesigns || 0}\n`);
     }
-    console.log(`Suggested run set: ${planReport.runSet} (confidence ${planReport.confidence})`);
-    console.log(`Decision: ${planReport.decision.action} - ${planReport.decision.summary}`);
-    console.log(`Enforcement: ${planReport.enforcement.mode} (shouldFail=${planReport.enforcement.shouldFail})`);
-    console.log(`Plan data: ${planPath}`);
-    console.log(`CI summary: ${summaryPath}`);
+    if (args.jsonOutput) console.log(JSON.stringify(planReport, null, 2));
+    progress(`Suggested run set: ${planReport.runSet} (heuristic score ${planReport.confidence})`);
+    progress(`Decision: ${planReport.decision.action} - ${planReport.decision.summary}`);
+    progress(`Enforcement: ${planReport.enforcement.mode} (shouldFail=${planReport.enforcement.shouldFail})`);
+    progress(`Plan data: ${planPath}`);
+    progress(`CI summary: ${summaryPath}`);
     if (planReport.crew) {
-        console.log(`Crew workflow: ${planReport.crew.workflow} (impactedFlows=${planReport.crew.summary.impactedFlows}, strategyEntries=${planReport.crew.summary.strategyEntries}, testDesigns=${planReport.crew.summary.testDesigns})`);
-        console.log(`Crew summary: ${crewSummaryPath}`);
-        console.log(`Crew test plan: ${crewTestPlanPath}`);
+        progress(`Crew workflow: ${planReport.crew.workflow} (impactedFlows=${planReport.crew.summary.impactedFlows}, strategyEntries=${planReport.crew.summary.strategyEntries}, testDesigns=${planReport.crew.summary.testDesigns})`);
+        progress(`Crew summary: ${crewSummaryPath}`);
+        progress(`Crew test plan: ${crewTestPlanPath}`);
     }
-    console.log(`Plan metrics: ${metricsSummaryPath}`);
+    progress(`Plan metrics: ${metricsSummaryPath}`);
     const failOnLegacyFlag = args.failOnMustAddTests && planReport.decision.action === 'must-add-tests';
     if (failOnLegacyFlag || planReport.enforcement.shouldFail) {
         process.exit(2);

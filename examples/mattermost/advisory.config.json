@@ -1,0 +1,71 @@
+{
+  "advisory": {
+    "repository": "mattermost/mattermost",
+    "sourcePatterns": [
+      "webapp/channels/src/**",
+      "webapp/platform/**",
+      "server/**"
+    ],
+    "crossCuttingPatterns": [
+      "server/config/**",
+      "server/channels/app/platform/**",
+      "server/channels/db/**",
+      "webapp/platform/**"
+    ],
+    "suites": [
+      {
+        "id": "cypress-full-enterprise",
+        "framework": "cypress",
+        "root": "e2e-tests/cypress",
+        "configFile": "e2e-tests/cypress/cypress.config.ts",
+        "project": "e2e-tests/cypress",
+        "browser": "default (not recorded in TSIO)",
+        "variant": "enterprise",
+        "specPattern": "tests/integration/**/*_spec.{js,ts}",
+        "exclude": [
+          "**/node_modules/**"
+        ]
+      },
+      {
+        "id": "cypress-full-fips",
+        "framework": "cypress",
+        "root": "e2e-tests/cypress",
+        "configFile": "e2e-tests/cypress/cypress.config.ts",
+        "project": "e2e-tests/cypress",
+        "browser": "default (not recorded in TSIO)",
+        "variant": "fips",
+        "specPattern": "tests/integration/**/*_spec.{js,ts}",
+        "exclude": [
+          "**/node_modules/**"
+        ]
+      },
+      {
+        "id": "playwright-full-enterprise",
+        "framework": "playwright",
+        "root": "e2e-tests/playwright",
+        "configFile": "e2e-tests/playwright/playwright.config.ts",
+        "project": "chrome",
+        "browser": "chromium",
+        "variant": "enterprise",
+        "specPattern": "specs/**/*.{spec,test}.{ts,tsx,js,jsx,mjs,cjs,mts,cts}",
+        "exclude": [
+          "specs/visual/**"
+        ]
+      },
+      {
+        "id": "playwright-full-fips",
+        "framework": "playwright",
+        "root": "e2e-tests/playwright",
+        "configFile": "e2e-tests/playwright/playwright.config.ts",
+        "project": "chrome",
+        "browser": "chromium",
+        "variant": "fips",
+        "specPattern": "specs/**/*.{spec,test}.{ts,tsx,js,jsx,mjs,cjs,mts,cts}",
+        "exclude": [
+          "specs/visual/**"
+        ]
+      }
+    ],
+    "mappings": []
+  }
+}

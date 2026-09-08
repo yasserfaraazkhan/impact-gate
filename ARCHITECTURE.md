@@ -12,14 +12,15 @@ Entry point for all user interaction. `src/cli.ts` is the binary entry (`impact-
 
 ### Engine (`src/engine/`)
 
-The deterministic analysis core. Four files handle the entire impact-to-plan pipeline without LLM calls:
+The impact-to-plan pipeline supports deterministic analysis and optional enrichment:
 
 - `diff_loader.ts` — parses git diffs into structured changed-file lists
 - `impact_engine.ts` — maps changed files to impacted route families using the knowledge layer, dependency graphs, and traceability data
 - `ai_enrichment.ts` — optional LLM pass that refines impact mappings when a provider is available
 - `plan_builder.ts` — consumes impact results and produces coverage plans with gap analysis, run sets, and confidence scores
+- `advisory.ts` — validates immutable Git inputs and configured suite inventories, preserving mapping provenance and conservative full-suite fallback
 
-The engine is designed to work entirely offline when `--no-enrich` is used.
+Use `plan --no-ai` to disable model enrichment in ordinary planning. `plan --advisory` takes a separate path that also avoids artifact writers, metrics, history, providers and GitHub outputs. Advisory confidence is unavailable; ordinary plan confidence is a heuristic, not measured behavior coverage.
 
 ### Crew (`src/crew/`)
 
@@ -96,7 +97,7 @@ Builds the `route-families.json` knowledge manifest:
 - `kg_scanner.ts` — knowledge-graph-based scanning. Converts Understand-Anything KG into the same `ScanResult` format as the filesystem scanner, so the merge/enrich/validate pipeline works unchanged.
 - `enricher.ts` — LLM pass adding routes, priorities, user flows, and component names
 - `merger.ts` — merges scanner output with enrichment results and existing manifests
-- `validator.ts` — measures manifest accuracy against real git history
+- `validator.ts` — measures file-binding coverage against git history; this does not validate test assertions or prediction accuracy
 - `types.ts` — training-specific type definitions
 
 ### Resilience (`src/resilience/`)
@@ -150,7 +151,10 @@ CLI args
   --> command dispatch (e.g., crew.ts, impact.ts)
        |
        |--> Engine path (impact/plan commands):
-       |      diff_loader --> impact_engine --> plan_builder --> artifacts
+       |      agent/git.getChangedFiles --> impact_engine --> plan_builder --> artifacts
+       |
+       |--> Advisory path (plan/suggest/gate --advisory):
+       |      agent/git.getChangedFiles --> advisory --> plan_builder --> JSON stdout
        |
        |--> Crew path (crew command):
        |      CrewOrchestrator.run(workflow)
@@ -166,7 +170,7 @@ CLI args
               stage0 --> stage1 --> stage2 --> stage3 --> stage4 --> artifacts
 ```
 
-All artifact output goes to `<testsRoot>/.e2e-ai-agents/`. See the Artifacts table in the README for the full list.
+Ordinary planning artifacts go to `<testsRoot>/.e2e-ai-agents/`. The advisory path returns before those writers and emits one JSON report on stdout; the caller controls any persistence. See the Artifacts table in the README and the [Mattermost advisory guide](docs-site/src/content/docs/guides/mattermost-advisory.md).
 
 ## How Providers Work
 

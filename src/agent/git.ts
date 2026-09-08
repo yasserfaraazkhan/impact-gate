@@ -2,9 +2,8 @@
 // See LICENSE.txt for license information.
 
 import {spawnSync} from 'child_process';
-import {normalizePath} from './utils.js';
 
-// Directories that contain CI/tooling/docs/tests — never relevant to impact analysis.
+// Legacy product-mapping classification. These changes stay in the complete diff.
 const IGNORED_DIR_SEGMENTS = [
     '.github',
     '.claude',
@@ -18,7 +17,7 @@ const IGNORED_DIR_SEGMENTS = [
     'scripts',
 ];
 
-// Exact filenames (basename) that are never relevant.
+// Exact filenames excluded from product-family inference, retained for conservative selection.
 const IGNORED_BASENAMES = new Set([
     'package.json',
     'package-lock.json',
@@ -73,7 +72,7 @@ const CONFIG_FILE_PATTERNS = [
     /\.config\.js$/,
 ];
 
-function isRelevantFile(file: string): boolean {
+export function isRelevantFile(file: string): boolean {
     const segments = file.split('/');
     const basename = segments[segments.length - 1] || file;
 
@@ -113,8 +112,13 @@ function isRelevantFile(file: string): boolean {
 }
 
 export interface GitChangeResult {
+    /** Complete repository-relative changed-file set. Never filtered. */
     files: string[];
-    /** Test/spec files from the diff that were filtered by isRelevantFile(). Only includes files matching TEST_FILE_PATTERNS — not config, docs, or other non-test filtered files. */
+    relevantFiles?: string[];
+    repositoryRoot?: string;
+    requestedBaseSha?: string;
+    headSha?: string;
+    /** Compatibility field for callers detecting PR-included tests; also present in files. */
     filteredTestFiles: string[];
     error?: string;
     baseRef?: string;
@@ -130,78 +134,12 @@ export function runGitRaw(args: string[], cwd: string): string | null {
         cwd,
         encoding: 'utf-8',
         timeout: 30000,
+        maxBuffer: 64 * 1024 * 1024,
     });
     if (result.error || result.status !== 0) {
         return null;
     }
     return result.stdout;
-}
-
-function runGit(args: string[], cwd: string): string[] | null {
-    const output = runGitRaw(args, cwd);
-    if (output === null) {
-        return null;
-    }
-    return output
-        .split('\n')
-        .map((file) => file.trim())
-        .filter(Boolean)
-        .map((file) => normalizePath(file));
-}
-
-function parseStatusLines(lines: string[]): string[] {
-    const files: string[] = [];
-    for (const line of lines) {
-        if (!line) continue;
-        if (line.length < 4) continue;
-        const pathPart = line.slice(3).trim();
-        if (!pathPart) continue;
-        if (pathPart.includes('->')) {
-            const parts = pathPart.split('->').map((part) => part.trim());
-            const target = parts[parts.length - 1];
-            if (target) {
-                files.push(normalizePath(target));
-            }
-        } else {
-            files.push(normalizePath(pathPart));
-        }
-    }
-    return files;
-}
-
-// Comment-line patterns by file extension.
-// A diff that ONLY touches these lines is a comment-only change (typo fix, doc update).
-const COMMENT_PATTERNS: Array<{extensions: string[]; pattern: RegExp}> = [
-    {extensions: ['.go'], pattern: /^\s*(\/\/|\/\*|\*)/},
-    {extensions: ['.ts', '.tsx', '.js', '.jsx'], pattern: /^\s*(\/\/|\/\*|\*|\*\/)/},
-    {extensions: ['.py'], pattern: /^\s*#/},
-    {extensions: ['.css', '.scss'], pattern: /^\s*(\/\*|\*|\*\/)/},
-];
-
-/**
- * Check if a file's diff only changes comment lines (no code changes).
- * Returns true if the diff is comment-only and can be safely excluded.
- */
-function isCommentOnlyDiff(file: string, repoRoot: string, baseRef: string): boolean {
-    const diff = runGitRaw(['diff', `${baseRef}..HEAD`, '-U0', '--', file], repoRoot);
-    if (!diff) return false;
-
-    const ext = file.slice(file.lastIndexOf('.'));
-    const commentEntry = COMMENT_PATTERNS.find((cp) => cp.extensions.includes(ext));
-    if (!commentEntry) return false;
-
-    // Extract only added/removed content lines (skip diff headers)
-    const contentLines = diff
-        .split('\n')
-        .filter((line) => (line.startsWith('+') || line.startsWith('-')) && !line.startsWith('+++') && !line.startsWith('---'));
-
-    if (contentLines.length === 0) return false;
-
-    // Every changed line must be a comment line
-    return contentLines.every((line) => {
-        const content = line.slice(1).trim(); // Remove +/- prefix
-        return content === '' || commentEntry.pattern.test(content);
-    });
 }
 
 /**
@@ -210,7 +148,9 @@ function isCommentOnlyDiff(file: string, repoRoot: string, baseRef: string): boo
  */
 export function isTestFile(file: string): boolean {
     const normalized = file.replace(/\\/g, '/');
-    return /\.(spec|test)\.(ts|tsx|js|jsx)$/.test(normalized) ||
+    return /_spec\.[jt]s$/.test(normalized) ||
+           normalized.startsWith('e2e-tests/') ||
+           /\.(spec|test)\.(ts|tsx|js|jsx)$/.test(normalized) ||
            /\.snap$/.test(normalized) ||
            /_test\.go$/.test(normalized) ||
            normalized.includes('__tests__/') ||
@@ -219,66 +159,38 @@ export function isTestFile(file: string): boolean {
            normalized.includes('/test/');
 }
 
+/** A failed Git command is never represented as a successful empty diff. */
 export function getChangedFiles(appRoot: string, since: string, options?: GitChangeOptions): GitChangeResult {
+    const git = (args: string[], cwd = appRoot): string => {
+        const result = spawnSync('git', args, {cwd, encoding: 'utf-8', timeout: 30000, maxBuffer: 64 * 1024 * 1024});
+        if (result.error || result.status !== 0) {
+            throw new Error(`git ${args[0]} failed: ${result.error?.message || result.stderr.trim() || `exit ${result.status}`}`);
+        }
+        return result.stdout;
+    };
     try {
-        const files = new Set<string>();
-        let baseRef = since;
-        let baseStrategy: GitChangeResult['baseStrategy'] = 'direct';
-        const mergeBase = runGitRaw(['merge-base', since, 'HEAD'], appRoot);
-        if (mergeBase) {
-            const candidate = mergeBase
-                .split('\n')
-                .map((line) => line.trim())
-                .find(Boolean);
-            if (candidate) {
-                baseRef = candidate;
-                baseStrategy = 'merge-base';
-            }
-        }
-
-        // Get repo root so we capture ALL changed files (including server/, webapp/, etc.)
-        // not just files under the appRoot subdirectory.
-        const repoRoot = runGitRaw(['rev-parse', '--show-toplevel'], appRoot)?.trim() || appRoot;
-
-        const diffFiles = runGit(['diff', '--name-only', `${baseRef}..HEAD`], repoRoot);
-        if (!diffFiles) {
-            return {files: [], filteredTestFiles: [], error: 'git diff failed'};
-        }
-        diffFiles.forEach((file) => files.add(file));
-
+        const repositoryRoot = git(['rev-parse', '--show-toplevel']).trim();
+        const requestedBaseSha = git(['rev-parse', '--verify', '--end-of-options', `${since}^{commit}`], repositoryRoot).trim();
+        const headSha = git(['rev-parse', '--verify', 'HEAD^{commit}'], repositoryRoot).trim();
+        const mergeBases = git(['merge-base', '--all', requestedBaseSha, headSha], repositoryRoot).trim().split('\n');
+        if (mergeBases.length !== 1 || !mergeBases[0]) throw new Error('Ambiguous Git merge base; a single comparison base is required.');
+        const baseRef = mergeBases[0];
+        // NUL-delimited output preserves spaces, newlines and non-ASCII names.
+        // Disabling rename detection retains both the removed and added paths.
+        const files = new Set(git(['diff', '--name-only', '--no-renames', '--ignore-submodules=none', '-z', baseRef, headSha, '--'], repositoryRoot).split('\0').filter(Boolean));
         if (options?.includeUncommitted) {
-            const staged = runGit(['diff', '--name-only', '--cached'], repoRoot) || [];
-            staged.forEach((file) => files.add(file));
-            const unstaged = runGit(['diff', '--name-only'], repoRoot) || [];
-            unstaged.forEach((file) => files.add(file));
-            const statusOutput = runGitRaw(['status', '--porcelain'], repoRoot);
-            if (statusOutput) {
-                const statusLines = statusOutput.split('\n').filter(Boolean);
-                parseStatusLines(statusLines).forEach((file) => files.add(file));
+            for (const args of [['diff', '--name-only', '--no-renames', '--ignore-submodules=none', '-z', '--cached'], ['diff', '--name-only', '--no-renames', '--ignore-submodules=none', '-z'], ['ls-files', '--others', '--exclude-standard', '-z']]) {
+                git(args, repositoryRoot).split('\0').filter(Boolean).forEach((file) => files.add(file));
             }
         }
-
-        const allFiles = Array.from(files);
-        const relevant: string[] = [];
-        const filteredTestFiles: string[] = [];
-        for (const f of allFiles) {
-            if (isRelevantFile(f)) {
-                // Skip files where the diff only touches comments (typo fixes, doc updates)
-                if (isCommentOnlyDiff(f, repoRoot, baseRef)) {
-                    continue;
-                }
-                relevant.push(f);
-            } else {
-                // Only capture files that were filtered because they match test patterns.
-                // Config, docs, workflow files etc. are not useful for PR-test detection.
-                const basename = f.split('/').pop() || f;
-                if (TEST_FILE_PATTERNS.some((p) => p.test(basename))) {
-                    filteredTestFiles.push(f);
-                }
-            }
-        }
-        return {files: relevant, filteredTestFiles, baseRef, baseStrategy};
-    } catch {
-        return {files: [], filteredTestFiles: [], error: 'git diff failed'};
+        const allFiles = [...files].sort();
+        return {
+            files: allFiles,
+            relevantFiles: allFiles.filter(isRelevantFile),
+            filteredTestFiles: allFiles.filter(isTestFile),
+            repositoryRoot, requestedBaseSha, headSha, baseRef, baseStrategy: 'merge-base',
+        };
+    } catch (error) {
+        return {files: [], filteredTestFiles: [], error: error instanceof Error ? error.message : String(error)};
     }
 }

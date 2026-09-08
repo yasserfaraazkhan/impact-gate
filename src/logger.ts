@@ -51,6 +51,7 @@ function logLevelToString(level: LogLevel): string {
 export class Logger {
     private level: LogLevel;
     private jsonMode: boolean;
+    private stderrOnly = false;
 
     constructor(minLevel?: LogLevel) {
         this.level = minLevel ?? getLogLevelFromEnv();
@@ -83,6 +84,10 @@ export class Logger {
 
     setLevel(level: LogLevel): void {
         this.level = level;
+    }
+
+    setOutputToStderr(enabled: boolean): void {
+        this.stderrOnly = enabled;
     }
 
     setJsonMode(enabled: boolean): void {
@@ -118,7 +123,7 @@ export class Logger {
             output = `[${timestamp}] [${levelStr}] ${message}${contextStr}`;
         }
 
-        if (level <= LogLevel.WARN) {
+        if (this.stderrOnly || level <= LogLevel.WARN) {
             console.error(output);
         } else {
             console.log(output);

@@ -27,7 +27,7 @@ ClearChannelManagedCategory (channel_category.go:319)
   → tested by: (none)  ← coverage gap!
 ```
 
-This eliminates false positives (claiming a flow is untested when the test covers a different function in the same file) and false negatives (missing a coverage gap because a test file exists but doesn't exercise the changed function).
+These graph edges help locate candidate tests. They do not prove a test executes a function or asserts its changed behavior, and they cannot eliminate false positives or missed impacts. Treat the displayed “tested” labels as graph relationships requiring review.
 
 ## Supported Tools
 
@@ -77,13 +77,15 @@ Tested Functions:
   ✅ patchChannel -- tested by: channel_test.go
 ```
 
-## Accuracy Levels
+## Evidence Levels
 
-| Level | What | How |
-|-------|------|-----|
-| **File-level** (~65%) | "post.go changed → post family" | `init --scan` (default, zero cost) |
-| **KG-level** (~80%) | "patchChannel changed → traces callers → finds untested paths" | `graphify .` then `review` |
-| **Runtime-level** (~90%) | "this test run covered lines 430-470 but not 455-472" | `traceability-capture` with coverage data |
+| Level | What it provides | Limitation |
+| --- | --- | --- |
+| File mapping | A changed file belongs to a manifest family | Family membership does not prove test coverage |
+| Knowledge graph | Static call and test relationships | Edges do not establish runtime execution or assertion coverage |
+| Per-test source map | Explicit source-file links for executed specs | Requires real coverage data; a report or Git diff alone supplies no links |
+
+No fixed accuracy percentage is established for these levels. The [Mattermost advisory caller](../mattermost-advisory/) keeps declared mapping evidence separate and does not ingest measured per-test coverage.
 
 ## How It Works
 

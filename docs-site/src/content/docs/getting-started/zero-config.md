@@ -7,7 +7,7 @@ description: "How auto-detection works and when you need a config file"
   <div class="doc-chip">Auto-detection</div>
   <p class="doc-lead">
     The CLI can infer most of what it needs so you can start with the
-    deterministic <code>impact → plan → gate</code> loop before writing a
+    deterministic <code>impact → plan --no-ai → gate</code> loop before writing a
     config file.
   </p>
 </div>
@@ -26,7 +26,7 @@ description: "How auto-detection works and when you need a config file"
     <h2 class="docs-panel__title">Let the CLI discover the shape of the repo</h2>
     <div class="docs-terminal">
       <code>npx impact-gate impact --path . --since origin/main</code>
-      <code>npx impact-gate plan --path . --since origin/main</code>
+      <code>npx impact-gate plan --no-ai --path . --since origin/main</code>
     </div>
   </div>
 </div>
@@ -96,6 +96,8 @@ If auto-detection gets it wrong, prefer explicit flags or a config file over gue
 
 The CLI searches for `impact-gate.config.json` or `.impact-gate.config.json` starting from the current directory and walking upward.
 
+The [Mattermost advisory pilot](../../guides/mattermost-advisory/) requires explicit configuration and `--suite`. `plan --advisory` uses configured suite roots and static spec patterns, validates them against a clean committed checkout and retains full fallback for nonempty diffs. A policy setting named `advisory` alone does not activate this isolated mode.
+
 ## Bootstrap: Alternative Setup with a Knowledge Graph
 
 <div class="docs-grid docs-grid--two">
@@ -125,7 +127,7 @@ npx impact-gate bootstrap --path .
 
 Bootstrap reads the knowledge graph, classifies your project (frontend, backend, or fullstack), and produces `.e2e-ai-agents/route-families.json` with prioritized families derived from the graph's nodes and edges. It also auto-detects your test framework and test mode (`ui`, `api`, or `both`).
 
-Use `--dry-run` to preview the manifest before writing, or `--max-families 30` to limit the output. See the [CLI reference](../reference/cli/#bootstrap) for all flags.
+Use `--dry-run` to preview the manifest before writing, or `--max-families 30` to limit the output. See the [CLI reference](../../reference/cli/#bootstrap) for all flags.
 
 ## Explicit Flags Always Win
 

@@ -14,7 +14,7 @@ description: "Dev setup, build system, testing, and common pitfalls"
 ```bash
 git clone https://github.com/yasserfaraazkhan/impact-gate.git
 cd impact-gate
-npm install
+npm ci
 npm run build
 ```
 
@@ -27,7 +27,7 @@ The project ships both CommonJS and ESM builds from TypeScript source under `src
 npm run build
 
 # Watch mode for development
-npm run dev
+npx tsc -p tsconfig.json --watch
 ```
 
 ## Running Tests
@@ -36,14 +36,26 @@ npm run dev
 # Run all tests
 npm test
 
-# Run specific test file
-npm test -- test/impact_engine.test.ts
+# Compile and run a specific test file after building the source
+npm run build:test
+node --test test-dist/impact_engine.test.js
 
-# Run with verbose output
-npm test -- --verbose
+# Type check the source
+npm run lint
 ```
 
-Tests live under `test/` and cover the engine, pipeline orchestrator, and crew components.
+Tests live under `test/` and compile to `test-dist/`. `npm test` builds CJS/ESM, scripts and tests before running the complete suite. Advisory regressions are in `test/advisory_planning.test.ts` and verify Git identity, conservative fallback, path validation and the absence of provider, test and status writes.
+
+## Documentation development
+
+```sh
+npm ci --prefix docs-site
+npm run dev:local --prefix docs-site
+# Validate the production site, including generated guide navigation
+npm run build --prefix docs-site
+```
+
+The [advisory guide](../../guides/mattermost-advisory/) documents the isolated Mattermost caller. Merging to `master` deploys changed docs through the existing Pages workflow; npm publication uses a separate version-tag workflow.
 
 ## Project Structure
 
@@ -73,7 +85,7 @@ src/
 
 ## Common Pitfalls
 
-- **Missing route-families.json**: Impact analysis returns empty results without the manifest. Run `train --no-enrich` first.
+- **Missing route-families.json**: Ordinary impact analysis may use heuristic fallback; it does not establish behavior coverage. Run `train --no-enrich` to create mapping candidates. Advisory mode instead requires explicit suite configuration and retains full fallback for nonempty diffs.
 - **Budget exceeded mid-run**: Set `--budget-usd` high enough for the workflow. Use `--dry-run` to preview cost estimates.
 - **Provider not found**: Ensure the correct environment variable is set. Use `llm-health` to verify.
 - **Stale cache**: The response cache under `.e2e-ai-agents/cache/` may serve outdated results. Delete the directory to clear it.

@@ -38,6 +38,12 @@ description: "The files impact-gate writes and how to use them in CI and release
 | `metrics.jsonl` | `plan` | Append-only event log for metrics and later cost reporting |
 | `metrics-summary.json` | `plan` | Aggregated metrics for dashboards or CI summaries |
 
+## Advisory Report
+
+`plan --advisory` (also `suggest` or `gate` with `--advisory`) bypasses the ordinary plan, summary, metric and status writers. It emits one JSON object on stdout; the caller saves or uploads it. See the [report contract](../../guides/mattermost-advisory/#report-contract).
+
+The existing plan schema includes an `advisory` object with full commit/suite identity, complete changed files, exact static spec inventory and selected paths, declared mapping provenance, input hashes and per-file fallback reasons. `confidence` is `null`; coverage and execution are unavailable, and release safety is not assessed. Identical inputs produce identical substantive plans, while `generatedAt` may differ. An uploaded file can also contain an error, so validate its content and process exit status.
+
 ## Knowledge And Training Artifacts
 
 | File | Produced By | What It Is For |

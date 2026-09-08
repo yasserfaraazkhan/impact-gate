@@ -19,9 +19,15 @@ npx impact-gate impact --path . --since origin/main
 npx impact-gate train --no-enrich --path .
 ```
 
+## Advisory Planning Recommends Everything
+
+That is the current pilot behavior for every nonempty diff. Read `advisory.fileAssessments` and `fullSuiteFallbackReasons`: CI/E2E, dependencies and unknown mappings require full fallback. Declaring a manifest entry human-reviewed does not authenticate it. Do not reduce execution based on that declaration or a successful report. See the [Mattermost guide](../mattermost-advisory/).
+
+For validation errors, verify the full base ref exists in the clone, HEAD matches the intended source, the tracked checkout is clean, and every configured spec/config path is committed and present. Sparse or hidden-index changes cannot silently shrink the inventory. Fetch missing history; do not substitute an invalid ref with an empty diff.
+
 ## Confidence Feels Too Low
 
-Low confidence usually means the tool lacks evidence, not that it is broken.
+Ordinary confidence is a heuristic score, not a measured accuracy rate. Advisory reports deliberately use `null` with `confidenceKind: "unavailable"`; this is not a calibration failure.
 
 Improve confidence by:
 
@@ -72,7 +78,7 @@ Look at the written artifacts instead of relying only on console output:
 - `.e2e-ai-agents/ci-summary.md`
 - `.e2e-ai-agents/metrics-summary.json`
 
-Those are usually the clearest source of truth.
+For `plan --advisory`, these files are not written. Save stdout to a JSON file and check the exit status; diagnostics go to stderr. Execution evidence and full-worker completeness must be evaluated separately.
 
 ## Release Diff Looks Too Broad
 

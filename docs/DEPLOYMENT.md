@@ -22,13 +22,13 @@ For first-time setup, run the init command to generate a config file:
 npx impact-gate init
 ```
 
-## Compatibility Matrix
+## Runtime and Frameworks
 
-| impact-gate | Node.js   | Playwright | Cypress  |
-|------------|-----------|------------|----------|
-| 1.10.x     | >= 20.0.0 | >= 1.40.0  | >= 13.0  |
+The current 2.x source requires Node.js >= 20.0.0 and ships CommonJS and ESM builds. Framework adapters support Playwright, Cypress, pytest and supertest discovery. Validate compatibility with your project's pinned framework version and runner configuration before enabling execution or generation.
 
 **LLM providers:** Anthropic SDK ^0.73.0, OpenAI SDK ^4.73.0, or any local Ollama instance. The `agent-browser` peer dependency (>= 0.18.0) is optional and only required for the autonomous QA agent (`impact-gate-qa`).
+
+The [Mattermost advisory pilot](../docs-site/src/content/docs/guides/mattermost-advisory.md) runs from a reviewed source commit with an isolated source checkout and explicit suite configuration. The example config is not shipped in the npm package. Merging source changes does not publish a new npm version.
 
 ## Upgrading
 
@@ -74,16 +74,16 @@ When LLM providers are unavailable — during outages, in air-gapped environment
 
 ```bash
 npx impact-gate impact --path /path/to/project
-npx impact-gate plan --path /path/to/project
+npx impact-gate plan --no-ai --path /path/to/project
 ```
 
 In degraded mode:
 
-- **Deterministic analysis continues working.** The `review`, `impact`, and `plan` commands use the route-families manifest, dependency graph, and traceability data to produce results without any LLM calls.
-- **AI-powered features are skipped.** `review --generate`, `review --deep`, crew workflows, test generation, healing, and LLM enrichment during training will not run.
-- **Free-tier commands are unaffected.** Commands like `review`, `impact`, `plan`, `predict`, `train --no-enrich`, `traceability-capture`, `traceability-ingest`, `feedback`, and `cost-report` all work without API keys.
+- **Deterministic analysis continues working.** Use `review` without AI flags, `impact`, or `plan --no-ai` for local analysis without model calls.
+- **Choose commands explicitly.** `review --generate`, `review --deep`, crew workflows, generation, healing and training enrichment still require a provider. A missing key does not universally skip these features; use `train --no-enrich` for static training.
+- **Advisory planning is isolated.** `plan --advisory` uses a configured suite and emits JSON without providers or artifact/status writers. Ordinary `plan --no-ai` still writes its normal artifacts.
 
-This makes it safe to gate CI pipelines on impact analysis even if the LLM provider is temporarily unreachable.
+The ordinary gate measures fully mapped feature spec presence, not executed behavior coverage. Partial mappings and unassessed files cannot count as full coverage. Keep execution and release decisions grounded in test results.
 
 ## CI Integration
 
@@ -119,7 +119,7 @@ jobs:
 
       - name: Coverage Gate
         run: |
-          npx impact-gate gate --path . --threshold 80
+          npx impact-gate gate --path . --since origin/${{ github.base_ref }} --threshold 80
 
       - name: Run crew analysis (optional)
         if: success()
@@ -135,9 +135,9 @@ jobs:
             --json
 ```
 
-**Error handling:** Deterministic commands (`impact`, `plan`, `gate`) work without API keys. Consider splitting your workflow into a required deterministic job and an optional AI-powered job for crew or generation features.
+**Error handling:** Deterministic commands (`impact`, `plan --no-ai`, `gate`) work without API keys. Consider splitting your workflow into a required deterministic job and an optional AI-powered job for crew or generation features. Invalid Git refs are errors; they are not empty diffs or passing gates.
 
-Artifacts are written to `.e2e-ai-agents/` and can be uploaded for later inspection:
+Ordinary planning artifacts are written under `<testsRoot>/.e2e-ai-agents/` and can be uploaded for later inspection. Adjust the path below to your tests root. Advisory commands instead emit JSON on stdout:
 
 ```yaml
       - uses: actions/upload-artifact@v4
@@ -176,5 +176,7 @@ This sends a minimal probe to the configured provider, or the auto-detected prov
 | 0 | Success |
 | 1 | General error (invalid arguments, missing config, runtime failure) |
 | 2 | Budget exceeded or policy enforcement triggered (`--fail-on-must-add-tests`) |
+| 3 | Provider unavailable or authentication failure |
+| 4 | Invalid manifest or configuration |
 
-Monitor exit codes in CI to distinguish between analysis failures and policy violations. A non-zero exit from `plan --fail-on-must-add-tests` means uncovered P0/P1 gaps were detected and should block the PR.
+Inspect the report and error message as well as the exit code. A nonzero exit can mean invalid inputs or an analysis failure, not just a policy violation. A completed advisory report keeps `enforcement.shouldFail` false; this is not release approval.

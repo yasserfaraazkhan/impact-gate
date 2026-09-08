@@ -343,6 +343,6 @@ function buildMetrics(
         partialFlows: flows.filter((f) => f.status === 'partial').length,
         coverageGaps: plan.gapDetails.length,
         defectRiskScore: prediction.score,
-        confidence: plan.confidence,
+        confidence: plan.confidence ?? 0,
     };
 }

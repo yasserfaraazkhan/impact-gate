@@ -17,17 +17,17 @@ description: "Get from install to impact results and release-ready test planning
     <span class="docs-panel__eyebrow">What this gets you</span>
     <h2 class="docs-panel__title">Go from diff to test plan in one short loop</h2>
     <p class="docs-panel__copy">
-      All three steps below are free-tier, require no API key, and work for
-      pull requests, release branches, and previous shipped tags.
+      Review and gating require no API key. Optional test generation requires
+      an LLM provider. Use the same explicit Git base for each command.
     </p>
   </div>
   <div class="docs-panel docs-panel--terminal">
-    <span class="docs-panel__eyebrow">Two commands</span>
+    <span class="docs-panel__eyebrow">Review, optional generation, gate</span>
     <h2 class="docs-panel__title">Review your PR, then gate it</h2>
     <div class="docs-terminal">
       <code>npx impact-gate review --path . --since origin/main</code>
       <code>npx impact-gate review --path . --since origin/main --generate</code>
-      <code>npx impact-gate gate --threshold 80 --path .</code>
+      <code>npx impact-gate gate --threshold 80 --path . --since origin/main</code>
     </div>
   </div>
 </div>
@@ -68,7 +68,7 @@ Point the tool at your project and diff against your base branch:
 npx impact-gate review --path . --since origin/main
 ```
 
-This outputs: which user flows changed, existing test coverage, coverage gaps, defect risk score, and specific test recommendations.
+This reports impacted flows, mapped existing specs, mapping gaps, heuristic risk scores and test recommendations. These signals do not establish measured behavior coverage.
 
 For release readiness, diff against the previous shipped tag:
 
@@ -107,9 +107,13 @@ The `review` command combines `impact`, `plan`, and `predict`. You can still use
 
 ```bash
 npx impact-gate impact --path . --since origin/main   # just impact analysis
-npx impact-gate plan --path . --since origin/main      # coverage plan + artifacts
-npx impact-gate gate --threshold 80 --path .           # CI pass/fail gate
+npx impact-gate plan --no-ai --path . --since origin/main  # plan + artifacts, no model calls
+npx impact-gate gate --threshold 80 --path . --since origin/main  # spec-mapping gate
 ```
+
+The ordinary gate counts fully mapped features, excludes partial mappings from the numerator and fails when files remain unassessed. It does not measure executed test coverage. Invalid Git refs return errors; only a valid empty diff is treated as empty.
+
+For Mattermost shadow CI, follow the [advisory pilot guide](../../guides/mattermost-advisory/). That mode requires a reviewed source checkout, explicit suite configuration and `--suite`; it preserves full execution and reports unavailable coverage confidence.
 
 ## Why The AI Path Is Safer Than Raw Generation
 
@@ -159,10 +163,10 @@ When you later enable generation or healing, `impact-gate` does not just trust w
 ## What Next?
 
 <div class="command-index">
-  <a href="../guides/ci-integration/">CI Integration</a>
-  <a href="../guides/release-readiness/">Release Readiness</a>
-  <a href="../guides/ai-guardrails/">AI Guardrails</a>
-  <a href="../reference/cli/">CLI Reference</a>
+  <a href="../../guides/ci-integration/">CI Integration</a>
+  <a href="../../guides/release-readiness/">Release Readiness</a>
+  <a href="../../guides/ai-guardrails/">AI Guardrails</a>
+  <a href="../../reference/cli/">CLI Reference</a>
 </div>
 
 <div class="docs-grid docs-grid--two">
@@ -170,9 +174,9 @@ When you later enable generation or healing, `impact-gate` does not just trust w
     <span class="docs-panel__eyebrow">Confidence</span>
     <h2 class="docs-panel__title">Make the deterministic path trustworthy first</h2>
     <ul>
-      <li>Run <code>train --no-enrich</code> to improve route-family accuracy</li>
+      <li>Run <code>train --no-enrich</code> to bootstrap route-family mappings, then review them</li>
       <li>Add <code>gate --threshold 80</code> in CI once plan output looks trustworthy</li>
-      <li>Add a <a href="../guides/ci-integration/">CI integration</a> to gate PRs on coverage</li>
+      <li>Add a <a href="../../guides/ci-integration/">CI integration</a> to check spec-mapping thresholds</li>
     </ul>
   </div>
   <div class="docs-panel">
@@ -181,7 +185,7 @@ When you later enable generation or healing, `impact-gate` does not just trust w
     <ul>
       <li>If you already have an Understand-Anything knowledge graph, run <code>bootstrap</code> instead of <code>train</code></li>
       <li>Try <code>crew --workflow quick-check</code> for strategy recommendations on top of the core CI loop</li>
-      <li>Set up <a href="../guides/cost-management/">cost controls</a> before enabling AI features</li>
+      <li>Set up <a href="../../guides/cost-management/">cost controls</a> before enabling AI features</li>
     </ul>
   </div>
 </div>
