@@ -172,12 +172,14 @@ export function getChangedFiles(appRoot: string, since: string, options?: GitCha
         const repositoryRoot = git(['rev-parse', '--show-toplevel']).trim();
         const requestedBaseSha = git(['rev-parse', '--verify', '--end-of-options', `${since}^{commit}`], repositoryRoot).trim();
         const headSha = git(['rev-parse', '--verify', 'HEAD^{commit}'], repositoryRoot).trim();
-        const baseRef = git(['merge-base', requestedBaseSha, headSha], repositoryRoot).trim();
+        const mergeBases = git(['merge-base', '--all', requestedBaseSha, headSha], repositoryRoot).trim().split('\n');
+        if (mergeBases.length !== 1 || !mergeBases[0]) throw new Error('Ambiguous Git merge base; a single comparison base is required.');
+        const baseRef = mergeBases[0];
         // NUL-delimited output preserves spaces, newlines and non-ASCII names.
         // Disabling rename detection retains both the removed and added paths.
-        const files = new Set(git(['diff', '--name-only', '--no-renames', '-z', baseRef, headSha, '--'], repositoryRoot).split('\0').filter(Boolean));
+        const files = new Set(git(['diff', '--name-only', '--no-renames', '--ignore-submodules=none', '-z', baseRef, headSha, '--'], repositoryRoot).split('\0').filter(Boolean));
         if (options?.includeUncommitted) {
-            for (const args of [['diff', '--name-only', '--no-renames', '-z', '--cached'], ['diff', '--name-only', '--no-renames', '-z'], ['ls-files', '--others', '--exclude-standard', '-z']]) {
+            for (const args of [['diff', '--name-only', '--no-renames', '--ignore-submodules=none', '-z', '--cached'], ['diff', '--name-only', '--no-renames', '--ignore-submodules=none', '-z'], ['ls-files', '--others', '--exclude-standard', '-z']]) {
                 git(args, repositoryRoot).split('\0').filter(Boolean).forEach((file) => files.add(file));
             }
         }

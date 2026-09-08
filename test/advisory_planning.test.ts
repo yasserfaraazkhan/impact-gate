@@ -14,7 +14,7 @@ import {dirname, join, resolve} from 'node:path';
 
 import {getChangedFiles} from '../dist/agent/git.js';
 import {recommendTestsDeterministic} from '../dist/api.js';
-import {assessAdvisoryChanges, validateRepositoryPath, type AdvisoryConfig, type MappingKind} from '../dist/engine/advisory.js';
+import {assessAdvisoryChanges, validateAdvisoryConfig, validateRepositoryPath, type AdvisoryConfig, type MappingKind} from '../dist/engine/advisory.js';
 
 const source = 'webapp/channels/src/components/channel_header.tsx';
 const cypressJs = 'e2e-tests/cypress/tests/integration/channels/messaging/post_spec.js';
@@ -224,7 +224,7 @@ describe('advisory exact paths and evidence', () => {
         const f = fixture();
         const playwright = plan(f).plan;
         const cypress = plan(f, 'cypress-chrome-enterprise').plan;
-        assert.deepEqual(playwright.recommendedTests, [playwrightSpec]);
+        assert.deepEqual(playwright.recommendedTests, [playwrightSpec, otherPlaywrightSpec].sort());
         assert.deepEqual(cypress.recommendedTests, [cypressJs, cypressTs].sort());
         for (const spec of [...playwright.recommendedTests, ...cypress.recommendedTests]) {
             assert.equal(validateRepositoryPath(f.root, spec), realpathSync(join(f.root, spec)));
@@ -271,7 +271,7 @@ describe('advisory exact paths and evidence', () => {
 
     it('does not turn a reviewed spec presence mapping into measured or release evidence', () => {
         const report = plan(fixture()).plan;
-        assert.equal(report.advisory!.fileAssessments[0].status, 'mapped');
+        assert.equal(report.advisory!.fileAssessments[0].status, 'unmapped');
         assert.deepEqual(report.advisory!.evidence, {coverage: 'unavailable', execution: 'unavailable', release: 'not-assessed', specPresence: 'verified', measuredCoverageEdges: 0});
         assert.equal(report.confidence, null);
         assert.equal(report.decision.action, 'run-now');
@@ -359,6 +359,115 @@ describe('advisory exact paths and evidence', () => {
         assert.ok(Number.isFinite(Date.parse(firstTime)));
         assert.ok(Number.isFinite(Date.parse(secondTime)));
         assert.deepEqual(first, second);
+    });
+});
+
+describe('advisory adversarial provenance and inventory', () => {
+    it('rejects crisscross histories instead of choosing an arbitrary merge base', () => {
+        const f = fixture({});
+        const tree = git(f.root, 'rev-parse', 'HEAD^{tree}');
+        const left = git(f.root, 'commit-tree', tree, '-p', f.baseSha, '-m', 'Left independent parent');
+        const right = git(f.root, 'commit-tree', tree, '-p', f.baseSha, '-m', 'Right independent parent');
+        const base = git(f.root, 'commit-tree', tree, '-p', left, '-p', right, '-m', 'First cross merge');
+        const head = git(f.root, 'commit-tree', tree, '-p', right, '-p', left, '-m', 'Second cross merge');
+        git(f.root, 'update-ref', 'HEAD', head);
+        assert.equal(git(f.root, 'merge-base', '--all', base, head).split('\n').length, 2);
+        assert.match(getChangedFiles(f.root, base).error!, /Ambiguous Git merge base/);
+        f.baseSha = base;
+        assert.throws(() => plan(f), /Ambiguous Git merge base/);
+    });
+
+    it('does not trust a self-declared human review to select a targeted subset', () => {
+        const report = plan(fixture()).plan;
+        assert.equal(report.runSet, 'full');
+        assert.equal(report.advisory!.fileAssessments[0].status, 'unmapped');
+        assert.match(report.advisory!.fullSuiteFallbackReasons[0], /review.*unverified/i);
+        assert.deepEqual(report.recommendedTests, report.advisory!.inventory);
+        assert.equal(report.advisory!.mappings[0].provenance.kind, 'human-reviewed-manifest');
+    });
+
+    it('rejects omitted, invented and duplicated changed paths or forged base provenance', () => {
+        const f = fixture();
+        const changes = getChangedFiles(f.root, f.baseSha);
+        for (const altered of [
+            {...changes, files: []},
+            {...changes, files: ['server/channels/invented.go']},
+            {...changes, files: [source, source]},
+            {...changes, baseRef: f.headSha},
+            {...changes, requestedBaseSha: f.headSha},
+        ]) {
+            assert.throws(() => assessAdvisoryChanges(altered, f.config, f.config.suites[1].id), /Git.*identity|changed.file.*match/i);
+        }
+    });
+
+    for (const flag of ['--skip-worktree', '--assume-unchanged']) {
+        it(`rejects product changes hidden from git status by ${flag}`, () => {
+            const f = fixture();
+            git(f.root, 'update-index', flag, source);
+            write(f.root, source, 'export const header = "unreported content";');
+            assert.equal(git(f.root, 'status', '--porcelain', '--untracked-files=no'), '');
+            assert.throws(() => plan(f), /differs from reported HEAD/);
+        });
+    }
+
+    it('keeps submodule pointer changes when repository diff configuration ignores them', () => {
+        const f = fixture({});
+        git(f.root, 'update-index', '--add', '--cacheinfo', `160000,${f.baseSha},server/extension`);
+        git(f.root, 'commit', '-qm', 'Add fixture gitlink');
+        const base = git(f.root, 'rev-parse', 'HEAD');
+        git(f.root, 'update-index', '--cacheinfo', `160000,${base},server/extension`);
+        git(f.root, 'commit', '-qm', 'Change fixture gitlink');
+        git(f.root, 'config', 'diff.ignoreSubmodules', 'all');
+        assert.deepEqual(getChangedFiles(f.root, base).files, ['server/extension']);
+    });
+
+    it('keeps hidden committed specs and configured custom test names in static inventory', () => {
+        const hidden = 'e2e-tests/playwright/specs/functional/.hidden/header.spec.ts';
+        const custom = 'e2e-tests/playwright/specs/functional/header.check.ts';
+        const f = fixture({[hidden]: 'static fixture', [custom]: 'static fixture'});
+        f.config.suites[1].specPattern = 'specs/functional/**/*.{spec,check}.ts';
+        const report = assessAdvisoryChanges(getChangedFiles(f.root, f.baseSha), f.config, f.config.suites[1].id);
+        assert.deepEqual(report.inventory, [playwrightSpec, otherPlaywrightSpec, hidden, custom].sort());
+    });
+
+    it('rejects implicit minimatch negation/comments and malformed exact paths throughout the configuration', () => {
+        for (const pattern of ['!specs/visual/**', '#specs/**']) {
+            const f = fixture();
+            f.config.suites[1].exclude = [pattern];
+            assert.throws(() => validateAdvisoryConfig(f.config), /pattern/i);
+        }
+        const f = fixture();
+        for (const invalid of [null, 42, '../outside.spec.ts', '/absolute.spec.ts']) {
+            const copy = structuredClone(f.config);
+            copy.mappings[0].specs = [invalid as unknown as string];
+            assert.throws(() => validateAdvisoryConfig(copy), /path|spec/i);
+        }
+    });
+
+    it('binds run identity to the resolved base even if the head and changed paths match', () => {
+        const f = fixture();
+        const originalBase = f.baseSha;
+        const intermediateBase = f.headSha;
+        write(f.root, source, 'export const header = 3;');
+        git(f.root, 'add', source);
+        git(f.root, 'commit', '-qm', 'Change same path again');
+        f.baseSha = originalBase;
+        const first = plan(f).plan;
+        f.baseSha = intermediateBase;
+        const second = plan(f).plan;
+        assert.deepEqual(first.advisory!.changedFiles, second.advisory!.changedFiles);
+        assert.notEqual(first.runId, second.runId);
+    });
+
+    it('fails malformed JSON configuration without planner side effects', () => {
+        const f = fixture();
+        const path = join(f.tempRoot, 'invalid-config.json');
+        writeFileSync(path, '{"advisory":');
+        const before = snapshot(f.tempRoot);
+        const result = command(f, 'plan', ['--advisory', '--suite', f.config.suites[1].id, '--config', path]);
+        assert.notEqual(result.status, 0);
+        assert.equal(parseOutput(result).passed, false);
+        assert.deepEqual(snapshot(f.tempRoot), before);
     });
 });
 

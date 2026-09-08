@@ -367,9 +367,9 @@ export function buildPlanFromImpact(
     if (impact.advisory) {
         const a = impact.advisory;
         const full = a.fullSuiteFallbackReasons.length > 0;
-        const summary = full ? 'Unknown impact: recommend the existing full suite.' : a.diffStatus === 'empty' ? 'Valid empty diff; no changed-file selection. Keep the full suite during the pilot.' : 'Existing specs recommended from reviewed mappings. Keep the full suite during the pilot.';
+        const summary = full ? 'Unknown impact: recommend the existing full suite.' : a.diffStatus === 'empty' ? 'Valid empty diff; no changed-file selection. Keep the full suite during the pilot.' : 'Existing specs recommended from candidate mappings. Keep the full suite during the pilot.';
         return {
-            schemaVersion: '1.0.0', runId: `advisory-${a.headSha}-${a.suite.id}-${a.changedFilesSha256.slice(0, 12)}-${a.configurationSha256.slice(0, 12)}`,
+            schemaVersion: '1.0.0', runId: `advisory-${a.requestedBaseSha}-${a.baseSha}-${a.headSha}-${a.suite.id}-${a.changedFilesSha256.slice(0, 12)}-${a.configurationSha256.slice(0, 12)}`,
             generatedAt: new Date().toISOString(), source: 'impact', runSet: full ? 'full' : 'targeted', confidence: null, confidenceKind: 'unavailable',
             reasons: full ? a.fullSuiteFallbackReasons : [summary], recommendedTests: a.selectedSpecs,
             requiredNewTests: [], gapDetails: [], coveredFlows: [],
