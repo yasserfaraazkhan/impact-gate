@@ -121,6 +121,10 @@ function pickRunSet(
         triggeredRules.push('p0-with-gaps');
     }
 
+    if ((impact.unassessedFiles?.length ?? impact.unboundFiles.length) > 0) {
+        triggeredRules.push('unassessed-files');
+        reasons.push(`Unassessed changes require full suite: ${(impact.unassessedFiles ?? impact.unboundFiles).join(', ')}`);
+    }
     if (triggeredRules.length > 0) {
         return {
             runSet: 'full',
@@ -199,6 +203,9 @@ function buildDecision(
     confidence: number,
     policy: PolicyConfig,
 ): DecisionSummary {
+    if ((impact.unassessedFiles?.length ?? impact.unboundFiles.length) > 0) {
+        return {action: 'run-now', title: 'Run full suite', summary: 'Unassessed changes remain. Coverage and release safety are unknown; run the full suite.'};
+    }
     const gaps = getGapsWithSuppressed(impact).gaps;
 
     if (gaps.length > 0) {
@@ -357,6 +364,22 @@ export function buildPlanFromImpact(
 ): PlanReport {
     const policy: PolicyConfig = {...DEFAULT_POLICY, ...(policyOverride || {})};
 
+    if (impact.advisory) {
+        const a = impact.advisory;
+        const full = a.fullSuiteFallbackReasons.length > 0;
+        const summary = full ? 'Unknown impact: recommend the existing full suite.' : a.diffStatus === 'empty' ? 'Valid empty diff; no changed-file selection. Keep the full suite during the pilot.' : 'Existing specs recommended from reviewed mappings. Keep the full suite during the pilot.';
+        return {
+            schemaVersion: '1.0.0', runId: `advisory-${a.headSha}-${a.suite.id}-${a.changedFilesSha256.slice(0, 12)}-${a.configurationSha256.slice(0, 12)}`,
+            generatedAt: new Date().toISOString(), source: 'impact', runSet: full ? 'full' : 'targeted', confidence: null, confidenceKind: 'unavailable',
+            reasons: full ? a.fullSuiteFallbackReasons : [summary], recommendedTests: a.selectedSpecs,
+            requiredNewTests: [], gapDetails: [], coveredFlows: [],
+            policy: {riskyFiles: [], triggeredRules: full ? ['conservative-full-suite'] : [], applied: {...policy, enforcementMode: 'advisory'}},
+            decision: {action: 'run-now', title: 'Advisory plan', summary},
+            enforcement: {mode: 'advisory', blockOnActions: [], matchedAction: false, shouldFail: false, summary: 'Report completion only; no coverage pass or release assertion.'},
+            metrics: {changedFiles: a.changedFiles.length, impactedFlows: 0, p0Flows: 0, p1Flows: 0, p2Flows: 0, uncoveredP0P1Flows: 0, unboundFiles: impact.unboundFiles.length, warnings: a.fullSuiteFallbackReasons.length},
+            advisory: a,
+        };
+    }
     // Apply adaptive calibration overrides (if available and not explicitly overridden)
     if (adaptiveThresholds && policyOverride?.minConfidenceForTargeted === undefined) {
         policy.minConfidenceForTargeted = adaptiveThresholds.minConfidenceForTargeted;
@@ -518,6 +541,7 @@ export function buildPlanFromImpact(
         source: planSource,
         runSet: runSetResult.runSet,
         confidence,
+        confidenceKind: 'heuristic',
         reasons: runSetResult.reasons,
         recommendedTests,
         requiredNewTests,
@@ -554,6 +578,7 @@ export function writePlanReport(appRoot: string, plan: PlanReport): string {
 }
 
 export function renderCiSummaryMarkdown(plan: PlanReport): string {
+    if (plan.advisory) return `${plan.decision.summary}\n\n${plan.enforcement.summary}\n`;
     const lines: string[] = [];
     const {uncoveredP0P1Flows, changedFiles, impactedFlows, coveredFlows: coveredCount, partialFlows: partialCount, unboundFiles: unboundCount} = plan.metrics;
     const mustAddTests = plan.decision.action === 'must-add-tests';
@@ -687,9 +712,9 @@ export function renderCiSummaryMarkdown(plan: PlanReport): string {
         lines.push(`> **${unboundCount}** changed file(s) could not be mapped to any E2E flow. Consider updating \`route-families.json\` to cover these files.`);
     }
 
-    if (plan.confidence < 100) {
+    if (plan.confidence !== null && plan.confidence < 100) {
         lines.push('');
-        lines.push(`**Confidence**: ${plan.confidence}%`);
+        lines.push(`**Heuristic confidence score**: ${plan.confidence}%`);
     }
 
     return lines.join('\n');

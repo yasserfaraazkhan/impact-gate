@@ -94,6 +94,8 @@ const FLAGS: Record<string, FlagDef> = {
     '--dry-run':                    {key: 'dryRun', type: 'boolean'},
     '--generate':                   {key: 'analyzeGenerate', type: 'boolean'},
     '--heal':                       {key: 'analyzeHeal', type: 'boolean'},
+    '--advisory':                   {key: 'advisory', type: 'boolean'},
+    '--suite':                      {key: 'suite', type: 'string'},
     '--no-ai':                      {key: 'noAi', type: 'boolean'},
     '--degraded-mode':              {key: 'degradedMode', type: 'boolean'},
     '--enrich':                     {key: 'trainEnrich', type: 'boolean'},
@@ -250,6 +252,9 @@ export function parseArgs(argv: string[]): ParsedArgs {
 
         const def = FLAGS[canonical];
         const next = argv[i + 1];
+        if (!['boolean', 'boolean-false'].includes(def.type) && (!next || next.startsWith('--') || ALIAS_MAP[next])) {
+            throw new Error(`Missing value for ${arg}`);
+        }
 
         switch (def.type) {
         case 'boolean':

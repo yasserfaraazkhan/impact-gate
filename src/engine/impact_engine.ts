@@ -1,6 +1,8 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {assessAdvisoryChanges, conservativeChangeReason, type AdvisoryAssessment, type AdvisoryConfig} from './advisory.js';
+import type {GitChangeResult} from '../agent/git.js';
 import {existsSync, readdirSync, readFileSync} from 'fs';
 import {join} from 'path';
 
@@ -49,6 +51,8 @@ export interface PrTestFile {
 }
 
 export interface ImpactResult {
+    advisory?: AdvisoryAssessment;
+    unassessedFiles?: string[];
     changedFiles: string[];
     expandedFiles: string[];
     impactedFeatures: ImpactedFeature[];
@@ -59,6 +63,7 @@ export interface ImpactResult {
 }
 
 export interface ImpactEngineOptions {
+    advisory?: {git: GitChangeResult; config: AdvisoryConfig; suite: string};
     testsRoot: string;
     cypressRoot?: string;
     routeFamilies?: RouteFamiliesConfig;
@@ -232,6 +237,14 @@ export function analyzeImpact(
     changedFiles: string[],
     options: ImpactEngineOptions,
 ): ImpactResult {
+    if (options.advisory) {
+        const {git, config, suite} = options.advisory;
+        const advisory = assessAdvisoryChanges(git, config, suite);
+        return {changedFiles: git.files, expandedFiles: [], impactedFeatures: [],
+            unboundFiles: advisory.fileAssessments.filter((f) => f.status === 'unmapped').map((f) => f.file),
+            unassessedFiles: advisory.fileAssessments.filter((f) => f.status !== 'mapped').map((f) => f.file),
+            warnings: advisory.fullSuiteFallbackReasons, prIncludedTestFiles: classifyPrTestFiles(git.files, git.files.filter((f) => !isTestFile(f))), advisory};
+    }
     const {testsRoot, routeFamilies} = options;
     const warnings: string[] = [];
 
@@ -308,7 +321,8 @@ export function analyzeImpact(
     }
 
     return {
-        changedFiles,
+        changedFiles: allOriginalFiles,
+        unassessedFiles: allOriginalFiles.filter((f) => conservativeChangeReason(f) || unboundFiles.includes(f)),
         expandedFiles: options.expandedFiles || [],
         impactedFeatures,
         unboundFiles,

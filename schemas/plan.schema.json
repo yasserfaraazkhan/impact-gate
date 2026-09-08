@@ -19,6 +19,34 @@
     "metrics"
   ],
   "properties": {
+    "gapDetails": {"type": "array", "items": {"type": "object", "required": ["id", "name", "priority", "reasons", "files"]}},
+    "coveredFlows": {"type": "array", "items": {"type": "object", "required": ["id", "name", "priority", "coveredBy"]}},
+    "confidenceKind": {"enum": ["heuristic", "unavailable"]},
+    "advisory": {
+      "type": "object",
+      "required": ["mode", "repository", "baseSha", "requestedBaseSha", "headSha", "changedFiles", "changedFilesSha256", "configurationSha256", "suite", "fileAssessments", "mappings", "inventory", "inventoryStatus", "selectedSpecs", "fullSuiteFallbackReasons", "diffStatus", "executionPolicy", "evidence"],
+      "properties": {
+        "baseSha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "requestedBaseSha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "headSha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "changedFilesSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "configurationSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "changedFiles": {"type": "array", "items": {"type": "string"}},
+        "inventory": {"type": "array", "items": {"type": "string"}},
+        "selectedSpecs": {"type": "array", "items": {"type": "string"}},
+        "fullSuiteFallbackReasons": {"type": "array", "items": {"type": "string"}},
+        "mode": {"const": "advisory"},
+        "repository": {"type": "string"},
+        "suite": {"type": "object", "required": ["id", "framework", "root", "configFile", "project", "browser", "variant", "specPattern", "configSha256"]},
+        "fileAssessments": {"type": "array", "items": {"type": "object", "required": ["file", "status", "reason"]}},
+        "mappings": {"type": "array", "items": {"type": "object", "required": ["file", "suite", "sourcePattern", "specs", "provenance"]}},
+        "inventoryStatus": {"const": "static-spec-files"},
+        "diffStatus": {"enum": ["empty", "changed"]},
+        "executionPolicy": {"const": "retain-full-suite"},
+        "evidence": {"type": "object", "required": ["coverage", "execution", "release", "specPresence", "measuredCoverageEdges"], "properties": {"coverage": {"const": "unavailable"}, "execution": {"const": "unavailable"}, "release": {"const": "not-assessed"}, "specPresence": {"enum": ["verified", "unavailable"]}, "measuredCoverageEdges": {"const": 0}}, "additionalProperties": false}
+      },
+      "additionalProperties": false
+    },
     "schemaVersion": {
       "const": "1.0.0"
     },
@@ -43,7 +71,7 @@
       ]
     },
     "confidence": {
-      "type": "number",
+      "type": ["number", "null"],
       "minimum": 0,
       "maximum": 100
     },
@@ -354,6 +382,9 @@
         "warnings"
       ],
       "properties": {
+        "unboundFiles": {"type": "number"},
+        "coveredFlows": {"type": "number"},
+        "partialFlows": {"type": "number"},
         "changedFiles": {
           "type": "number"
         },

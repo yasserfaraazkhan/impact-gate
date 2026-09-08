@@ -13,7 +13,7 @@ import type {FrameworkAdapter, RunCommand, RunOptions} from './framework_adapter
 export class PlaywrightAdapter implements FrameworkAdapter {
     readonly name = 'playwright';
 
-    readonly specGlob = '**/*.spec.{ts,js}';
+    readonly specGlob = '**/*.{spec,test}.{ts,tsx,js,jsx,mjs,cjs,mts,cts}';
 
     readonly extractTestPattern = /\btest(?:\.describe)?\s*\(/g;
 

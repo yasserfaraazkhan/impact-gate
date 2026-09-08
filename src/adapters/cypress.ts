@@ -13,7 +13,7 @@ import type {FrameworkAdapter, RunCommand, RunOptions} from './framework_adapter
 export class CypressAdapter implements FrameworkAdapter {
     readonly name = 'cypress';
 
-    readonly specGlob = '**/*.cy.{ts,js,tsx,jsx}';
+    readonly specGlob = '**/*{.cy,_spec}.{ts,js,tsx,jsx}';
 
     readonly extractTestPattern = /\b(?:it|describe|context)\s*\(/g;
 
