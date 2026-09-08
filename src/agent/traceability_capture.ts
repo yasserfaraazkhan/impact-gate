@@ -363,7 +363,7 @@ export function captureTraceabilityInput(options: TraceabilityCaptureOptions): T
 
     const runs = executedSpecs.map((spec) => {
         const mappedFiles = coverageForSpec(spec, coverageMap);
-        const touchedFiles = mappedFiles.length > 0 ? mappedFiles : changedFiles;
+        const touchedFiles = mappedFiles;
         return {
             test: spec,
             touchedFiles,
@@ -371,8 +371,8 @@ export function captureTraceabilityInput(options: TraceabilityCaptureOptions): T
         };
     }).filter((entry) => entry.touchedFiles.length > 0);
 
-    if (runs.length < executedSpecs.length && changedFiles.length === 0) {
-        warnings.push('Some executed tests had no coverage-map entries and no changed-files fallback.');
+    if (runs.length < executedSpecs.length) {
+        warnings.push('Per-test source coverage unavailable for some executed specs; no measured coverage edges emitted for them.');
     }
 
     const outputPath = options.outputPath

@@ -32,6 +32,8 @@ import {
 } from './agent/traceability_capture.js';
 
 export interface AgentApiOptions extends Omit<ConfigOverrides, 'mode'> {
+    advisory?: boolean;
+    suite?: string;
     cwd?: string;
     configPath?: string;
     apply?: boolean;
@@ -95,9 +97,11 @@ export interface RecommendTestsV2Result {
 }
 
 export function analyzeImpactDeterministic(options: AgentApiOptions = {}): ImpactResult {
+    if (options.advisory) return recommendTestsDeterministic(options).impact;
     const config = resolveAgent(options, 'impact');
     const reportRoot = config.testsRoot || config.path;
-    const gitResult = getChangedFiles(config.path, config.git.since, {includeUncommitted: config.git.includeUncommitted});
+    const gitResult = getChangedFiles(config.path, config.git.since, {includeUncommitted: options.advisory ? false : config.git.includeUncommitted});
+    if (gitResult.error) throw new Error(gitResult.error);
     return analyzeImpactV2(gitResult.files, {
         testsRoot: reportRoot,
         routeFamilies: config.routeFamilies,
@@ -106,14 +110,26 @@ export function analyzeImpactDeterministic(options: AgentApiOptions = {}): Impac
 }
 
 export function recommendTestsDeterministic(options: AgentApiOptions = {}): RecommendTestsV2Result {
+    if (options.advisory && options.apply) throw new Error('Advisory planning cannot apply changes.');
     const config = resolveAgent(options, 'impact');
     const reportRoot = config.testsRoot || config.path;
-    const gitResult = getChangedFiles(config.path, config.git.since, {includeUncommitted: config.git.includeUncommitted});
+    const gitResult = getChangedFiles(config.path, config.git.since, {includeUncommitted: options.advisory ? false : config.git.includeUncommitted});
+    if (gitResult.error) throw new Error(gitResult.error);
+    const advisory = options.advisory
+        ? (() => {
+            if (!config.advisory || !options.suite) throw new Error('Advisory planning requires advisory configuration and --suite.');
+            return {git: gitResult, config: config.advisory, suite: options.suite};
+        })() : undefined;
     const impact = analyzeImpactV2(gitResult.files, {
+        advisory,
         testsRoot: reportRoot,
         routeFamilies: config.routeFamilies,
         filteredTestFiles: gitResult.filteredTestFiles,
     });
+    if (options.advisory) {
+        const plan = buildPlanFromImpact(impact, config.policy);
+        return {impact, plan, planPath: '', ciSummaryMarkdown: renderCiSummaryMarkdown(plan), ciSummaryPath: ''};
+    }
     const adaptive = getAdaptiveThresholds(reportRoot);
     const plan = buildPlanFromImpact(impact, config.policy, undefined, adaptive);
     const planPath = writePlanReport(reportRoot, plan);
@@ -124,9 +140,11 @@ export function recommendTestsDeterministic(options: AgentApiOptions = {}): Reco
 }
 
 export async function recommendTestsAI(options: AgentApiOptions = {}): Promise<RecommendTestsV2Result & { aiEnrichment?: AIEnrichmentResult }> {
+    if (options.advisory) return recommendTestsDeterministic(options);
     const config = resolveAgent(options, 'impact');
     const reportRoot = config.testsRoot || config.path;
-    const gitResult = getChangedFiles(config.path, config.git.since, {includeUncommitted: config.git.includeUncommitted});
+    const gitResult = getChangedFiles(config.path, config.git.since, {includeUncommitted: options.advisory ? false : config.git.includeUncommitted});
+    if (gitResult.error) throw new Error(gitResult.error);
     const impact = analyzeImpactV2(gitResult.files, {
         testsRoot: reportRoot,
         routeFamilies: config.routeFamilies,

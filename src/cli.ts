@@ -2,6 +2,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {logger} from './logger.js';
 import {resolveConfig} from './agent/config.js';
 import {parseArgs, resolveAutoConfig} from './cli/parse_args.js';
 import {resolveDefaults} from './cli/defaults.js';
@@ -37,11 +38,13 @@ const NEEDS_DEFAULTS_COMMANDS = new Set([
 ]);
 
 async function main(): Promise<void> {
+    if (process.argv.includes('--json') || process.argv.includes('--advisory')) logger.setOutputToStderr(true);
     const args = parseArgs(process.argv.slice(2));
     const autoConfig = resolveAutoConfig(args);
+    if (args.advisory && !['plan', 'suggest', 'gate'].includes(args.command || '')) throw new Error('--advisory is supported only for plan, suggest and gate.');
 
     // Auto-detect defaults for commands that need them (when no config file found)
-    if (args.command && NEEDS_DEFAULTS_COMMANDS.has(args.command) && !SKIP_DEFAULTS_COMMANDS.has(args.command)) {
+    if (args.command && NEEDS_DEFAULTS_COMMANDS.has(args.command) && !SKIP_DEFAULTS_COMMANDS.has(args.command) && !args.advisory) {
         const defaults = resolveDefaults({
             path: args.path,
             testsRoot: args.testsRoot,
@@ -86,10 +89,7 @@ async function main(): Promise<void> {
         process.exit(0);
     }
 
-    if (!args.command) {
-        printUsage();
-        process.exit(1);
-    }
+    if (!args.command) throw new Error('A valid command is required. Use --help for usage.');
 
     if (args.command === 'llm-health') {
         await runLlmHealth();
@@ -152,9 +152,7 @@ async function main(): Promise<void> {
     }
 
     if (!args.path && !autoConfig) {
-        console.error('Error: --path is required (or provide a config file with path set)');
-        printUsage();
-        process.exit(1);
+        throw new Error('--path is required (or provide a config file with path set)');
     }
 
     const {config} = resolveConfig(process.cwd(), autoConfig, {
@@ -239,6 +237,7 @@ async function main(): Promise<void> {
 main().catch((error) => {
     const exitCode = classifyError(error);
     const message = error instanceof Error ? error.message : String(error);
+    if (process.argv.includes('--json') || process.argv.includes('--advisory')) console.log(JSON.stringify({error: message, passed: false}));
     console.error(message);
     if (exitCode === EXIT_CODES.BUDGET_EXCEEDED) {
         console.error('Hint: Increase --budget or use --degraded-mode to skip AI features.');

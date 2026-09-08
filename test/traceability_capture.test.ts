@@ -79,7 +79,7 @@ test('traceability capture uses coverage map when available', () => {
     }
 });
 
-test('traceability capture falls back to changed files when coverage map is missing', () => {
+test('traceability capture emits no coverage edges when per-test coverage is missing', () => {
     const root = mkdtempSync(join(tmpdir(), 'traceability-capture-fallback-'));
     try {
         const appPath = join(root, 'webapp');
@@ -125,17 +125,12 @@ test('traceability capture falls back to changed files when coverage map is miss
         });
 
         assert.equal(result.testsSeen, 1);
-        assert.equal(result.runsGenerated, 1);
+        assert.equal(result.runsGenerated, 0);
         assert.equal(result.changedFilesUsed, 2);
-        assert.equal(result.warnings.length, 0);
+        assert.match(result.warnings.join(' '), /Per-test source coverage unavailable/);
 
         const payload = readJson(result.outputPath);
-        assert.equal(payload.runs.length, 1);
-        assert.equal(payload.runs[0].test, 'specs/channels/channels.switch.spec.ts');
-        assert.deepEqual(
-            payload.runs[0].touchedFiles.sort(),
-            ['channels/src/actions/websocket_actions.ts', 'channels/src/components/channel_switcher/channel_switcher.tsx'].sort(),
-        );
+        assert.deepEqual(payload.runs, []);
     } finally {
         rmSync(root, {recursive: true, force: true});
     }

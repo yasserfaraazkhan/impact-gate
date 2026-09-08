@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import {mkdirSync, writeFileSync, rmSync} from 'fs';
 import {join} from 'path';
 import os from 'os';
+import {execFileSync} from 'node:child_process';
 
 import {recommendTestsDeterministic, recommendTestsAI} from '../dist/api.js';
 
@@ -16,6 +17,10 @@ let savedApiKey;
 before(() => {
     tmpDir = join(os.tmpdir(), `impact-gate-api-ai-test-${Date.now()}`);
     mkdirSync(tmpDir, {recursive: true});
+    writeFileSync(join(tmpDir, '.gitignore'), '.e2e-ai-agents/\n');
+    execFileSync('git', ['init'], {cwd: tmpDir, stdio: 'pipe'});
+    execFileSync('git', ['add', '.gitignore'], {cwd: tmpDir, stdio: 'pipe'});
+    execFileSync('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'fixture'], {cwd: tmpDir, stdio: 'pipe'});
     // Save and unset any real API key to avoid actual network calls
     savedApiKey = process.env.ANTHROPIC_API_KEY;
     delete process.env.ANTHROPIC_API_KEY;
@@ -36,6 +41,7 @@ describe('recommendTestsDeterministic', () => {
         const result = recommendTestsDeterministic({
             cwd: tmpDir,
             path: tmpDir,
+            gitSince: 'HEAD',
         });
 
         // Verify basic result shape
@@ -59,6 +65,7 @@ describe('recommendTestsAI without API key', () => {
         const result = await recommendTestsAI({
             cwd: tmpDir,
             path: tmpDir,
+            gitSince: 'HEAD',
         });
 
         // Should return the same shape as deterministic
@@ -79,6 +86,7 @@ describe('recommendTestsAI without API key', () => {
         const result = await recommendTestsAI({
             cwd: tmpDir,
             path: tmpDir,
+            gitSince: 'HEAD',
         });
 
         // Without AI enrichment, plan source should be "impact" not "ai+deterministic"
@@ -93,6 +101,7 @@ describe('recommendTestsAI result shape', () => {
         const result = await recommendTestsAI({
             cwd: tmpDir,
             path: tmpDir,
+            gitSince: 'HEAD',
         });
 
         // Verify all required RecommendTestsV2Result fields are present
@@ -119,6 +128,7 @@ describe('recommendTestsAI with API key set', () => {
             result = await recommendTestsAI({
                 cwd: tmpDir,
                 path: tmpDir,
+            gitSince: 'HEAD',
             });
         } finally {
             delete process.env.ANTHROPIC_API_KEY;
