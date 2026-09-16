@@ -110,3 +110,10 @@ Final integration review found ordinary plan output's new `mappingProvenance` an
 
 
 The schema follow-up is accepted by the independent final integration reviewer. The exported schema now permits the already emitted optional provenance/evidence fields; its strict root, schemaVersion and advisory definitions remain unchanged. The root-key regression failed first with exactly those missing fields, then the covering 22 tests passed. This is not full JSON Schema validation. Runtime source is unchanged, so the final W4 suite remains applicable and required GitHub CI will validate the final branch. No Critical or Important integration findings remain.
+
+
+## W5 — closed after independent artifact acceptance
+
+W5 is accepted after the independent `gates/w5.txt` artifact audit, final integration approval, and a distinct Simplifier's ACCEPT. The dated 24-file, 119,922-byte bundle preserves 22 evidence hashes and thirteen byte-identical retained receipts. Fresh PR38048 review/gate exits are 0/1 with seventeen unverified candidates, fourteen unassessed files and full fallback; both pinned repositories and the inventory's four prior artifacts are preserved. The capture remains correctly attributed to runtime commit `0030639`, before the separately reviewed schema-only follow-up `40b66c8`. The final runtime suite is 557/557 with lint passing; the additional schema regression passed in its focused 22-test run. Required GitHub CI will check the assembled branch before merge.
+
+Ruling: retain the small bundle as-is; do not repeat identical replays/tests or add another framework. The separate W2/W3 summary copies preserve provenance even where bytes match. All five requested items are closed, with no outstanding Critical or Important review finding. The conclusion remains limited: static review and conservative candidate advice work; measured source coverage, safe selective CI, improved failure recall, runtime savings, live-model quality and Mattermost browser generation remain unproven. Keep Mattermost's full CI. Landing this source does not publish an npm version.

@@ -1,0 +1,89 @@
+{
+  "results": [
+    {
+      "specPath": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-mutation-fixture-BVWGFY/tests/.e2e-ai-agents/unverified/1789538893695-o2v6tr2pg8.ts.unverified",
+      "scenarioSource": "boundary",
+      "status": "unverified",
+      "attempts": 1,
+      "finalRun": {
+        "specPath": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-1st9aS/tests/specs/functional/ai-assisted/boundary.spec.ts",
+        "passed": 1,
+        "failed": 0,
+        "assertionFailures": 0,
+        "flaky": 0,
+        "skipped": 0,
+        "failures": [],
+        "stdout": "\nRunning 1 test using 1 worker\n\n\n\n\n\n\u001b[1A\u001b[2K[1/1] [chrome] › specs/functional/ai-assisted/boundary.spec.ts:2:5 › assertion-free control\n\u001b[1A\u001b[2K  1 passed (606ms)\n\n\u001b[1A\u001b[2K(node:84160) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n\u001b[1A\u001b[2K(node:84160) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n",
+        "durationMs": 1903,
+        "compiled": true,
+        "exitCode": 0,
+        "reportPath": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-1st9aS/tests/.e2e-ai-agents/agentic-reports/report-1789538893775-v4ljun.json"
+      },
+      "verification": {
+        "verified": false,
+        "reason": "No applicable assertion kill; only directly imported local source can be verified",
+        "workspace": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-1st9aS",
+        "specSha256": "bcf89a3f3d673ee49a2821619567f0462e498804bb6576847fa26ee75d7d4f07",
+        "baseline": {
+          "specPath": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-1st9aS/tests/specs/functional/ai-assisted/boundary.spec.ts",
+          "passed": 1,
+          "failed": 0,
+          "assertionFailures": 0,
+          "flaky": 0,
+          "skipped": 0,
+          "failures": [],
+          "stdout": "\nRunning 1 test using 1 worker\n\n\n\n\n\n\u001b[1A\u001b[2K[1/1] [chrome] › specs/functional/ai-assisted/boundary.spec.ts:2:5 › assertion-free control\n\u001b[1A\u001b[2K  1 passed (606ms)\n\n\u001b[1A\u001b[2K(node:84160) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n\u001b[1A\u001b[2K(node:84160) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n",
+          "durationMs": 1903,
+          "compiled": true,
+          "exitCode": 0,
+          "reportPath": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-1st9aS/tests/.e2e-ai-agents/agentic-reports/report-1789538893775-v4ljun.json"
+        },
+        "sourcePath": "eligibility.ts",
+        "line": 2,
+        "operator": "invert-condition",
+        "sourceSha256": "94420d86dbe0b3988bd6c39503a7253a2c704ede16583f157e34384bb8a62070",
+        "sourceSnapshot": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-1st9aS/invert-condition.source.original",
+        "mutantSnapshot": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-1st9aS/invert-condition.source.mutant",
+        "mutant": {
+          "specPath": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-1st9aS/tests/specs/functional/ai-assisted/boundary.spec.ts",
+          "passed": 1,
+          "failed": 0,
+          "assertionFailures": 0,
+          "flaky": 0,
+          "skipped": 0,
+          "failures": [],
+          "stdout": "\nRunning 1 test using 1 worker\n\n\n\n\n\n\u001b[1A\u001b[2K[1/1] [chrome] › specs/functional/ai-assisted/boundary.spec.ts:2:5 › assertion-free control\n\u001b[1A\u001b[2K  1 passed (515ms)\n\n\u001b[1A\u001b[2K(node:86171) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n\u001b[1A\u001b[2K(node:86171) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n",
+          "durationMs": 1527,
+          "compiled": true,
+          "exitCode": 0,
+          "reportPath": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-1st9aS/tests/.e2e-ai-agents/agentic-reports/report-1789538898948-mun1t6.json"
+        },
+        "restored": {
+          "specPath": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-1st9aS/tests/specs/functional/ai-assisted/boundary.spec.ts",
+          "passed": 1,
+          "failed": 0,
+          "assertionFailures": 0,
+          "flaky": 0,
+          "skipped": 0,
+          "failures": [],
+          "stdout": "\nRunning 1 test using 1 worker\n\n\n\n\n\n\u001b[1A\u001b[2K[1/1] [chrome] › specs/functional/ai-assisted/boundary.spec.ts:2:5 › assertion-free control\n\u001b[1A\u001b[2K  1 passed (623ms)\n\n\u001b[1A\u001b[2K(node:86784) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n\u001b[1A\u001b[2K(node:86784) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n",
+          "durationMs": 1664,
+          "compiled": true,
+          "exitCode": 0,
+          "reportPath": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-1st9aS/tests/.e2e-ai-agents/agentic-reports/report-1789538900475-e5wi6c.json"
+        }
+      },
+      "warnings": [
+        "No applicable assertion kill; only directly imported local source can be verified"
+      ]
+    }
+  ],
+  "totalGenerated": 1,
+  "totalPassed": 0,
+  "totalFailed": 1,
+  "totalAttempts": 1,
+  "durationMs": 8446,
+  "warnings": [
+    "No applicable assertion kill; only directly imported local source can be verified"
+  ]
+}

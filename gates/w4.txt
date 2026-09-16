@@ -25,3 +25,5 @@ Actual `git diff --stat 4b88357` before this gate file was staged:
  3 files changed, 38 insertions(+), 781 deletions(-)
 
 PASS: final full suite, lint, real review, expected conservative gate behavior, source/inventory stability, and approved deletion-only scope.
+
+Final committed whole W4 item, 4b88357..0030639: 6 files, 74 insertions and 785 deletions, net -711 lines including gate, plan and decision records (root final staging audit).

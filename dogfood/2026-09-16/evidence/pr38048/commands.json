@@ -1,0 +1,102 @@
+{
+  "after": {
+    "baseHead": "4ce99ddd38636bb6916613efc892606db3fe75f9",
+    "baseStatus": "?? e2e-tests/playwright/.e2e-ai-agents/ci-summary.md\n?? e2e-tests/playwright/.e2e-ai-agents/metrics-summary.json\n?? e2e-tests/playwright/.e2e-ai-agents/metrics.jsonl\n?? e2e-tests/playwright/.e2e-ai-agents/plan.json",
+    "priorBaseInventoryArtifacts": {
+      "e2e-tests/playwright/.e2e-ai-agents/ci-summary.md": "ec9bccfe9741ec455efb04e49c43f645c736efa5cff3e9b5c568e5a514ad68b0",
+      "e2e-tests/playwright/.e2e-ai-agents/metrics-summary.json": "32bb6255f966bcac53cff438d24c3560c982f3489f08b21be7340bf7c25ea9ee",
+      "e2e-tests/playwright/.e2e-ai-agents/metrics.jsonl": "50f68da0c60590c655acbed30c7dd7b29f926949457af62a2cbb250bc876fc5c",
+      "e2e-tests/playwright/.e2e-ai-agents/plan.json": "300ce96e0c3308f7dd284c135b71f968a1d745083c078de7c91c41af45ac3f0c"
+    },
+    "sourceHead": "1af180e6bbf9853963bcbb19b69f82e1cb0275a1",
+    "sourceStatus": ""
+  },
+  "before": {
+    "baseHead": "4ce99ddd38636bb6916613efc892606db3fe75f9",
+    "baseStatus": "?? e2e-tests/playwright/.e2e-ai-agents/ci-summary.md\n?? e2e-tests/playwright/.e2e-ai-agents/metrics-summary.json\n?? e2e-tests/playwright/.e2e-ai-agents/metrics.jsonl\n?? e2e-tests/playwright/.e2e-ai-agents/plan.json",
+    "priorBaseInventoryArtifacts": {
+      "e2e-tests/playwright/.e2e-ai-agents/ci-summary.md": "ec9bccfe9741ec455efb04e49c43f645c736efa5cff3e9b5c568e5a514ad68b0",
+      "e2e-tests/playwright/.e2e-ai-agents/metrics-summary.json": "32bb6255f966bcac53cff438d24c3560c982f3489f08b21be7340bf7c25ea9ee",
+      "e2e-tests/playwright/.e2e-ai-agents/metrics.jsonl": "50f68da0c60590c655acbed30c7dd7b29f926949457af62a2cbb250bc876fc5c",
+      "e2e-tests/playwright/.e2e-ai-agents/plan.json": "300ce96e0c3308f7dd284c135b71f968a1d745083c078de7c91c41af45ac3f0c"
+    },
+    "sourceHead": "1af180e6bbf9853963bcbb19b69f82e1cb0275a1",
+    "sourceStatus": ""
+  },
+  "captureKind": "fresh PR38048 static CLI review/gate",
+  "commands": [
+    {
+      "argv": [
+        "node",
+        "/private/tmp/impact-gate-recovery-2026-09-16/dist/cli.js",
+        "review",
+        "--config",
+        "/private/tmp/impact-gate-recovery-evidence/w3/pr38048/config.json",
+        "--path",
+        "/private/tmp/impact-gate-recovery-evidence/w3/pr38048/source",
+        "--since",
+        "4ce99ddd38636bb6916613efc892606db3fe75f9",
+        "--tests-root",
+        "/private/tmp/impact-gate-recovery-evidence/w3/pr38048/base-inventory/e2e-tests/playwright",
+        "--json",
+        "--ci-comment-path",
+        "/private/tmp/impact-gate-recovery-2026-09-16/dogfood/2026-09-16/evidence/pr38048/review.md"
+      ],
+      "cwd": "/private/tmp/impact-gate-recovery-2026-09-16",
+      "elapsedSeconds": 8.904,
+      "endedUtc": "2026-09-16T09:06:08.760638+00:00",
+      "environment": {
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "HOME": "/Users/yasserkhan",
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin"
+      },
+      "name": "review",
+      "signedExit": 0,
+      "startedUtc": "2026-09-16T09:05:59.858883+00:00",
+      "stderrSha256": "dd851f891ad024bcadc60553ea1d13c3b4d62d57647fc3e16068b86cb8bd6f81",
+      "stdoutSha256": "c270d08e7b15c1f97aba7fd75a82a9ed8a5605313d0efa83e37268ad5d7870f1",
+      "strictJsonObject": true
+    },
+    {
+      "argv": [
+        "node",
+        "/private/tmp/impact-gate-recovery-2026-09-16/dist/cli.js",
+        "gate",
+        "--config",
+        "/private/tmp/impact-gate-recovery-evidence/w3/pr38048/config.json",
+        "--path",
+        "/private/tmp/impact-gate-recovery-evidence/w3/pr38048/source",
+        "--since",
+        "4ce99ddd38636bb6916613efc892606db3fe75f9",
+        "--tests-root",
+        "/private/tmp/impact-gate-recovery-evidence/w3/pr38048/base-inventory/e2e-tests/playwright",
+        "--json",
+        "--threshold",
+        "80"
+      ],
+      "cwd": "/private/tmp/impact-gate-recovery-2026-09-16",
+      "elapsedSeconds": 0.58,
+      "endedUtc": "2026-09-16T09:06:09.367483+00:00",
+      "environment": {
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "HOME": "/Users/yasserkhan",
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin"
+      },
+      "name": "gate",
+      "signedExit": 1,
+      "startedUtc": "2026-09-16T09:06:08.790181+00:00",
+      "stderrSha256": "08fd7605a8d94a51885e58f7bb5d41bbc10eb6ca56892ff7a2cc5e794017046c",
+      "stdoutSha256": "cb0b3a5face3adc26f35dbb9538e1bc0cc180f59f5237aedfabd4f76cd1d2c3a",
+      "strictJsonObject": true
+    }
+  ],
+  "configSha256": "9ba8f1ad266280889b965d23f8374f3ffe6aca809ef7446c7dfb8f336bee15c9",
+  "limits": [
+    "No Mattermost E2E, live model, CI, or dependency/test rebuild in W5"
+  ],
+  "packageJsonSha256": "61726e0de9459f58d1686348001bc99c58058cc20fa2c5896e8cbfea7bd70869",
+  "toolCliSha256": "5efc2a047ea6029600cb64c16c10510a14bcc8310669a0746a5ddbd23c1334fd",
+  "toolCommit": "0030639afa729aabd9654c19eacdb3faf1b96312"
+}

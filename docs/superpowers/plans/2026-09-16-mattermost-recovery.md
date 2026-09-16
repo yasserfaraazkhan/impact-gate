@@ -82,9 +82,9 @@ Do not start until W2 is recorded. Existing source has separate ordinary/advisor
 
 ## Task 5: W5 current evidence and delivery
 
-- [ ] Create a current dogfood folder matching the existing shape, with exact tested revisions, commands and raw outputs; include W2/W3 numbers and regressions.
-- [ ] Run full build, tests and lint after all integration; independent whole-branch review addresses remaining findings.
-- [ ] Record `gates/w5.txt` and the limits of what was actually executed. Publish no package/version and change no Mattermost full-suite execution policy as a side effect of dispatching agents.
+- [x] Create a current dogfood folder matching the existing shape, with exact tested revisions, commands and raw outputs; include W2/W3 numbers and regressions.
+- [x] Validate integrated runtime with the final independent W4 build/full suite (557/557) and lint; retain those unchanged-source receipts for W5. The subsequent schema-only correction passes its focused 22-test regression run. Independent final integration review approves the combined branch; required GitHub CI remains a landing check.
+- [x] Record `gates/w5.txt` and the limits of what was actually executed. Publish no package/version and change no Mattermost full-suite execution policy as a side effect of dispatching agents.
 
 ## Ownership and conflict scan
 

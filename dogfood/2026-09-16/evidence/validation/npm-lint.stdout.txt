@@ -1,0 +1,4 @@
+
+> @yasserkhanorg/impact-gate@2.4.0 lint
+> tsc -p tsconfig.json --noEmit
+

@@ -1,0 +1,95 @@
+{
+  "copies": [
+    {
+      "bytes": 36,
+      "destination": "dogfood/2026-09-16/evidence/pr38048/config.json",
+      "provenance": "retained byte copy",
+      "sha256": "9ba8f1ad266280889b965d23f8374f3ffe6aca809ef7446c7dfb8f336bee15c9",
+      "source": "/private/tmp/impact-gate-recovery-evidence/w3/pr38048/config.json"
+    },
+    {
+      "bytes": 2421,
+      "destination": "dogfood/2026-09-16/evidence/replay/w2-summary.json",
+      "provenance": "retained byte copy",
+      "sha256": "12b696b284a82878c2ef8cf98a3d1f092189c44c505bb6837d5a07da72689214",
+      "source": "/private/tmp/impact-gate-recovery-evidence/w2-independent/summary.json"
+    },
+    {
+      "bytes": 2421,
+      "destination": "dogfood/2026-09-16/evidence/replay/w3-summary.json",
+      "provenance": "retained byte copy",
+      "sha256": "12b696b284a82878c2ef8cf98a3d1f092189c44c505bb6837d5a07da72689214",
+      "source": "/private/tmp/impact-gate-recovery-evidence/w3-independent/summary.json"
+    },
+    {
+      "bytes": 792,
+      "destination": "dogfood/2026-09-16/evidence/replay/w3-audit.json",
+      "provenance": "retained byte copy",
+      "sha256": "d49e412ed19c649bef0ad936f64b8c7f6fd0daa93095e170604ae9d91137e913",
+      "source": "/private/tmp/impact-gate-recovery-evidence/w3-independent/audit.json"
+    },
+    {
+      "bytes": 8085,
+      "destination": "dogfood/2026-09-16/evidence/verification/good-summary.json",
+      "provenance": "retained byte copy",
+      "sha256": "44706eb260ae5bf5b6b12535f3ed50b2441e73b2a35d59eeed78fe980b8b9e88",
+      "source": "/private/tmp/impact-gate-recovery-evidence/w1-independent/artifacts/good/summary.json"
+    },
+    {
+      "bytes": 6244,
+      "destination": "dogfood/2026-09-16/evidence/verification/empty-summary.json",
+      "provenance": "retained byte copy",
+      "sha256": "680acf4193df280567c53f0df21880d9760d345ea7bb883a57adc9bb1a1ab256",
+      "source": "/private/tmp/impact-gate-recovery-evidence/w1-independent/artifacts/empty/summary.json"
+    },
+    {
+      "bytes": 6955,
+      "destination": "dogfood/2026-09-16/evidence/verification/stage3-summary.json",
+      "provenance": "retained byte copy",
+      "sha256": "bd03a36f2b64254264e1970bda40fcfe172e9e38c125a315c3b0a3a6362e1e00",
+      "source": "/private/tmp/impact-gate-recovery-evidence/w1-independent/artifacts/stage3/summary.json"
+    },
+    {
+      "bytes": 49581,
+      "destination": "dogfood/2026-09-16/evidence/validation/npm-test-final.stdout.txt",
+      "provenance": "retained byte copy",
+      "sha256": "8755046e4090c27d3c47c9f1902dcc558faeef89a8ae2b7be3110c61d1f2bed5",
+      "source": "/private/tmp/impact-gate-recovery-evidence/w4-independent/npm-test-final.stdout.txt"
+    },
+    {
+      "bytes": 0,
+      "destination": "dogfood/2026-09-16/evidence/validation/npm-test-final.stderr.txt",
+      "provenance": "retained byte copy",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "/private/tmp/impact-gate-recovery-evidence/w4-independent/npm-test-final.stderr.txt"
+    },
+    {
+      "bytes": 2,
+      "destination": "dogfood/2026-09-16/evidence/validation/npm-test-final.exit.txt",
+      "provenance": "retained byte copy",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "source": "/private/tmp/impact-gate-recovery-evidence/w4-independent/npm-test-final.exit.txt"
+    },
+    {
+      "bytes": 74,
+      "destination": "dogfood/2026-09-16/evidence/validation/npm-lint.stdout.txt",
+      "provenance": "retained byte copy",
+      "sha256": "1d740e59e6baa90b21440eff52412a8492dfbf18d80dc6faa31d1e99a55fdb2c",
+      "source": "/private/tmp/impact-gate-recovery-evidence/w4-independent/npm-lint.stdout.txt"
+    },
+    {
+      "bytes": 0,
+      "destination": "dogfood/2026-09-16/evidence/validation/npm-lint.stderr.txt",
+      "provenance": "retained byte copy",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "/private/tmp/impact-gate-recovery-evidence/w4-independent/npm-lint.stderr.txt"
+    },
+    {
+      "bytes": 2,
+      "destination": "dogfood/2026-09-16/evidence/validation/npm-lint.exit.txt",
+      "provenance": "retained byte copy",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "source": "/private/tmp/impact-gate-recovery-evidence/w4-independent/npm-lint.exit.txt"
+    }
+  ]
+}

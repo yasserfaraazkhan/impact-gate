@@ -1,0 +1,312 @@
+{
+  "mappingProvenance": [
+    {
+      "file": "server/channels/api4/post.go",
+      "kind": "scanner-heuristic",
+      "tests": [],
+      "origins": [
+        "heuristic"
+      ],
+      "evidence": "unverified"
+    },
+    {
+      "file": "server/channels/app/content_flagging.go",
+      "kind": "scanner-heuristic",
+      "tests": [
+        "specs/functional/channels/content_flagging/deletion-report/deletion-report.spec.ts",
+        "specs/functional/channels/content_flagging/edge-cases/author-deletes-message-before-review.spec.ts",
+        "specs/functional/channels/content_flagging/edge-cases/author-edits-message-during-review.spec.ts",
+        "specs/functional/channels/content_flagging/flagging/flag-messages.spec.ts",
+        "specs/functional/channels/content_flagging/notifications/author-notification.spec.ts",
+        "specs/functional/channels/content_flagging/notifications/reporter-notification.spec.ts",
+        "specs/functional/channels/content_flagging/reviewer-actions/reviewer-actions.spec.ts",
+        "specs/functional/channels/content_flagging/reviewer-reports/cross-team-flag-reports-global-reviewers.spec.ts",
+        "specs/functional/channels/content_flagging/reviewer-reports/multiple-reviewers-receive-same-flag.spec.ts"
+      ],
+      "origins": [
+        "heuristic"
+      ],
+      "evidence": "unverified"
+    },
+    {
+      "file": "server/channels/app/content_flagging_report.go",
+      "kind": "scanner-heuristic",
+      "tests": [
+        "specs/functional/channels/content_flagging/deletion-report/deletion-report.spec.ts",
+        "specs/functional/channels/content_flagging/edge-cases/author-deletes-message-before-review.spec.ts",
+        "specs/functional/channels/content_flagging/edge-cases/author-edits-message-during-review.spec.ts",
+        "specs/functional/channels/content_flagging/flagging/flag-messages.spec.ts",
+        "specs/functional/channels/content_flagging/notifications/author-notification.spec.ts",
+        "specs/functional/channels/content_flagging/notifications/reporter-notification.spec.ts",
+        "specs/functional/channels/content_flagging/reviewer-actions/reviewer-actions.spec.ts",
+        "specs/functional/channels/content_flagging/reviewer-reports/cross-team-flag-reports-global-reviewers.spec.ts",
+        "specs/functional/channels/content_flagging/reviewer-reports/multiple-reviewers-receive-same-flag.spec.ts"
+      ],
+      "origins": [
+        "heuristic"
+      ],
+      "evidence": "unverified"
+    },
+    {
+      "file": "server/channels/app/draft.go",
+      "kind": "scanner-heuristic",
+      "tests": [
+        "specs/functional/channels/drafts/draft_channel_switch.spec.ts",
+        "specs/functional/channels/drafts/drafts_on_deleted_message.spec.ts",
+        "/private/tmp/impact-gate-recovery-evidence/w3/pr38048/base-inventory/e2e-tests/cypress/tests/integration/channels/messaging/draft_with_only_2_byte_characters_spec.js",
+        "/private/tmp/impact-gate-recovery-evidence/w3/pr38048/base-inventory/e2e-tests/cypress/tests/integration/channels/messaging/long_draft_spec.js",
+        "/private/tmp/impact-gate-recovery-evidence/w3/pr38048/base-inventory/e2e-tests/cypress/tests/integration/channels/messaging/message_draft_persistance_spec.js",
+        "/private/tmp/impact-gate-recovery-evidence/w3/pr38048/base-inventory/e2e-tests/cypress/tests/integration/channels/messaging/message_draft_spec.js",
+        "/private/tmp/impact-gate-recovery-evidence/w3/pr38048/base-inventory/e2e-tests/cypress/tests/integration/channels/messaging/message_draft_then_switch_channel_spec.js",
+        "/private/tmp/impact-gate-recovery-evidence/w3/pr38048/base-inventory/e2e-tests/cypress/tests/integration/channels/messaging/message_draft_with_attachment_then_switch_channel_spec.js"
+      ],
+      "origins": [
+        "heuristic"
+      ],
+      "evidence": "unverified"
+    },
+    {
+      "file": "server/channels/app/post.go",
+      "kind": "scanner-heuristic",
+      "tests": [],
+      "origins": [
+        "heuristic"
+      ],
+      "evidence": "unverified"
+    },
+    {
+      "file": "server/channels/app/post_metadata.go",
+      "kind": "scanner-heuristic",
+      "tests": [],
+      "origins": [
+        "heuristic"
+      ],
+      "evidence": "unverified"
+    }
+  ],
+  "evidence": {
+    "coverage": "unavailable",
+    "measuredCoverageEdges": 0
+  },
+  "impactedFlows": [
+    {
+      "id": "server/channels/api4/post",
+      "name": "Server/Channels/Api4/Post",
+      "status": "uncovered",
+      "priority": "P2",
+      "changedFiles": [
+        "server/channels/api4/post.go"
+      ],
+      "existingTests": [],
+      "gaps": [
+        "No E2E test coverage for this flow"
+      ],
+      "userFlows": [],
+      "riskNote": "no test coverage"
+    },
+    {
+      "id": "server/channels/app/post",
+      "name": "Server/Channels/App/Post",
+      "status": "uncovered",
+      "priority": "P2",
+      "changedFiles": [
+        "server/channels/app/post.go"
+      ],
+      "existingTests": [],
+      "gaps": [
+        "No E2E test coverage for this flow"
+      ],
+      "userFlows": [],
+      "riskNote": "no test coverage"
+    },
+    {
+      "id": "server/channels/app/post_metadata",
+      "name": "Server/Channels/App/Post Metadata",
+      "status": "uncovered",
+      "priority": "P2",
+      "changedFiles": [
+        "server/channels/app/post_metadata.go"
+      ],
+      "existingTests": [],
+      "gaps": [
+        "No E2E test coverage for this flow"
+      ],
+      "userFlows": [],
+      "riskNote": "no test coverage"
+    },
+    {
+      "id": "server/channels/app/content_flagging",
+      "name": "Server/Channels/App/Content Flagging",
+      "status": "covered",
+      "priority": "P2",
+      "changedFiles": [
+        "server/channels/app/content_flagging.go"
+      ],
+      "existingTests": [
+        "specs/functional/channels/content_flagging/deletion-report/deletion-report.spec.ts",
+        "specs/functional/channels/content_flagging/edge-cases/author-deletes-message-before-review.spec.ts",
+        "specs/functional/channels/content_flagging/edge-cases/author-edits-message-during-review.spec.ts",
+        "specs/functional/channels/content_flagging/flagging/flag-messages.spec.ts",
+        "specs/functional/channels/content_flagging/notifications/author-notification.spec.ts",
+        "specs/functional/channels/content_flagging/notifications/reporter-notification.spec.ts",
+        "specs/functional/channels/content_flagging/reviewer-actions/reviewer-actions.spec.ts",
+        "specs/functional/channels/content_flagging/reviewer-reports/cross-team-flag-reports-global-reviewers.spec.ts",
+        "specs/functional/channels/content_flagging/reviewer-reports/multiple-reviewers-receive-same-flag.spec.ts"
+      ],
+      "gaps": [],
+      "userFlows": []
+    },
+    {
+      "id": "server/channels/app/content_flagging_report",
+      "name": "Server/Channels/App/Content Flagging Report",
+      "status": "covered",
+      "priority": "P2",
+      "changedFiles": [
+        "server/channels/app/content_flagging_report.go"
+      ],
+      "existingTests": [
+        "specs/functional/channels/content_flagging/deletion-report/deletion-report.spec.ts",
+        "specs/functional/channels/content_flagging/edge-cases/author-deletes-message-before-review.spec.ts",
+        "specs/functional/channels/content_flagging/edge-cases/author-edits-message-during-review.spec.ts",
+        "specs/functional/channels/content_flagging/flagging/flag-messages.spec.ts",
+        "specs/functional/channels/content_flagging/notifications/author-notification.spec.ts",
+        "specs/functional/channels/content_flagging/notifications/reporter-notification.spec.ts",
+        "specs/functional/channels/content_flagging/reviewer-actions/reviewer-actions.spec.ts",
+        "specs/functional/channels/content_flagging/reviewer-reports/cross-team-flag-reports-global-reviewers.spec.ts",
+        "specs/functional/channels/content_flagging/reviewer-reports/multiple-reviewers-receive-same-flag.spec.ts"
+      ],
+      "gaps": [],
+      "userFlows": []
+    },
+    {
+      "id": "server/channels/app/draft",
+      "name": "Server/Channels/App/Draft",
+      "status": "covered",
+      "priority": "P2",
+      "changedFiles": [
+        "server/channels/app/draft.go"
+      ],
+      "existingTests": [
+        "specs/functional/channels/drafts/draft_channel_switch.spec.ts",
+        "specs/functional/channels/drafts/drafts_on_deleted_message.spec.ts",
+        "/private/tmp/impact-gate-recovery-evidence/w3/pr38048/base-inventory/e2e-tests/cypress/tests/integration/channels/messaging/draft_with_only_2_byte_characters_spec.js",
+        "/private/tmp/impact-gate-recovery-evidence/w3/pr38048/base-inventory/e2e-tests/cypress/tests/integration/channels/messaging/long_draft_spec.js",
+        "/private/tmp/impact-gate-recovery-evidence/w3/pr38048/base-inventory/e2e-tests/cypress/tests/integration/channels/messaging/message_draft_persistance_spec.js",
+        "/private/tmp/impact-gate-recovery-evidence/w3/pr38048/base-inventory/e2e-tests/cypress/tests/integration/channels/messaging/message_draft_spec.js",
+        "/private/tmp/impact-gate-recovery-evidence/w3/pr38048/base-inventory/e2e-tests/cypress/tests/integration/channels/messaging/message_draft_then_switch_channel_spec.js",
+        "/private/tmp/impact-gate-recovery-evidence/w3/pr38048/base-inventory/e2e-tests/cypress/tests/integration/channels/messaging/message_draft_with_attachment_then_switch_channel_spec.js"
+      ],
+      "gaps": [],
+      "userFlows": []
+    }
+  ],
+  "coverageGaps": [],
+  "riskAssessment": {
+    "score": 0.191,
+    "level": "low",
+    "topFactors": [
+      "change entropy (scattered vs focused) (0.5286874763341378) (entropy: 0.5286874763341378)",
+      "developers who touched these files (27) (ndev: 27)",
+      "cognitive complexity increase (30) (cognitive_delta: 30)"
+    ],
+    "recommendation": "Low defect risk. Standard review process is sufficient. These files have been modified by 27 developers. High-traffic files need extra review attention. Code complexity increased by 30 points. Consider refactoring to reduce nesting and branching."
+  },
+  "decision": {
+    "action": "review-recommended",
+    "summary": "This PR impacts 6 flows with low defect risk. Review recommended before merging.",
+    "details": [
+      "3 flows have no associated E2E specs",
+      "3 flows have Playwright spec associations",
+      "Recommended test run: FULL",
+      "17 tests to run"
+    ]
+  },
+  "metrics": {
+    "changedFiles": 14,
+    "impactedFlows": 6,
+    "coveredFlows": 3,
+    "uncoveredFlows": 3,
+    "partialFlows": 0,
+    "coverageGaps": 0,
+    "defectRiskScore": 0.191,
+    "confidence": 95
+  },
+  "behaviorSummary": [
+    "File attachment policies active",
+    "Permission or authorization logic changed"
+  ],
+  "recommendations": [
+    {
+      "scenario": "File attachment policies active",
+      "priority": "P0",
+      "rationale": "Behavior change in post_metadata.go",
+      "dimension": "core-flow"
+    },
+    {
+      "scenario": "Users with appropriate roles can access the feature",
+      "priority": "P0",
+      "rationale": "Behavior change in abac_file_metadata_test.go",
+      "dimension": "core-flow"
+    },
+    {
+      "scenario": "Non-admin users see appropriate access restrictions",
+      "priority": "P1",
+      "rationale": "Permission logic changed but no cross-role test exists",
+      "dimension": "cross-role"
+    },
+    {
+      "scenario": "Changes persist after page reload",
+      "priority": "P1",
+      "rationale": "UI + API changed but no persistence test exists",
+      "dimension": "persistence"
+    },
+    {
+      "scenario": "API returns appropriate error for invalid input",
+      "priority": "P2",
+      "rationale": "New API behavior but no error case test",
+      "dimension": "error-case"
+    }
+  ],
+  "relevantExistingTests": [
+    {
+      "file": "specs/functional/channels/content_flagging/deletion-report/deletion-report.spec.ts",
+      "matchReason": "scanner-heuristic"
+    },
+    {
+      "file": "specs/functional/channels/content_flagging/edge-cases/author-deletes-message-before-review.spec.ts",
+      "matchReason": "scanner-heuristic"
+    },
+    {
+      "file": "specs/functional/channels/content_flagging/edge-cases/author-edits-message-during-review.spec.ts",
+      "matchReason": "scanner-heuristic"
+    },
+    {
+      "file": "specs/functional/channels/content_flagging/flagging/flag-messages.spec.ts",
+      "matchReason": "scanner-heuristic"
+    },
+    {
+      "file": "specs/functional/channels/content_flagging/notifications/author-notification.spec.ts",
+      "matchReason": "scanner-heuristic"
+    },
+    {
+      "file": "specs/functional/channels/content_flagging/notifications/reporter-notification.spec.ts",
+      "matchReason": "scanner-heuristic"
+    },
+    {
+      "file": "specs/functional/channels/content_flagging/reviewer-actions/reviewer-actions.spec.ts",
+      "matchReason": "scanner-heuristic"
+    },
+    {
+      "file": "specs/functional/channels/content_flagging/reviewer-reports/cross-team-flag-reports-global-reviewers.spec.ts",
+      "matchReason": "scanner-heuristic"
+    },
+    {
+      "file": "specs/functional/channels/content_flagging/reviewer-reports/multiple-reviewers-receive-same-flag.spec.ts",
+      "matchReason": "scanner-heuristic"
+    },
+    {
+      "file": "specs/functional/channels/drafts/draft_channel_switch.spec.ts",
+      "matchReason": "scanner-heuristic"
+    }
+  ]
+}

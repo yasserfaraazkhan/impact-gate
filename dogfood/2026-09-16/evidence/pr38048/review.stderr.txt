@@ -1,0 +1,7 @@
+Reviewing: 4ce99ddd38636bb6916613efc892606db3fe75f9...HEAD
+Repository: /private/tmp/impact-gate-recovery-evidence/w3/pr38048/source
+
+[2026-09-16T09:06:01.029Z] [INFO] Built 6 heuristic families from 6 changed files (no route-families.json found)
+Behavior analysis: 14 signals, 5 recommendations
+
+PR comment written to /private/tmp/impact-gate-recovery-2026-09-16/dogfood/2026-09-16/evidence/pr38048/review.md

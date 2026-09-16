@@ -1,0 +1,11 @@
+W5 independent artifact gate — PASS, 2026-09-16
+Scope: frozen dogfood/2026-09-16/ only. Tool capture commit 0030639afa729aabd9654c19eacdb3faf1b96312; final W4 validation reused, not rerun for W5.
+
+Audit cwd: /private/tmp/impact-gate-recovery-2026-09-16. Actual command: `python3 - <<'PY'` (read-only assertions over folder layout, SHA256SUMS, copy-sources.json source/destination bytes and sizes, commands.json CLI/package/config and stdout/stderr hashes, exact pinned revisions/inventory hashes, strict review/gate JSON, signed exits, validation receipts, README labels and local links). Exit 0. Exact output:
+PASS files=24 manifest=22 copies=13 strictJSON=2 source/base pinned, prior inventory stable, review=14/6/17/FULL exit0, gate=14 unassessed exit1, reused W4=557/557 lint0, links=all
+
+Fresh PR38048 command receipts: dogfood/2026-09-16/evidence/pr38048/commands.json. Source HEAD 1af180e6bbf9853963bcbb19b69f82e1cb0275a1 and base-inventory HEAD 4ce99ddd38636bb6916613efc892606db3fe75f9. Source clean; base retains the same four prior untracked .e2e-ai-agents files and SHA-256 values before/after. Review JSON reports 14 changed files, 6 flows, 17 advised tests, FULL run, scanner-heuristic/unverified candidates and unavailable measured coverage; exit 0. Gate JSON reports passed=false, 14 unassessed, threshold80, manifest-spec-presence, unavailable measured coverage, not-assessed release; exit 1 is the expected conservative result.
+
+All 13 retained copies match their original bytes and declared sizes/hashes. SHA256SUMS exactly covers all 22 other evidence files. W2/W3 retained summaries preserve fixed30 results: named omission1/1, effective omission0/1 via full fallback30/30, zero static selection savings; W3 audit records candidate-bearing26/30 and broad positive lists2–817. W1 summaries and W4 final 557/557 test plus lint0 are labeled retained. March comparison is qualitative; README makes no live-model, Mattermost E2E, new CI, or selective-safety claim. No W5 product/test edit or W5 test/CLI rerun by this gate.
+
+`git diff --check 0030639` exited 0. Concurrent changes to DECISIONS.md, gates/w4.txt, schemas/plan.schema.json and test/plan_builder.test.ts belong to root's separate records/W3 schema follow-up, not the frozen W5 folder. Overall branch integration waits for that separately gated follow-up.

@@ -1,0 +1,854 @@
+
+> @yasserkhanorg/impact-gate@2.4.0 pretest
+> npm run build && npm run build:scripts && npm run build:test
+
+
+> @yasserkhanorg/impact-gate@2.4.0 prebuild
+> npm run clean
+
+
+> @yasserkhanorg/impact-gate@2.4.0 clean
+> rm -rf dist
+
+
+> @yasserkhanorg/impact-gate@2.4.0 build
+> npm run build:cjs && npm run build:esm
+
+
+> @yasserkhanorg/impact-gate@2.4.0 build:cjs
+> tsc -p tsconfig.json
+
+
+> @yasserkhanorg/impact-gate@2.4.0 build:esm
+> tsc -p tsconfig.esm.json && node scripts/write-esm-package.js
+
+
+> @yasserkhanorg/impact-gate@2.4.0 postbuild
+> chmod +x dist/cli.js dist/qa-agent/cli.js dist/mcp-server.js
+
+
+> @yasserkhanorg/impact-gate@2.4.0 build:scripts
+> tsc -p tsconfig.scripts.json
+
+
+> @yasserkhanorg/impact-gate@2.4.0 build:test
+> tsc -p tsconfig.test.json --noCheck
+
+
+> @yasserkhanorg/impact-gate@2.4.0 test
+> node --test test-dist/*.test.js
+
+▶ adapters
+  ▶ PytestAdapter
+    ✔ has correct specGlob (6.499042ms)
+    ✔ has an extractTestPattern regex (1.656125ms)
+    ✔ buildRunCommand returns a RunCommand (2.222625ms)
+    ✔ buildRunCommand includes timeout when provided (3.764625ms)
+  ✔ PytestAdapter (14.698958ms)
+  ▶ SupertestAdapter
+    ✔ has correct specGlob (3.218125ms)
+    ✔ buildRunCommand defaults to vitest (2.994166ms)
+    ✔ buildRunCommand uses jest runner when configured (2.102208ms)
+    ✔ buildRunCommand includes timeout for vitest (2.360167ms)
+    ✔ buildRunCommand includes timeout for jest (1.851167ms)
+  ✔ SupertestAdapter (12.81375ms)
+  ▶ detectFramework
+    ✔ returns playwright by default when no package.json (2.163083ms)
+    ✔ returns playwright by default with empty package.json (11.255084ms)
+  ✔ detectFramework (13.543083ms)
+  ▶ detectTestMode
+    ✔ returns api when KG has supertest framework (4.259458ms)
+    ✔ returns ui when KG has playwright framework (6.615833ms)
+    ✔ returns both when KG has both UI and API frameworks (3.010333ms)
+    ✔ returns ui by default with no KG and no package.json (2.993292ms)
+  ✔ detectTestMode (17.173292ms)
+✔ adapters (58.806542ms)
+▶ advisory Git and conservative selection regressions
+  ✔ distinguishes an invalid ref from a genuinely empty diff and rejects it through the API (1464.969625ms)
+  ✔ preserves CI, dependency, unsupported and unusual filenames in the complete Git diff (1041.000917ms)
+  ✔ recommends the complete existing suite for package-lock.json with its exact reason (966.203833ms)
+  ✔ recommends the complete existing suite for docs/unsupported.md with its exact reason (784.833208ms)
+  ✔ recommends the complete existing suite for webapp/channels/src/components/unmapped.tsx with its exact reason (776.055417ms)
+  ✔ recommends the complete existing suite for .github/workflows/e2e.yml with its exact reason (725.193125ms)
+  ✔ recommends the complete existing suite for e2e-tests/playwright/helpers/dispatch.ts with its exact reason (663.878625ms)
+  ✔ recommends the complete existing suite for webapp/channels/src/shared/store.ts with its exact reason (799.263625ms)
+  ✔ preserves both old and new paths for a rename (910.801833ms)
+  ✔ retains all 11 E2E/CI paths from Mattermost PR 38356 and recommends the full suite (968.623583ms)
+✔ advisory Git and conservative selection regressions (9102.359ms)
+▶ advisory exact paths and evidence
+  ✔ resolves nested Playwright and both Mattermost Cypress spec extensions (858.189583ms)
+  ✔ binds full Git identities, changed-file hash, configuration and exact suite/project/variant (830.068292ms)
+  ✔ keeps static-dependency-inference as heuristic provenance and cannot claim targeted or measured coverage (542.621709ms)
+  ✔ keeps co-change-heuristic as heuristic provenance and cannot claim targeted or measured coverage (790.610875ms)
+  ✔ does not turn a reviewed spec presence mapping into measured or release evidence (521.019958ms)
+  ✔ rejects absolute, traversal, Windows, empty, missing and escaping symlink paths (449.480875ms)
+  ✔ rejects a mapped spec outside its suite, a missing mapping and an escaping inventory symlink (1302.746875ms)
+  ✔ rejects mismatched repository identity, unknown suite and dirty tracked specs (1616.39775ms)
+  ✔ does not include untracked spec files in the reported committed inventory (714.94775ms)
+  ✔ fails on missing or modified skip-worktree specs and missing committed suite configuration (1199.975416ms)
+  ✔ reports an unavailable empty static inventory as a full-suite fallback (936.956041ms)
+  ✔ produces identical substantive plans for identical inputs (880.311ms)
+✔ advisory exact paths and evidence (10643.814416ms)
+▶ advisory adversarial provenance and inventory
+  ✔ rejects crisscross histories instead of choosing an arbitrary merge base (732.372959ms)
+  ✔ does not trust a self-declared human review to select a targeted subset (784.858875ms)
+  ✔ rejects omitted, invented and duplicated changed paths or forged base provenance (915.980875ms)
+  ✔ rejects product changes hidden from git status by --skip-worktree (766.068583ms)
+  ✔ rejects product changes hidden from git status by --assume-unchanged (1378.317ms)
+  ✔ keeps submodule pointer changes when repository diff configuration ignores them (1210.038875ms)
+  ✔ keeps hidden committed specs and configured custom test names in static inventory (568.656583ms)
+  ✔ rejects implicit minimatch negation/comments and malformed exact paths throughout the configuration (1021.953458ms)
+  ✔ binds run identity to the resolved base even if the head and changed paths match (816.545959ms)
+  ✔ fails malformed JSON configuration without planner side effects (1100.798625ms)
+✔ advisory adversarial provenance and inventory (9296.015333ms)
+▶ advisory CLI isolation and coverage gates
+  ✔ fails the invalid-ref gate with one JSON error instead of an empty-diff pass (1334.478625ms)
+  ✔ cannot pass the normal coverage gate for unsupported changes with zero assessed features (1147.537042ms)
+  ✔ never counts partial coverage as full coverage at a 100 percent gate threshold (952.018875ms)
+  ✔ rejects generative, execution and explicit status-output flags in advisory mode (2862.994792ms)
+  ✔ runs plan, suggest and advisory gate without credentials, providers, network, test execution or writes (2424.410334ms)
+✔ advisory CLI isolation and coverage gates (8721.637375ms)
+✔ malformed advisory CLI arguments fail closed with one JSON error (2551.864834ms)
+REAL_PLAYWRIGHT_GOOD_FIXTURE=/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-mutation-fixture-3HXAyU
+REAL_PLAYWRIGHT_EMPTY_FIXTURE=/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-mutation-fixture-eNtzz8
+REAL_PLAYWRIGHT_STAGE3_FIXTURE=/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-mutation-fixture-f0WltH
+fatal: Needed a single revision
+▶ runAgenticGeneration
+  ✔ returns summary with results for dry run (22.837042ms)
+  ✔ handles LLM returning invalid code (0.395083ms)
+✔ runAgenticGeneration (24.204834ms)
+▶ real generated-test mutation acceptance
+  ✔ requires clean pass, assertion kill, and restored pass with real Playwright (6672.163292ms)
+  ✔ does not trust a clean assertion-free generated test and quarantines it (8461.861125ms)
+  ✔ preserves a preexisting spec when source context is missing (114.763417ms)
+✔ real generated-test mutation acceptance (15249.010708ms)
+▶ shared verification and preservation boundaries
+  ✔ stage 3 verifies its actual generated artifact, and crew executes it without a provider (7621.923708ms)
+  ✔ stage 3 preserves a complete existing spec beyond 12KB when verification fails (289.474125ms)
+  ✔ rejects missing source/base, unsupported source, and remote/prebuilt server context (401.012375ms)
+  ✔ does not overwrite concurrent edits while awaiting generation (107.484875ms)
+  ✔ rejects symlink mutation targets without changing their destination (417.915542ms)
+✔ shared verification and preservation boundaries (8838.124208ms)
+✔ rejects dangling generated-target symlinks before writing (83.898375ms)
+▶ W1 independent-review regressions
+  ✔ never follows a source symlink installed by the baseline test (1753.271834ms)
+  ✔ rejects source bytes changed after the restored assertion (4750.417083ms)
+  ✔ quarantine failures preserve existing bytes or remove new specs for both generators (869.215125ms)
+  ✔ an empty add_scenarios addition cannot borrow an existing test mutation kill (102.083ms)
+  ✔ crew rejects source changes made by its final passing execution (6388.639459ms)
+✔ W1 independent-review regressions (13863.816667ms)
+✔ restores owned existing bytes even if reserved quarantine storage disappears (121.461125ms)
+✔ both generators remove rejected new specs when execution destroys quarantine storage (16238.507ms)
+▶ enrichImpactWithAI
+  ✔ Test 1: Valid AI response enriches features correctly (1.3065ms)
+  ✔ Test 2: Invalid JSON response results in graceful failure (0.218083ms)
+  ✔ Test 3: Provider error results in graceful failure (0.20625ms)
+  ✔ Test 4: Deterministic features not mentioned by AI are still included (1.06275ms)
+  ✔ Test 5: Markdown-fenced JSON response is parsed correctly (0.183625ms)
+  ✔ Test 6: Manifest summary included when provided (0.163875ms)
+✔ enrichImpactWithAI (3.971666ms)
+[2026-09-16T08:51:05.067Z] [INFO] Built 0 heuristic families from 0 changed files (no route-families.json found)
+[2026-09-16T08:51:05.316Z] [INFO] Built 0 heuristic families from 0 changed files (no route-families.json found)
+▶ recommendTestsDeterministic
+  ✔ still works unchanged and returns the expected shape (211.811041ms)
+✔ recommendTestsDeterministic (212.170875ms)
+[2026-09-16T08:51:05.580Z] [INFO] Built 0 heuristic families from 0 changed files (no route-families.json found)
+▶ recommendTestsAI without API key
+  ✔ returns deterministic result without crashing when ANTHROPIC_API_KEY is not set (269.837667ms)
+[2026-09-16T08:51:05.870Z] [INFO] Built 0 heuristic families from 0 changed files (no route-families.json found)
+  ✔ plan source should be "impact" (deterministic) when no API key is present (249.104708ms)
+✔ recommendTestsAI without API key (519.27575ms)
+[2026-09-16T08:51:06.125Z] [INFO] Built 0 heuristic families from 0 changed files (no route-families.json found)
+▶ recommendTestsAI result shape
+  ✔ returns an object extending RecommendTestsV2Result with optional aiEnrichment (289.887667ms)
+✔ recommendTestsAI result shape (290.179542ms)
+▶ recommendTestsAI with API key set
+  ✔ exercises AI enrichment path and returns result without crashing when given a fake key (312.668333ms)
+✔ recommendTestsAI with API key set (312.920833ms)
+✔ BaseProvider initializes stats (5.78575ms)
+✔ BaseProvider.getUsageStats returns copy (0.890416ms)
+✔ BaseProvider.resetUsageStats clears stats (0.1355ms)
+✔ BaseProvider.calculateCost handles basic cost (0.088792ms)
+✔ BaseProvider.calculateCost handles cached tokens (0.077375ms)
+✔ BaseProvider.calculateCost with zero cost tokens (0.056375ms)
+✔ BaseProvider updates stats with rolling average (0.076708ms)
+[2026-09-16T08:51:04.378Z] [INFO] impact-gate bootstrap
+[2026-09-16T08:51:04.381Z] [INFO] =======================
+[2026-09-16T08:51:04.384Z] [INFO] impact-gate bootstrap
+[2026-09-16T08:51:04.384Z] [INFO] =======================
+▶ bootstrap
+  ✔ throws BootstrapError when KG file not found (6.244833ms)
+  ✔ does NOT call process.exit (2.586542ms)
+✔ bootstrap (9.634458ms)
+▶ EXIT_CODES
+  ✔ has expected values (0.512792ms)
+✔ EXIT_CODES (1.195792ms)
+▶ CliError
+  ✔ defaults to GENERAL_ERROR exit code (0.107708ms)
+  ✔ accepts a custom exit code (0.063208ms)
+  ✔ is an instance of Error (0.09275ms)
+✔ CliError (0.369416ms)
+▶ classifyError
+  ✔ returns CliError.exitCode for CliError instances (0.208ms)
+  ✔ classifies "budget exceeded" messages (0.143458ms)
+  ✔ classifies "budget limit" messages (0.07325ms)
+  ✔ classifies "api key" errors as PROVIDER_UNAVAILABLE (0.061708ms)
+  ✔ classifies "authentication" errors (0.076042ms)
+  ✔ classifies "unauthorized" errors (0.094333ms)
+  ✔ classifies "403" errors (0.05975ms)
+  ✔ classifies "provider unavailable" errors (0.212625ms)
+  ✔ classifies ECONNREFUSED errors (0.199916ms)
+  ✔ classifies ECONNRESET errors (0.185041ms)
+  ✔ classifies "manifest invalid" errors as INVALID_CONFIG (0.180417ms)
+  ✔ classifies "manifest not found" errors (0.1265ms)
+  ✔ classifies "manifest parse" errors (0.065333ms)
+  ✔ classifies "config invalid" errors (0.048208ms)
+  ✔ classifies "route-families invalid" errors (0.044166ms)
+  ✔ defaults to GENERAL_ERROR for unknown errors (0.043209ms)
+  ✔ handles non-Error objects (0.030417ms)
+  ✔ handles non-Error non-string objects (0.029625ms)
+✔ classifyError (2.821875ms)
+▶ cluster_utils
+  ▶ normalizeToClusterId
+    ✔ converts camelCase to snake_case (0.657583ms)
+    ✔ converts snake_case as-is (0.075ms)
+    ✔ strips special characters (0.094666ms)
+    ✔ returns empty string for empty input (0.060125ms)
+  ✔ normalizeToClusterId (1.314ms)
+  ▶ deriveClusterId
+    ✔ uses filePath when present (0.160208ms)
+    ✔ falls back to name when filePath is absent (0.066ms)
+    ✔ returns null for empty name with no filePath (0.0655ms)
+    ✔ returns null for single-char normalized name (0.062792ms)
+  ✔ deriveClusterId (0.495416ms)
+  ▶ deriveClusterIdFromPath
+    ✔ skips default structural dirs (0.094917ms)
+    ✔ skips file segments (containing dots) (0.099792ms)
+    ✔ uses custom skipDirs set (0.060125ms)
+    ✔ returns null when no meaningful segment found (1.196834ms)
+  ✔ deriveClusterIdFromPath (1.584417ms)
+  ▶ SKIP_DIRS_WITH_TESTS
+    ✔ includes test directories (0.26525ms)
+    ✔ includes base structural dirs (0.081959ms)
+  ✔ SKIP_DIRS_WITH_TESTS (0.441625ms)
+✔ cluster_utils (4.399667ms)
+▶ isTestFile
+  ✔ should detect .spec.ts files (0.716583ms)
+  ✔ should detect .test.ts files (0.065333ms)
+  ✔ should detect Go test files (0.072417ms)
+  ✔ should detect __tests__ directory (0.093875ms)
+  ✔ should detect /tests/ directory (0.059042ms)
+  ✔ should detect /test/ directory (0.047833ms)
+  ✔ should NOT flag source files (0.076875ms)
+  ✔ should NOT flag test-like names in non-test paths (0.055833ms)
+  ✔ should handle backslashes (0.077417ms)
+✔ isTestFile (2.154167ms)
+▶ mergeUsageStats
+  ✔ should merge counters correctly (0.232125ms)
+  ✔ should compute weighted average with equal weights (0.053ms)
+  ✔ should compute weighted average with unequal weights (0.069084ms)
+  ✔ should handle zero-request source (0.049875ms)
+  ✔ should handle both-zero without NaN (0.056125ms)
+✔ mergeUsageStats (0.583959ms)
+▶ createEmptyUsageStats
+  ✔ should initialize all counters to zero (0.054041ms)
+  ✔ should set timestamps (0.032208ms)
+✔ createEmptyUsageStats (0.118791ms)
+▶ sanitizeForPrompt
+  ✔ should strip prompt injection patterns (0.229625ms)
+  ✔ should strip system prompt markers (0.129292ms)
+  ✔ should truncate long strings (0.06725ms)
+  ✔ should pass through clean strings unchanged (0.041792ms)
+✔ sanitizeForPrompt (1.362875ms)
+▶ WORKFLOWS
+  ✔ should have preprocess as first phase in all workflows (0.098542ms)
+  ✔ should have understand phase after preprocess (0.054125ms)
+  ✔ full-qa should include all 5 phases (0.845583ms)
+  ✔ quick-check should be a subset of full-qa (0.045125ms)
+✔ WORKFLOWS (1.11875ms)
+▶ parseStrategistResponse
+  ✔ should parse valid JSON (0.2235ms)
+  ✔ should parse JSON from markdown fences (0.127709ms)
+  ✔ should parse JSON embedded in prose (0.034ms)
+  ✔ should return null for missing strategy key (0.031375ms)
+  ✔ should return null for malformed JSON (0.027375ms)
+  ✔ should return null for empty string (0.026042ms)
+✔ parseStrategistResponse (0.539292ms)
+▶ parseTestDesignerResponse
+  ✔ should parse valid response (0.143166ms)
+  ✔ should return null when testDesign key is missing (0.05675ms)
+  ✔ should return null when testCases is not an array (0.040125ms)
+  ✔ should handle fenced JSON (0.04375ms)
+✔ parseTestDesignerResponse (0.543083ms)
+▶ parseCrossImpactResponse
+  ✔ should parse valid response (0.075375ms)
+  ✔ should parse empty cross-impacts (0.037542ms)
+  ✔ should return null for missing key (0.033291ms)
+✔ parseCrossImpactResponse (0.186542ms)
+▶ buildStrategistPrompt
+  ✔ should include flow information (0.162417ms)
+  ✔ should include cross-impact data when present (0.064833ms)
+  ✔ should show fallback text when no cross-impacts (0.040375ms)
+✔ buildStrategistPrompt (0.314625ms)
+▶ buildCrossImpactPrompt
+  ✔ should include changed files and families (0.131292ms)
+✔ buildCrossImpactPrompt (0.160958ms)
+▶ buildTestDesignerPrompt
+  ✔ should include flow and strategy info (0.147584ms)
+✔ buildTestDesignerPrompt (0.170583ms)
+✔ loadDiffs returns diff content for changed files (578.466792ms)
+✔ loadDiffs returns empty map when no files given (324.599834ms)
+✔ loadDiffs truncates large diffs (638.227292ms)
+✔ formatDiffsForPrompt returns no-diffs message for empty map (0.221167ms)
+✔ formatDiffsForPrompt formats diffs with file headers (0.257958ms)
+▶ parseEnrichResponse
+  ✔ parses a valid JSON array (1.516541ms)
+  ✔ parses JSON wrapped in markdown fences (0.129084ms)
+  ✔ returns empty array for completely invalid response (0.111709ms)
+  ✔ returns empty array for partial/malformed JSON (0.084042ms)
+  ✔ strips invalid priority values (0.066708ms)
+  ✔ filters out entries missing id (0.058916ms)
+  ✔ filters out routes with excessively long strings (>=200 chars) (0.0875ms)
+  ✔ returns empty array for empty JSON array (0.063625ms)
+  ✔ greedy fallback regex matches outermost array brackets (0.081833ms)
+  ✔ greedy fallback regex handles nested arrays in JSON (0.113417ms)
+  ✔ parses JSON wrapped in markdown fences without language tag (0.066667ms)
+✔ parseEnrichResponse (3.248917ms)
+▶ extractScenarios
+  ✔ extracts test() and test.describe() from Playwright specs (11.444708ms)
+  ✔ extracts describe(), context(), and it() from Cypress specs (3.463625ms)
+  ✔ handles double-quoted strings (6.455958ms)
+  ✔ handles backtick-quoted strings (template literals without expressions) (6.989417ms)
+  ✔ ignores test.skip(condition) where first arg is not a string (6.71ms)
+  ✔ captures it.skip() with a string title in Cypress (6.500125ms)
+  ✔ handles Playwright test with config object (tags) (8.583ms)
+  ✔ returns empty array for non-existent file (0.17025ms)
+  ✔ returns empty array for file with no test blocks (6.589792ms)
+  ✔ handles MM-T ID prefixed test titles in Cypress (10.034584ms)
+  ✔ works correctly when called multiple times (regex lastIndex reset) (7.519375ms)
+✔ extractScenarios (89.226792ms)
+▶ buildFixPrompt
+  ✔ includes failure details and spec code in prompt (0.824ms)
+  ✔ includes compile error context (0.089291ms)
+✔ buildFixPrompt (1.634709ms)
+▶ applyFix
+  ✔ extracts code from LLM response (0.301125ms)
+  ✔ returns raw response if no fences (0.13175ms)
+  ✔ returns null for empty/invalid response (0.075084ms)
+✔ applyFix (0.625583ms)
+▶ generation_profile
+  ▶ resolveGenerationProfile
+    ✔ returns Mattermost profile when profile=mattermost (2.675375ms)
+    ✔ returns default Playwright profile with no config (0.120125ms)
+    ✔ returns API profile when testMode=api (0.079833ms)
+    ✔ detects Mattermost from KG name (0.138292ms)
+    ✔ derives framework from KG metadata (0.15475ms)
+    ✔ derives pytest framework from KG (0.073417ms)
+  ✔ resolveGenerationProfile (3.754166ms)
+  ▶ isMattermostProfile
+    ✔ returns true for Mattermost import (0.120166ms)
+    ✔ returns false for default Playwright profile (0.34575ms)
+    ✔ returns false for API profile (0.11475ms)
+  ✔ isMattermostProfile (0.74625ms)
+✔ generation_profile (4.991083ms)
+✔ getChangedFiles keeps full path for unstaged changes from git status porcelain (576.067166ms)
+✔ impact checklist passes for consistent impact/plan reports (99.059875ms)
+✔ impact checklist fails for invalid run-set policy consistency (99.783958ms)
+▶ impact_determinism
+  ✔ produces identical JSON output across 5 runs with the same inputs (75.106292ms)
+  ✔ sorts impacted features by priority (P0 before P1) (50.037875ms)
+  ✔ returns changedFiles in a stable order (52.952792ms)
+  ✔ produces identical unboundFiles across runs (56.456584ms)
+✔ impact_determinism (235.474208ms)
+[2026-09-16T08:51:04.809Z] [INFO] Built 1 heuristic families from 1 changed files (no route-families.json found)
+[2026-09-16T08:51:06.556Z] [INFO] Built 2 heuristic families from 2 changed files (no route-families.json found)
+▶ impact_engine
+  ✔ returns empty features when no files match (57.66925ms)
+  ✔ binds files to features and resolves specs (44.391ms)
+  ✔ marks uncovered features when no specs exist (34.913167ms)
+  ✔ falls back to family-level binding when no feature matches (40.817666ms)
+  ✔ handles multiple files across multiple features (46.609375ms)
+  ✔ sorts features by priority (P0 first) (39.687875ms)
+  ✔ returns warnings for unbound files (40.97275ms)
+  ✔ uses heuristic families when manifest not found (34.793125ms)
+  ✔ getGaps returns only P0/P1 uncovered features (65.791208ms)
+  ✔ getPartialGaps returns P0/P1 features with partial coverage (46.013166ms)
+  ✔ includes userFlows from manifest (43.109542ms)
+  ✔ deduplicates files within the same feature (35.402875ms)
+  ✔ retains snapshots in changed files but leaves them unassessed (39.8475ms)
+  ✔ retains snapshot directory changes without feature bindings (47.086417ms)
+  ✔ suppresses family-level gaps when files are covered by feature-level matches elsewhere (43.612084ms)
+  ✔ classifies PR-included test files by type (32.80375ms)
+✔ impact_engine (695.184458ms)
+▶ W3 per-path declared candidate precedence
+  ✔ prefers exact declared relationships per path without leaking scanner specs from the same family (99.335417ms)
+  ✔ honors disabled and minSignals config, leaving explicit manifest policy unchanged (78.394584ms)
+  ✔ rejects invalid ages and missing/escaping/wrong inventory specs (528.177542ms)
+  ✔ rejects calendar rollovers while accepting real leap days and ISO offsets (372.115625ms)
+  ✔ never promotes forged revision/suite/measured claims into execution coverage (191.212208ms)
+  ✔ keeps newly declared expanded paths unassessed without changing the original diff (51.638666ms)
+  ✔ retains full fallback for cold-start and exact Cypress candidates (59.747167ms)
+  ✔ normalizes nested scanner paths and reads their scenarios (198.542ms)
+✔ W3 per-path declared candidate precedence (1579.716042ms)
+✔ init --yes creates config with defaults (452.196917ms)
+✔ init --yes detects playwright from package.json (419.957583ms)
+✔ init --yes detects cypress from package.json (803.133459ms)
+✔ init --yes detects tests root directory (511.942042ms)
+✔ init refuses if config already exists (358.95475ms)
+✔ init -y is alias for --yes (455.097875ms)
+[2026-09-16T08:51:04.609Z] [WARN] Failed to load knowledge graph: Unexpected token 'o', "not json" is not valid JSON
+[2026-09-16T08:51:04.621Z] [WARN] Knowledge graph missing required nodes/edges arrays
+[2026-09-16T08:51:04.630Z] [WARN] Dropping KG node "bad": absolute filePath rejected
+[2026-09-16T08:51:04.637Z] [WARN] Dropping KG node "bad": path traversal in filePath rejected
+[2026-09-16T08:51:04.655Z] [WARN] Dropping KG node "bad": null byte in filePath rejected
+▶ kg_bridge
+  ▶ loadKnowledgeGraph
+    ✔ loads a valid KG file (17.277375ms)
+    ✔ returns null for missing file (2.599625ms)
+    ✔ returns null for invalid JSON (12.319958ms)
+    ✔ returns null when nodes/edges are missing (12.855417ms)
+    ✔ rejects nodes with absolute filePath (6.532625ms)
+    ✔ rejects nodes with path traversal (..) (11.087458ms)
+    ✔ rejects nodes with null bytes in filePath (20.889917ms)
+    ✔ truncates excessively long name strings (16.181333ms)
+  ✔ loadKnowledgeGraph (100.48975ms)
+  ▶ classifyProjectType
+    ✔ detects frontend project (2.775375ms)
+    ✔ detects backend project (2.835ms)
+    ✔ detects fullstack project (4.198625ms)
+  ✔ classifyProjectType (9.991625ms)
+  ▶ transformKGToFamilies
+    ✔ transforms basic KG into families (3.938708ms)
+    ✔ assigns priority based on fanIn (3.16875ms)
+    ✔ returns empty families for empty KG (1.783125ms)
+  ✔ transformKGToFamilies (9.049792ms)
+✔ kg_bridge (120.069625ms)
+▶ kg_scanner
+  ▶ scanFromKnowledgeGraph
+    ✔ groups nodes into families by cluster (0.876791ms)
+    ✔ assigns test layer nodes to specDirs (0.105875ms)
+    ✔ assigns api/service/data layers to serverPaths (0.112333ms)
+    ✔ skips infra nodes (0.101959ms)
+    ✔ paths with .. produce empty families (buildGlobFromPath rejection) (0.110125ms)
+    ✔ returns proper stats (0.075875ms)
+  ✔ scanFromKnowledgeGraph (1.908667ms)
+✔ kg_scanner (2.32025ms)
+[2026-09-16T08:51:04.585Z] [ERROR] test error
+[2026-09-16T08:51:04.587Z] [WARN] test warn
+[2026-09-16T08:51:04.587Z] [INFO] test info
+[2026-09-16T08:51:04.587Z] [DEBUG] test debug
+[2026-09-16T08:51:04.587Z] [ERROR] test {"key":"value"}
+✔ Logger initializes with default level (0.935708ms)
+✔ Logger can be set to different levels (0.15375ms)
+✔ Logger methods exist and are callable (1.465084ms)
+✔ Logger.error includes context (0.126042ms)
+✔ read_file blocks path traversal (1.018042ms)
+✔ discover_tests rejects invalid glob patterns (0.241041ms)
+✔ get_git_changes rejects invalid refs (0.13925ms)
+✔ run_tests rejects invalid browsers without spawning (0.154ms)
+✔ get_repository_context returns allowed files (91.60175ms)
+▶ encodeJsonRpcMessage
+  ✔ should produce valid Content-Length header (0.610875ms)
+  ✔ should use byte length not string length for non-ASCII (0.1685ms)
+✔ encodeJsonRpcMessage (1.523208ms)
+▶ parseJsonRpcFrames
+  ✔ should parse a single complete frame (0.433ms)
+  ✔ should parse multiple frames in one buffer (0.156792ms)
+  ✔ should return remainder for incomplete frame (0.087416ms)
+  ✔ should return remainder for partial header (0.076041ms)
+  ✔ should handle empty buffer (0.113292ms)
+  ✔ should skip past malformed header without discarding valid data (0.088792ms)
+✔ parseJsonRpcFrames (1.129625ms)
+▶ handleJsonRpcMessage
+  ✔ should handle initialize with dynamic version (0.409417ms)
+  ✔ should advertise tools, resources, and prompts capabilities (0.811042ms)
+  ✔ should return null for initialized notification (0.183417ms)
+  ✔ should list tools (0.165ms)
+  ✔ should respond to tools/call (55.306959ms)
+  ✔ should return empty resources list (2.692916ms)
+  ✔ should return empty prompts list (0.219417ms)
+  ✔ should respond to ping (0.131083ms)
+  ✔ should return method-not-found for unknown methods (0.101667ms)
+  ✔ should mark tool errors via isError flag (0.163625ms)
+✔ handleJsonRpcMessage (60.471375ms)
+▶ merger
+  ▶ mergeFamilies
+    ✔ should add new families from scan (0.738875ms)
+    ✔ should merge paths into existing families (0.28375ms)
+    ✔ should not overwrite human-curated priority (0.121666ms)
+    ✔ should not overwrite human-curated routes (0.104625ms)
+    ✔ should preserve existing families not found by scanner (0.090584ms)
+    ✔ should merge scanned families with fuzzy singular/plural matching (0.090625ms)
+    ✔ should not fuzzy-match unrelated IDs (0.078625ms)
+  ✔ mergeFamilies (2.036375ms)
+  ▶ detectStaleFamilies
+    ✔ should detect families with no existing paths (10.640667ms)
+    ✔ should not flag file-level globs as stale when parent dir exists (21.923458ms)
+  ✔ detectStaleFamilies (32.713875ms)
+✔ merger (35.231209ms)
+✔ runPlaywrightPipeline falls back to package-native generation and static heal when local playwright binary is missing (32.591375ms)
+✔ runPlaywrightPipeline keeps strict official MCP mode by default and does not auto-fallback (6.551125ms)
+✔ package-native heal rewrites an invalid existing spec when quality guardrails fail (396.513416ms)
+✔ package-native heal rejects brittle system-console patterns and rewrites spec (291.060708ms)
+✔ package-native heal reports failure and removes new generated file when all validation attempts fail (365.007459ms)
+✔ runTargetedSpecHeal heals an invalid existing failing spec in place (517.496292ms)
+[2026-09-16T08:51:04.929Z] [INFO] Built 1 heuristic families from 1 changed files (no route-families.json found)
+▶ stage0_preprocess
+  ✔ should use heuristic families when no manifest is found (7.960416ms)
+  ✔ should group files by family when manifest exists (14.263125ms)
+  ✔ should create feature-level groups (20.64875ms)
+✔ stage0_preprocess (44.091791ms)
+▶ output_schema
+  ▶ validateFlowDecision
+    ✔ should validate a correct decision (0.229ms)
+    ✔ should reject missing required fields (0.075792ms)
+    ✔ should require blockingReason for cannot_determine (0.097166ms)
+    ✔ should require scenariosToAdd for add_scenarios (0.073625ms)
+  ✔ validateFlowDecision (0.650084ms)
+  ▶ buildSummary
+    ✔ should compute correct summary (1.011708ms)
+    ✔ should return low confidence for empty decisions (0.057666ms)
+  ✔ buildSummary (1.151375ms)
+✔ output_schema (1.934458ms)
+▶ guardrails
+  ✔ computeConfidence should sum evidence scores (0.121709ms)
+  ✔ shouldForceCannotDetermine should be true below threshold (0.052292ms)
+  ✔ computeCannotDetermineRatio should calculate correctly (0.056ms)
+  ✔ computeOverallConfidence should classify correctly (0.068542ms)
+✔ guardrails (1.379583ms)
+[2026-09-16T08:51:04.878Z] [INFO] Built 1 heuristic families from 1 changed files (no route-families.json found)
+[2026-09-16T08:51:04.910Z] [INFO] Built 1 heuristic families from 1 changed files (no route-families.json found)
+▶ plan_builder
+  ✔ builds plan with safe-to-merge for fully covered features (4.334041ms)
+  ✔ detects gaps for uncovered P0/P1 features (0.56425ms)
+  ✔ sets confidence to 100 when all files are bound and covered (0.261167ms)
+  ✔ reduces confidence for unbound files (2.876125ms)
+  ✔ includes recommended tests from Playwright specs (0.247833ms)
+  ✔ includes userFlows as missingScenarios in gap details (0.693833ms)
+  ✔ reports partial coverage in gap details (0.220708ms)
+  ✔ handles empty changed files gracefully (0.093792ms)
+  ✔ applies policy overrides (0.2065ms)
+  ✔ triggers full run set when risky files are detected (0.374708ms)
+  ✔ softens to run-now when PR includes Cypress E2E specs alongside gaps (0.398458ms)
+  ✔ softens to run-now when PR includes Playwright specs alongside gaps (0.202917ms)
+  ✔ still blocks when PR has only unit tests (not E2E) alongside gaps (0.139667ms)
+  ✔ correctly counts priority metrics (0.190208ms)
+✔ plan_builder (11.907125ms)
+▶ renderCiSummaryMarkdown
+  ✔ renders must-add-tests summary with gap details (0.355833ms)
+  ✔ renders covered flows (0.150083ms)
+✔ renderCiSummaryMarkdown (0.559375ms)
+▶ decision mapping wording
+  ✔ reports exact mapped/partial/uncovered facts for uncovered (0.266583ms)
+  ✔ reports exact mapped/partial/uncovered facts for covered/partial/uncovered (0.161084ms)
+  ✔ reports exact mapped/partial/uncovered facts for covered (0.097625ms)
+✔ decision mapping wording (0.569958ms)
+✔ W3 plan retains provenance and both framework candidates while unassessed paths force full (0.75525ms)
+✔ describes Cypress-only declared and heuristic candidates as associations in plan and review renders (61.822333ms)
+▶ buildPlanFromImpact with AI enrichment
+  ✔ behaves identically to before when aiEnrichment is undefined (3.738291ms)
+  ✔ behaves identically when aiEnrichment is undefined and policyOverride is provided (0.434125ms)
+  ✔ overlays aiReasons onto gap reasons when aiEnrichment is provided (0.2735ms)
+  ✔ sets gap source to ai+deterministic when AI enrichment matches (3.485666ms)
+  ✔ sets plan source to ai+deterministic when aiEnrichment is provided (0.617084ms)
+  ✔ replaces missingScenarios with aiMissingScenarios when AI enrichment is provided (0.224708ms)
+  ✔ falls back to userFlows for missingScenarios when aiMissingScenarios is empty (0.969458ms)
+  ✔ keeps gap source as deterministic when no matching enriched feature exists (0.266709ms)
+  ✔ overlays aiReasons onto partial gap when aiEnrichment matches a partial-coverage feature (0.315958ms)
+  ✔ matches enriched feature by featureId when available (0.255666ms)
+✔ buildPlanFromImpact with AI enrichment (11.606416ms)
+▶ renderCiSummaryMarkdown with AI enrichment
+  ✔ includes AI-enriched label and AI reasons in markdown when gap has ai+deterministic source (0.40125ms)
+  ✔ does not include AI labels when no aiEnrichment is provided (0.141208ms)
+✔ renderCiSummaryMarkdown with AI enrichment (0.612708ms)
+▶ advisory scenarios for covered features
+  ✔ attaches advisoryScenarios to covered flow when AI returns new scenarios (0.274ms)
+  ✔ does not attach advisoryScenarios when AI returns empty missingScenarios for covered flow (0.137125ms)
+  ✔ does not attach advisoryScenarios when no AI enrichment is provided (0.133792ms)
+  ✔ renders advisory scenarios as 💡 hint in markdown under covered flow (0.152584ms)
+  ✔ does not render 💡 hints when covered flow has no advisory scenarios (0.114167ms)
+  ✔ matches covered flow enrichment by featureId first (0.115875ms)
+✔ advisory scenarios for covered features (1.006125ms)
+▶ buildCrewMarkdown
+  ✔ should include header and summary metrics (0.864667ms)
+  ✔ should include top strategy recommendations (0.107958ms)
+  ✔ should include structured test designs (0.082333ms)
+  ✔ should include high-risk cross-impacts (0.075709ms)
+  ✔ should include findings (0.076666ms)
+  ✔ should include warnings (0.088792ms)
+  ✔ should omit empty sections (0.081792ms)
+  ✔ should truncate strategy entries at 5 (0.114833ms)
+✔ buildCrewMarkdown (2.316084ms)
+▶ appendCrewToSummary
+  ✔ should append crew markdown after separator (0.140083ms)
+  ✔ should preserve base markdown (0.089083ms)
+✔ appendCrewToSummary (0.326792ms)
+▶ writeCrewArtifacts
+  ✔ should write JSON, markdown, and test plan files (19.456375ms)
+  ✔ should create output directory if missing (4.685583ms)
+  ✔ should write to .e2e-ai-agents subdirectory (2.880791ms)
+✔ writeCrewArtifacts (27.160291ms)
+▶ buildCrewTestPlan
+  ✔ should split gap flows from covered flows (0.2515ms)
+  ✔ should show P0 cases expanded for gap flows (0.118417ms)
+  ✔ should collapse P1 cases for gap flows (0.099667ms)
+  ✔ should collapse covered flow designs (0.072291ms)
+  ✔ should show summary table with gap vs covered counts (0.061167ms)
+  ✔ should include high-risk cross-impacts section (0.149625ms)
+  ✔ should work without plan (all flows treated as covered) (0.093541ms)
+  ✔ should render strategy entries when testDesigns is empty (quick-check mode) (0.108167ms)
+✔ buildCrewTestPlan (1.092417ms)
+✔ extractPlaywrightUnstableSpecs returns failed and flaky specs from nested suites (16.966791ms)
+✔ extractPlaywrightUnstableSpecs prefers failed status when same spec has flaky and failed tests (24.697875ms)
+REAL_PLAYWRIGHT_NEGATIVE_FIXTURE=/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-report-fixture-YAOZUt
+▶ parsePlaywrightJsonReport
+  ✔ parses a passing report (0.9885ms)
+  ✔ parses a failing report with error details (0.227084ms)
+  ✔ handles empty report (0.079125ms)
+✔ parsePlaywrightJsonReport (2.05325ms)
+▶ verification report evidence
+  ✔ does not count skipped, timed out, or flaky tests as passes even when spec.ok is true (0.320333ms)
+  ✔ requires matcher evidence for assertion failures; runtime failures are not kills (0.205625ms)
+  ✔ does not treat report-level compile errors as executed passes (0.083ms)
+✔ verification report evidence (0.741458ms)
+▶ real Playwright execution negatives
+  ✔ rejects zero/skipped tests, load errors, runtime failures, timeouts, and exit without a report (9218.941791ms)
+  ✔ rejects other-file reports, expected failures and retry successes (0.184ms)
+✔ real Playwright execution negatives (9219.264416ms)
+▶ PrometheusMetrics
+  ✔ should export empty string for no metrics (0.808541ms)
+  ✔ should record and export LLM request counter (0.370291ms)
+  ✔ should accumulate counter values (0.187542ms)
+  ✔ should export histogram with buckets (0.156708ms)
+  ✔ should record crew run metrics (0.217584ms)
+  ✔ should record budget check metrics (0.63075ms)
+  ✔ should record cache results (0.108583ms)
+  ✔ should record circuit breaker state (0.094375ms)
+  ✔ should reset all metrics (0.101917ms)
+  ✔ should produce valid Prometheus text format (0.278333ms)
+✔ PrometheusMetrics (3.850041ms)
+✔ createFromString preserves model names with colons (ollama) (1.824792ms)
+✔ createFromString falls back to default model when not provided (0.223792ms)
+✔ createFromString supports openai when OPENAI_API_KEY is set (0.252208ms)
+✔ createFromEnv rejects invalid explicit provider values (0.450708ms)
+✔ createFromEnv requires OPENAI_API_KEY when LLM_PROVIDER=openai (0.143625ms)
+▶ createFromPreference
+  ✔ should create anthropic provider from explicit preference (1.378792ms)
+  ✔ should create openai provider from explicit preference (0.91025ms)
+  ✔ should create ollama provider from explicit preference (0.505667ms)
+  ✔ should handle preference with whitespace and casing (0.276667ms)
+  ✔ should fall back to createFromEnv when preference is "auto" (0.2475ms)
+  ✔ should fall back to createFromEnv when preference is undefined (0.164584ms)
+  ✔ should fall back to createFromEnv when preference is empty string (0.154583ms)
+  ✔ should throw for unknown provider preference (0.458834ms)
+  ✔ should pass model through when preference includes colon (0.268625ms)
+  ✔ should throw when anthropic preference set but no API key (0.191708ms)
+  ✔ should throw when openai preference set but no API key (0.142167ms)
+✔ createFromPreference (5.831042ms)
+✔ API_KEY_PATTERNS validates anthropic keys (1.018083ms)
+✔ API_KEY_PATTERNS validates openai keys (0.121625ms)
+✔ sanitizeErrorMessage handles authentication errors (0.102917ms)
+✔ sanitizeErrorMessage handles rate limit errors (0.069959ms)
+✔ sanitizeErrorMessage handles timeout errors (0.07975ms)
+✔ sanitizeErrorMessage handles network errors (0.064125ms)
+✔ sanitizeErrorMessage handles unknown errors safely (0.077625ms)
+✔ sanitizeErrorMessage handles non-Error objects (0.058ms)
+✔ withTimeout resolves on successful promise (0.407792ms)
+✔ withTimeout rejects on timeout (102.358042ms)
+✔ withTimeout passes through if no timeout specified (0.162459ms)
+✔ isLocalhost detects localhost (0.075041ms)
+✔ validateAndSanitizeUrl requires HTTPS for remote (0.432917ms)
+✔ validateAndSanitizeUrl allows HTTP for localhost (0.117625ms)
+✔ validateAndSanitizeUrl allows HTTPS for remote (0.066959ms)
+✔ validateAndSanitizeUrl handles missing URL (0.053083ms)
+✔ validateAndSanitizeUrl rejects invalid URLs (0.082959ms)
+▶ CircuitBreaker
+  ✔ starts in closed state (0.653125ms)
+  ✔ opens after 3 consecutive failures (2.653041ms)
+  ✔ returns fallback when open (0.161416ms)
+  ✔ transitions to half-open after cooldown (61.646333ms)
+  ✔ closes again after successful call in half-open state (61.636333ms)
+  ✔ stays closed if failures are below threshold (0.369334ms)
+  ✔ reset() returns to closed state (0.167125ms)
+✔ CircuitBreaker (128.284917ms)
+▶ withRetry
+  ✔ succeeds on first try without retrying (0.19025ms)
+  ✔ retries on retryable error and succeeds on 2nd try (11.341417ms)
+  ✔ gives up after maxRetries and throws last error (32.158833ms)
+  ✔ does NOT retry non-retryable errors (0.276292ms)
+  ✔ respects maxRetries config (11.658292ms)
+✔ withRetry (55.993292ms)
+✔ built review emits exactly one JSON object: success (2309.156292ms)
+✔ built review emits exactly one JSON object: empty (1041.296167ms)
+✔ built review emits exactly one JSON object: invalid (981.411959ms)
+✔ built review emits exactly one JSON object: threshold (1405.462791ms)
+✔ built review emits exactly one JSON object: comment-error (1816.510083ms)
+✔ ordinary reviews neither create nor rewrite calibration artifacts or grow the diff (3677.193292ms)
+✔ nested --path uses Git repository root for PR scenarios, independent of base inventory (2330.764708ms)
+✔ auto-detected external roots are absolute while explicit roots and init detection remain portable (597.991375ms)
+✔ JSON and Markdown retain computed fields, six recommendations and full paths (0.62975ms)
+✔ large piped JSON drains before threshold exit (8089.803958ms)
+[2026-09-16T08:51:38.569Z] [INFO] Built 1 heuristic families from 1 changed files (no route-families.json found)
+[2026-09-16T08:51:38.657Z] [INFO] Built 1 heuristic families from 1 changed files (no route-families.json found)
+[2026-09-16T08:51:38.763Z] [INFO] Built 1 heuristic families from 1 changed files (no route-families.json found)
+✔ large piped JSON drains before enforcement exit (7263.815459ms)
+✔ W3 built callers honor custom traceability against separate base inventory and expose origin (5589.33825ms)
+[2026-09-16T08:51:05.732Z] [INFO] Built 4 heuristic families from 4 changed files (no route-families.json found)
+▶ route_families
+  ▶ loadRouteFamilyManifest
+    ✔ should load a valid manifest (28.879416ms)
+    ✔ should return null for missing manifest (3.942125ms)
+    ✔ should warn (not throw) in strict mode when manifest is missing (7.540209ms)
+    ✔ should skip invalid families (17.501875ms)
+    ✔ should load nested features (18.181458ms)
+    ✔ should use cache on repeated loads (24.014166ms)
+  ✔ loadRouteFamilyManifest (101.342ms)
+  ▶ bindFilesToFamilies
+    ✔ should bind files to families via webappPaths (25.286ms)
+    ✔ should bind files to features preferring feature over family (16.751667ms)
+    ✔ should bind server files to multiple families (34.78875ms)
+  ✔ bindFilesToFamilies (77.381917ms)
+  ▶ helper functions
+    ✔ getFamilyById should find family (18.8675ms)
+    ✔ getFeatureById should find feature (5.267625ms)
+    ✔ getSpecDirsForBinding should return feature specDirs when available (17.246041ms)
+    ✔ getRoutesForBinding should return feature routes when available (32.40175ms)
+  ✔ helper functions (74.077875ms)
+✔ route_families (253.906292ms)
+✔ W3 cold-start matches narrow exact inventory candidates and keeps generic changes empty (58.553417ms)
+▶ sanitizeSecrets
+  ✔ redacts Anthropic API keys (1.931958ms)
+  ✔ redacts OpenAI API keys (0.147959ms)
+  ✔ does not redact short strings that start with sk- (0.122333ms)
+  ✔ redacts generic api_key patterns (0.366375ms)
+  ✔ redacts Bearer tokens (0.535125ms)
+  ✔ redacts AWS access keys (0.202333ms)
+  ✔ redacts GitHub personal access tokens (0.260667ms)
+  ✔ redacts github_pat tokens (0.151667ms)
+  ✔ redacts multiple secrets in the same string (0.147917ms)
+  ✔ returns clean text unchanged (0.1655ms)
+  ✔ is safe to call concurrently (no shared regex state) (1.585417ms)
+✔ sanitizeSecrets (7.327167ms)
+▶ containsSecrets
+  ✔ returns true for strings with secrets (0.12075ms)
+  ✔ returns false for clean strings (0.219416ms)
+✔ containsSecrets (0.439ms)
+▶ sanitizeObject
+  ✔ sanitizes string values in objects (0.206417ms)
+  ✔ sanitizes nested objects (0.084375ms)
+  ✔ sanitizes arrays (0.089583ms)
+  ✔ handles null and non-objects gracefully (0.060041ms)
+  ✔ handles deeply nested mixed structures (0.103084ms)
+  ✔ handles circular references without stack overflow (0.101958ms)
+✔ sanitizeObject (0.774542ms)
+▶ scanner
+  ▶ discoverSourceDirs
+    ✔ should discover frontend source directories (29.767583ms)
+    ✔ should discover backend server directories (7.7755ms)
+    ✔ should skip node_modules and hidden directories (15.199625ms)
+  ✔ discoverSourceDirs (54.431667ms)
+  ▶ discoverTestDirs
+    ✔ should discover Playwright spec directories (26.084125ms)
+    ✔ should discover Cypress test directories (13.319ms)
+    ✔ should discover Go test files (9.90475ms)
+  ✔ discoverTestDirs (49.90075ms)
+  ▶ scanProject
+    ✔ should match source and test dirs into families (34.33875ms)
+    ✔ should detect nested features (39.362542ms)
+    ✔ should create families with incomplete coverage (24.31175ms)
+    ✔ should generate valid route strings (22.956625ms)
+    ✔ should discover test-derived families from separate testsRoot (58.669083ms)
+    ✔ should handle name collisions in test-derived families (31.5915ms)
+    ✔ should discover server-derived families from Go files (54.202291ms)
+    ✔ should group related server files under parent domain (20.702083ms)
+    ✔ should filter single-tier server families (12.019375ms)
+    ✔ should merge server families into scan via scanProject (33.932417ms)
+    ✔ should merge single-tier server files into existing families (27.493583ms)
+    ✔ should discover test lib paths and merge into families (27.577958ms)
+    ✔ should discover name-matched type/util files (17.535041ms)
+    ✔ should extract tags from spec files (20.829167ms)
+  ✔ scanProject (426.573458ms)
+✔ scanner (531.741542ms)
+▶ serializeManifest
+  ✔ strips empty optional arrays (2.165875ms)
+  ✔ strips undefined priority and testType (0.153625ms)
+  ✔ preserves non-empty fields (0.223917ms)
+✔ serializeManifest (3.725291ms)
+▶ generation prompts
+  ▶ buildGenerationPrompt
+    ✔ should include flow name and route family (1.800875ms)
+    ✔ should include scenarios in prompt (0.201542ms)
+    ✔ should include available page objects (0.140917ms)
+    ✔ should use generic Playwright rules when no profile is provided (0.145458ms)
+    ✔ should include existing spec content for add_scenarios mode (0.160458ms)
+    ✔ should fallback to raw Playwright when no page objects available (0.138042ms)
+  ✔ buildGenerationPrompt (3.346375ms)
+  ▶ parseGenerationResponse
+    ✔ should parse valid TypeScript code (0.403042ms)
+    ✔ should strip markdown fences (0.219917ms)
+    ✔ should return null for code without test() (0.1195ms)
+    ✔ should prepend import if missing (0.134042ms)
+  ✔ parseGenerationResponse (2.044625ms)
+  ▶ detectHallucinatedMethods
+    ✔ should return empty for code using known methods (0.655084ms)
+    ✔ should flag unknown method calls (0.17875ms)
+    ✔ should not flag built-in Playwright methods (0.089667ms)
+  ✔ detectHallucinatedMethods (1.008417ms)
+✔ generation prompts (7.189125ms)
+▶ heal prompts
+  ▶ buildHealPrompt
+    ✔ should include spec path and status (1.034875ms)
+    ✔ should distinguish flaky vs failed (0.149292ms)
+    ✔ should include flow context when decision is provided (0.497041ms)
+    ✔ should include failure detail when provided (0.327417ms)
+    ✔ should use generic Playwright constraints when no profile is provided (0.183042ms)
+  ✔ buildHealPrompt (3.037292ms)
+  ▶ buildQualityFixPrompt
+    ✔ should include spec path and issues (0.317875ms)
+  ✔ buildQualityFixPrompt (0.463917ms)
+✔ heal prompts (4.297708ms)
+▶ resolveHealTargets
+  ✔ should return empty when no sources provided (3.368625ms)
+  ✔ should parse Playwright JSON report and return unstable specs (16.28475ms)
+  ✔ should include generated specs as heal targets (3.846042ms)
+  ✔ should not include unwritten generated specs (2.836458ms)
+  ✔ should deduplicate targets from multiple sources (12.710333ms)
+  ✔ should match decisions to targets by targetSpec (1.950834ms)
+✔ resolveHealTargets (41.750458ms)
+▶ renderHealMarkdown
+  ✔ should render heal summary table (0.30375ms)
+✔ renderHealMarkdown (0.376292ms)
+✔ excludes mutation-evidenced artifacts from generated, report, and explicit healer inputs (21.100958ms)
+✔ traceability capture uses coverage map when available (59.680875ms)
+✔ traceability capture emits no coverage edges when per-test coverage is missing (33.360666ms)
+✔ traceability ingest writes manifest and state (61.258875ms)
+✔ traceability ingest honors minHits threshold across runs (35.801291ms)
+✔ W3 capture origins survive ingest without becoming measured and invalid dates are pruned (66.650416ms)
+✔ rejects impossible calendar timestamps during ingest pruning and retains valid ISO forms (108.134792ms)
+▶ validator
+  ▶ buildValidationReport
+    ✔ should calculate coverage from commit validations (1.081083ms)
+  ✔ buildValidationReport (1.670417ms)
+  ▶ parseGitLog
+    ✔ should parse standard git log output with two commits (1.612875ms)
+    ✔ should handle commit message containing pipe character (0.1355ms)
+    ✔ should return empty array for empty log (0.098791ms)
+    ✔ should handle single commit with no trailing newline (0.112ms)
+    ✔ should not create empty commits from consecutive blank lines (0.129208ms)
+  ✔ parseGitLog (2.323ms)
+  ▶ isInfraFile
+    ✔ should match infrastructure files (1.427792ms)
+    ✔ should not match regular source files (0.218208ms)
+  ✔ isInfraFile (1.841875ms)
+  ▶ formatValidationReport
+    ✔ should produce readable output (0.302125ms)
+  ✔ formatValidationReport (0.37825ms)
+✔ validator (7.078333ms)
+ℹ tests 557
+ℹ suites 108
+ℹ pass 557
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 54827.983583
