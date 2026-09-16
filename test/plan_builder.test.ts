@@ -351,3 +351,16 @@ it('describes Cypress-only declared and heuristic candidates as associations in 
         }
     } finally {rmSync(root, {recursive: true, force: true});}
 });
+
+it('exported plan schema permits the root fields emitted with ordinary provenance', () => {
+    const schema = require('@yasserkhanorg/impact-gate/schemas/plan');
+    const plan = JSON.parse(JSON.stringify(buildPlanFromImpact(makeImpactResult({
+        mappingProvenance: [{file: 'src/ledger.ts', kind: 'declared-traceability', tests: ['ledger.spec.ts'], origins: ['legacy-import'], evidence: 'unverified'}],
+        evidence: {coverage: 'unavailable', measuredCoverageEdges: 0},
+    }))));
+    assert.ok(plan.mappingProvenance);
+    assert.ok(plan.evidence);
+    assert.equal(schema.additionalProperties, false);
+    // Root-key compatibility for actual serialized output, not full JSON Schema validation.
+    assert.deepEqual(Object.keys(plan).filter((key) => !Object.hasOwn(schema.properties, key)), []);
+});
