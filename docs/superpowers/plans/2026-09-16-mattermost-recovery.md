@@ -75,10 +75,10 @@ Do not start until W2 is recorded. Existing source has separate ordinary/advisor
 
 ## Task 4: W4 reduce the product surface
 
-- [ ] Simplifier traces callers for all four orchestrators and public command/export dependencies.
-- [ ] Delete proven-dead/duplicate code, retain reachable public interfaces where removal would be a breaking guess, and identify experimental commands.
-- [ ] Collapse README to supported review/gate behavior and experimental functionality. Item diff must reduce net lines and preserve review/gate behavior.
-- [ ] Evidence Officer records negative net diff, full test suite, and real-repository review/gate runs in `gates/w4.txt`.
+- [x] Simplifier traces callers for all four orchestrators and public command/export dependencies.
+- [x] Delete proven-dead/duplicate code, retain reachable public interfaces where removal would be a breaking guess, and identify experimental commands.
+- [x] Collapse README to supported review/gate behavior and experimental functionality. Item diff must reduce net lines and preserve review/gate behavior.
+- [x] Evidence Officer records negative net diff, full test suite, and real-repository review/gate runs in `gates/w4.txt`.
 
 ## Task 5: W5 current evidence and delivery
 

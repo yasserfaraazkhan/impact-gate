@@ -1,0 +1,27 @@
+W4 independent evidence — 2026-09-16
+Item base: 4b88357ed4d4b0a3649d76a0e0862ecaa96c0aaf (separate W3 test-only correction committed before final full run).
+Worktree/cwd: /private/tmp/impact-gate-recovery-2026-09-16
+Receipts: /private/tmp/impact-gate-recovery-evidence/w4-independent/
+All commands used /bin/bash, login=false, PATH=/opt/homebrew/bin:$PATH. Exact stdout, stderr, signed exit, and source hashes are in that receipt directory.
+
+Full suite: npm test -> exit 0; 557 tests, 557 passed, 0 failed, 0 skipped. npm-test-final.stdout.txt, npm-test-final.stderr.txt, npm-test-final.exit.txt. This ran pretest CJS/ESM/scripts/tests builds.
+Lint: npm run lint -> exit 0. npm-lint.stdout.txt, npm-lint.stderr.txt, npm-lint.exit.txt. The only intervening source change was a README sentence; the later W3 correction changed one test assertion, so the lint receipt remains valid.
+Initial full suite receipt: npm test -> exit 1; 556/557 passed. An unchanged test asserted `Cypress only` against a different existing partial-gap reason. Preserved as npm-test.stdout.txt, npm-test.stderr.txt, npm-test.exit.txt; corrected in separate W3 commit 4b88357, then the final full suite passed. No production code changed.
+
+Mattermost PR38048 source: /private/tmp/impact-gate-recovery-evidence/w3/pr38048/source, HEAD 1af180e6bbf9853963bcbb19b69f82e1cb0275a1, clean before/after.
+Separate base inventory: /private/tmp/impact-gate-recovery-evidence/w3/pr38048/base-inventory, HEAD 4ce99ddd38636bb6916613efc892606db3fe75f9, 14 real source changes. Its four prior untracked .e2e-ai-agents files remained byte-identical (inventory-before.sha256, inventory-after.sha256); no tracked changes.
+Config: /private/tmp/impact-gate-recovery-evidence/w3/pr38048/config.json = {"git":{"includeUncommitted":false}}.
+Review command: node /private/tmp/impact-gate-recovery-2026-09-16/dist/cli.js review --config /private/tmp/impact-gate-recovery-evidence/w3/pr38048/config.json --path /private/tmp/impact-gate-recovery-evidence/w3/pr38048/source --since 4ce99ddd38636bb6916613efc892606db3fe75f9 --tests-root /private/tmp/impact-gate-recovery-evidence/w3/pr38048/base-inventory/e2e-tests/playwright --json --ci-comment-path /private/tmp/impact-gate-recovery-evidence/w4-independent/review.md
+Review exit 0; review.stdout.json strictly parses. 14 changed files, 6 impacted flows, 3 associated/3 uncovered, 17 tests advised, FULL run. Scanner-heuristic candidate mappings are explicitly unverified; measured coverage unavailable. review.stderr.txt and review.exit.txt preserve actual diagnostics/exit.
+Gate command: node /private/tmp/impact-gate-recovery-2026-09-16/dist/cli.js gate --config /private/tmp/impact-gate-recovery-evidence/w3/pr38048/config.json --path /private/tmp/impact-gate-recovery-evidence/w3/pr38048/source --since 4ce99ddd38636bb6916613efc892606db3fe75f9 --tests-root /private/tmp/impact-gate-recovery-evidence/w3/pr38048/base-inventory/e2e-tests/playwright --json --threshold 80
+Gate exit 1 as designed; gate.stdout.json strictly parses: passed=false, 14 unassessed files, diffStatus=changed, coverageBasis=manifest-spec-presence, measuredCoverage=unavailable, release=not-assessed. Full-suite fallback is the conservative result; threshold/config were not weakened. gate.stderr.txt and gate.exit.txt preserve diagnostics/exit. No Mattermost E2E/model run.
+
+Frozen W4 product/docs diff from 4b88357: README.md +38/-664; deleted src/pipeline/spec_verifier.ts +0/-113; src/validation/guardrails.ts +0/-4. Product/docs total +38/-781, net -743; no other source/test/script/config change in W4. git diff --check passed. Final README SHA256 304ead0edfa1ab2947bb521e58cc99ed871d8a26f8b1569c0e74d54530a0aedf; guardrails SHA256 2ccde43d976b1315e1d61e1823eaa7b31e5d126952de9638ae834283c6c54249; verifier absent. W2 replay script and fixture, review/gate commands, mutation verifier, and corrected test hashes match source-final.sha256. The earlier README freeze hash changed only for the documented one-sentence accuracy correction. Root will audit final whole-item linecount after gate/closure records are staged; these records are far smaller than the 743-line reduction.
+
+Actual `git diff --stat 4b88357` before this gate file was staged:
+ README.md                     | 702 +++---------------------------------------
+ src/pipeline/spec_verifier.ts | 113 -------
+ src/validation/guardrails.ts  |   4 -
+ 3 files changed, 38 insertions(+), 781 deletions(-)
+
+PASS: final full suite, lint, real review, expected conservative gate behavior, source/inventory stability, and approved deletion-only scope.
