@@ -67,11 +67,11 @@ Implement only after W1's gate exists. Repair the measured output/input defects 
 
 Do not start until W2 is recorded. Existing source has separate ordinary/advisory paths; no change may pretend they share evidence automatically.
 
-- [ ] Prioritize actual per-path traceability over scanner mappings, retaining scanner only where measurements are absent. Label mapping source in user output. Preserve the complete diff and full fallback for any unassessed change.
-- [ ] Reject stale, missing-test, wrong-suite/revision or unsupported evidence rather than promoting it to measured coverage.
-- [ ] Exercise conflicting measured/scanner mappings in real local tests. Validate scanner/monorepo path semantics separately on real Mattermost source.
-- [ ] Re-run the unchanged W2 harness and report before/after. No fabricated source edges from TSIO statuses. If real Mattermost measured edges are unavailable, report that limitation and do not claim measured selection improved.
-- [ ] Arbiter accepts or reverts based on evidence; `gates/w3.txt` records the honest result, including no improvement.
+- [x] Prefer valid per-path traceability candidates over scanner guesses, preserving declared/unverified origin. Existing inputs lack tested revision/suite provenance, so measured coverage remains unavailable; do not add an instrumentation framework. Preserve the complete diff and full fallback for new unverified associations and unknown changes, while retaining existing explicit-manifest policy.
+- [x] Reject stale/invalid/future dates, missing or escaping tests and wrong-inventory paths from candidate eligibility. Unsupported revision/suite claims never become measured coverage or permission to omit tests.
+- [x] Exercise declared/scanner conflicts and forged measured claims in real local tests. Replace empty runtime cold-start associations with narrow inventory-based candidates; validate scanner/monorepo path semantics on real Mattermost source.
+- [x] Re-run the unchanged W2 harness and report before/after. No fabricated source edges from TSIO statuses. If real Mattermost measured edges are unavailable, report that limitation and do not claim measured selection improved.
+- [x] Arbiter accepts or reverts based on evidence; `gates/w3.txt` records the honest result, including no improvement.
 
 ## Task 4: W4 reduce the product surface
 

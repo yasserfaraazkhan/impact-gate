@@ -33,7 +33,7 @@ export async function runGateCommand(args: ParsedArgs, autoConfig: string | unde
     if (args.advisory) return runPlanCommand(args, autoConfig, config);
     const result = getChangedFiles(config.path, args.gitSince || config.git.since);
     if (result.error) throw new Error(result.error);
-    const impact = analyzeImpact(result.files, {testsRoot: config.testsRoot || config.path, routeFamilies: config.routeFamilies});
+    const impact = analyzeImpact(result.files, {testsRoot: config.testsRoot || config.path, routeFamilies: config.routeFamilies, traceability: config.impact.traceability, sourceRoot: result.repositoryRoot || config.path});
     const report = evaluateGate(impact, threshold);
     if (args.jsonOutput) console.log(JSON.stringify(report, null, 2));
     else console.log(`${report.passed ? 'PASSED' : 'FAILED'}: ${report.reason}\nFully mapped features: ${report.coveredFeatures}/${report.totalFeatures}; partial: ${report.partialFeatures}; unassessed files: ${report.unassessedFiles.length}`);

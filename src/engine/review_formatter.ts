@@ -17,6 +17,11 @@ import type {ReviewReport, ReviewedFlow} from './review_types.js';
  */
 export function formatReviewText(report: ReviewReport): string {
     const lines: string[] = [];
+    if (report.evidence) lines.push('Measured coverage unavailable; candidate mappings are unverified.', '');
+    for (const mapping of report.mappingProvenance || []) {
+        lines.push(`- ${mapping.file}: ${mapping.kind} (unverified; ${mapping.origins.join(', ') || 'no origin'}) → ${mapping.tests.join(', ') || 'no candidates'}`);
+    }
+    if (report.mappingProvenance?.length) lines.push('');
 
     lines.push('PR Impact Review');
     lines.push('================');
@@ -33,7 +38,7 @@ export function formatReviewText(report: ReviewReport): string {
 
     // Section 0.5: Existing test coverage
     if (report.relevantExistingTests && report.relevantExistingTests.length > 0) {
-        lines.push('Existing test coverage:');
+        lines.push('Associated existing specs:');
         for (const test of report.relevantExistingTests.slice(0, 5)) {
             lines.push(`  ✅ ${shortPath(test.file)} (${test.matchReason})`);
         }
@@ -150,7 +155,7 @@ export function formatReviewText(report: ReviewReport): string {
         }
 
         if (covered.length > 0) {
-            lines.push('Already covered by PR tests:');
+            lines.push('Associated PR tests:');
             for (const r of covered.slice(0, 3)) {
                 lines.push(`  ✅ ${r.scenario} -- ${shortPath(r.alreadyCoveredBy!)}`);
             }
@@ -183,9 +188,9 @@ function formatFlowLine(flow: ReviewedFlow): string {
     };
     const icon = statusIcon[flow.status];
     const statusLabel = flow.status === 'covered'
-        ? `covered by ${flow.existingTests.length} test${flow.existingTests.length !== 1 ? 's' : ''}`
+        ? `associated with ${flow.existingTests.length} test${flow.existingTests.length !== 1 ? 's' : ''}`
         : flow.status === 'partial'
-            ? 'partially covered'
+            ? 'Cypress specs associated'
             : 'no existing tests';
 
     return `  ${icon} [${flow.priority}] ${flow.name} (${statusLabel})`;
@@ -216,6 +221,11 @@ function escapeTableCell(text: string): string {
  */
 export function formatReviewMarkdown(report: ReviewReport): string {
     const lines: string[] = [];
+    if (report.evidence) lines.push('Measured coverage unavailable; candidate mappings are unverified.', '');
+    for (const mapping of report.mappingProvenance || []) {
+        lines.push(`- ${mapping.file}: ${mapping.kind} (unverified; ${mapping.origins.join(', ') || 'no origin'}) → ${mapping.tests.join(', ') || 'no candidates'}`);
+    }
+    if (report.mappingProvenance?.length) lines.push('');
 
     const levelEmoji = {low: '🟢', medium: '🟡', high: '🟠', critical: '🔴'};
     const actionLabel = {
@@ -239,7 +249,7 @@ export function formatReviewMarkdown(report: ReviewReport): string {
         for (const r of report.recommendations) {
             lines.push(`- **[${r.priority}] ${r.scenario}**${r.dimension ? ` (${r.dimension})` : ''}`);
             lines.push(`  - Rationale: ${r.rationale}`);
-            if (r.alreadyCoveredBy) lines.push(`  - Covered by: ${r.alreadyCoveredBy}`);
+            if (r.alreadyCoveredBy) lines.push(`  - Associated test: ${r.alreadyCoveredBy}`);
         }
         lines.push('');
     }
@@ -273,7 +283,7 @@ export function formatReviewMarkdown(report: ReviewReport): string {
             const statusIcon = flow.status === 'covered' ? '✅' : flow.status === 'partial' ? '⚠️' : '❌';
             const testCount = flow.existingTests.length > 0 ? `${flow.existingTests.length} test${flow.existingTests.length !== 1 ? 's' : ''}` : 'none';
             const gapText = flow.gaps.length > 0 ? flow.gaps.join('; ') : '-';
-            lines.push(`| ${statusIcon} ${flow.status} | ${flow.priority} | ${escapeTableCell(flow.name)} | ${testCount} | ${escapeTableCell(gapText)} |`);
+            lines.push(`| ${statusIcon} ${flow.status === 'covered' ? 'Playwright associated' : flow.status === 'partial' ? 'Cypress associated' : 'no specs'} | ${flow.priority} | ${escapeTableCell(flow.name)} | ${testCount} | ${escapeTableCell(gapText)} |`);
         }
         lines.push('');
         for (const flow of report.impactedFlows) {
@@ -311,7 +321,7 @@ export function formatReviewMarkdown(report: ReviewReport): string {
     lines.push(`<details><summary>Metrics</summary>`);
     lines.push('');
     lines.push(`- Changed files: ${m.changedFiles}`);
-    lines.push(`- Impacted flows: ${m.impactedFlows} (${m.coveredFlows} covered, ${m.partialFlows} partial, ${m.uncoveredFlows} uncovered)`);
+    lines.push(`- Impacted flows: ${m.impactedFlows} (${m.coveredFlows} Playwright associated, ${m.partialFlows} Cypress associated, ${m.uncoveredFlows} without specs)`);
     lines.push(`- Coverage gaps: ${m.coverageGaps}`);
     lines.push(`- Confidence: ${m.confidence}%`);
     lines.push('');

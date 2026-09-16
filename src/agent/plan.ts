@@ -1,6 +1,8 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import type {ImpactResult} from '../engine/impact_engine.js';
+
 import type {AdvisoryAssessment} from '../engine/advisory.js';
 import {appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync} from 'fs';
 import {join} from 'path';
@@ -71,6 +73,8 @@ export interface CrewPlanInsights {
 }
 
 export interface PlanReport {
+    mappingProvenance?: ImpactResult['mappingProvenance'];
+    evidence?: ImpactResult['evidence'];
     advisory?: AdvisoryAssessment;
     confidenceKind?: 'heuristic' | 'unavailable';
     schemaVersion: '1.0.0';

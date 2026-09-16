@@ -135,3 +135,47 @@ for (const mode of ['threshold', 'enforcement']) {
         if (mode === 'enforcement') assert.ok(!stderr.includes('GATE FAILED'), 'enforcement retains precedence over threshold');
     });
 }
+
+it('W3 built callers honor custom traceability against separate base inventory and expose origin', async (t) => {
+    const f = fixture(t);
+    const testsRoot = join(f.inventory, 'e2e-tests/playwright');
+    const config = join(f.root, 'config.json');
+    writeFileSync(join(testsRoot, 'custom.json'), JSON.stringify({schemaVersion: '1.0.0', tests: [{test: 'e2e-tests/playwright/specs/old.spec.ts', touchedFiles: ['src/widget.ts'], lastSeen: new Date().toISOString(), signalCount: 2, origins: ['traceability-capture']}]}));
+    const save = (enabled = true, minSignalsPerTest = 2) => writeFileSync(config, JSON.stringify({git: {includeUncommitted: false}, impact: {traceability: {enabled, minSignalsPerTest, manifestPath: 'custom.json'}}}));
+    save();
+    const args = ['--config', config, '--path', join(f.repo, 'src'), '--since', f.base, '--tests-root', testsRoot];
+    const run = (command, extra = []) => spawnSync(process.execPath, [cli, command, ...args, ...extra], {cwd: f.root, encoding: 'utf8', env: {PATH: process.env.PATH}, timeout: 30000});
+    const review = run('review', ['--json', '--ci-comment-path', join(f.root, 'w3.md')]);
+    assert.equal(review.status, 0, review.stderr);
+    const data = JSON.parse(review.stdout);
+    assert.ok(!JSON.stringify(data.decision).includes('fully covered'));
+    assert.equal(data.mappingProvenance.find((p) => p.file === 'src/widget.ts').kind, 'declared-traceability');
+    for (const text of [readFileSync(join(f.root, 'w3.md'), 'utf8'), run('review').stdout]) {
+        for (const label of ['declared-traceability', 'traceability-capture', 'unverified', 'Measured coverage unavailable']) assert.ok(text.includes(label), label);
+    }
+    const planText = run('plan', ['--no-ai']).stdout;
+    for (const label of ['declared-traceability', 'traceability-capture', 'Unverified', 'Measured coverage unavailable']) assert.ok(planText.includes(label), label);
+    const plan = JSON.parse(run('plan', ['--no-ai', '--json']).stdout);
+    assert.equal(plan.runSet, 'full');
+    assert.ok(plan.recommendedTests.includes('specs/old.spec.ts'));
+    assert.equal(plan.mappingProvenance.find((p) => p.file === 'src/widget.ts').kind, 'declared-traceability');
+    const impact = run('impact');
+    assert.equal(impact.status, 0, impact.stderr);
+    assert.ok(impact.stdout.includes('declared-traceability'));
+    const gate = JSON.parse(run('gate', ['--json']).stdout);
+    assert.ok(gate.unassessedFiles.includes('src/widget.ts'));
+    const {analyzeImpactDeterministic, recommendTestsDeterministic, recommendTestsAI} = await import('../dist/api.js');
+    const options = {cwd: f.root, configPath: config, path: join(f.repo, 'src'), gitSince: f.base, testsRoot};
+    assert.equal(analyzeImpactDeterministic(options).mappingProvenance.find((p) => p.file === 'src/widget.ts').kind, 'declared-traceability');
+    assert.ok(recommendTestsDeterministic(options).plan.recommendedTests.includes('specs/old.spec.ts'));
+    // auto provider without credentials falls back to deterministic; no model call is required.
+    const old = process.env.LLM_PROVIDER; process.env.LLM_PROVIDER = 'auto';
+    try {
+        if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY) assert.ok((await recommendTestsAI(options)).plan.recommendedTests.includes('specs/old.spec.ts'));
+    } finally {if (old === undefined) delete process.env.LLM_PROVIDER; else process.env.LLM_PROVIDER = old;}
+    for (const settings of [[false, 2], [true, 3]]) {
+        save(...settings);
+        const disabled = JSON.parse(run('review', ['--json']).stdout);
+        assert.notEqual(disabled.mappingProvenance.find((p) => p.file === 'src/widget.ts').kind, 'declared-traceability');
+    }
+});

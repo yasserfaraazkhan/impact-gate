@@ -1,6 +1,6 @@
 import {describe, it, beforeEach, afterEach} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdirSync, writeFileSync, rmSync} from 'fs';
+import {mkdirSync, writeFileSync, rmSync, symlinkSync} from 'fs';
 import {join} from 'path';
 import {tmpdir} from 'os';
 
@@ -310,5 +310,110 @@ describe('impact_engine', () => {
         assert.equal(byType('playwright').length, 1);
         assert.equal(byType('cypress').length, 1);
         assert.equal(byType('unit').length, 2); // .test.tsx + _test.go
+    });
+});
+
+
+describe('W3 per-path declared candidate precedence', () => {
+    let env;
+    const a = 'webapp/channels/src/components/search_bar.tsx';
+    const b = 'webapp/channels/src/components/search_results.tsx';
+    const orphan = 'isolated/ledger.ts';
+    const exact = 'specs/nested/ledger.spec.ts';
+    const scanner = 'specs/functional/channels/search/search.spec.ts';
+    let options;
+    const put = (file, content) => {mkdirSync(join(env.root, file, '..'), {recursive: true}); writeFileSync(join(env.root, file), content);};
+    const manifest = (overrides = {}) => writeFileSync(join(env.testsRoot, 'custom.json'), JSON.stringify({schemaVersion: '1.0.0', tests: [{test: exact, touchedFiles: [a, orphan], signalCount: 2, lastSeen: new Date().toISOString(), origins: ['traceability-capture'], ...overrides}]}));
+    beforeEach(() => {
+        clearManifestCache(); env = createTestEnvironment();
+        for (const file of [a, b, orphan]) put(file, 'export const value = 1;');
+        put('playwright/' + exact, "test('nested ledger scenario', () => {});");
+        options = {testsRoot: env.testsRoot, sourceRoot: env.root, traceability: {enabled: true, manifestPath: 'custom.json', minSignalsPerTest: 2}};
+        manifest();
+    });
+    afterEach(() => {clearManifestCache(); rmSync(env.root, {recursive: true, force: true});});
+    it('prefers exact declared relationships per path without leaking scanner specs from the same family', () => {
+        const result = analyzeImpact([a, b, orphan, 'config/flags.yaml'], options);
+        for (const file of [a, orphan]) {
+            const features = result.impactedFeatures.filter((f) => f.changedFiles.includes(file));
+            assert.deepEqual([...new Set(features.flatMap((f) => f.playwrightSpecs))], [exact]);
+            assert.equal(result.mappingProvenance.find((p) => p.file === file).kind, 'declared-traceability');
+        }
+        assert.ok(result.impactedFeatures.find((f) => f.changedFiles.includes(b)).playwrightSpecs.includes(scanner));
+        assert.deepEqual(result.changedFiles, [a, b, orphan, 'config/flags.yaml']);
+        assert.deepEqual(result.unassessedFiles, [a, orphan, 'config/flags.yaml']);
+        assert.deepEqual(result.evidence, {coverage: 'unavailable', measuredCoverageEdges: 0});
+        assert.deepEqual(result.impactedFeatures.find((f) => f.changedFiles.includes(a)).playwrightSpecDetails[0].scenarios, ['nested ledger scenario']);
+    });
+    it('honors disabled and minSignals config, leaving explicit manifest policy unchanged', () => {
+        for (const traceability of [{...options.traceability, enabled: false}, {...options.traceability, minSignalsPerTest: 3}, {...options.traceability, manifestPath: 'missing.json'}]) {
+            const result = analyzeImpact([a], {...options, traceability});
+            assert.ok(result.impactedFeatures[0].playwrightSpecs.includes(scanner));
+            assert.deepEqual(result.unassessedFiles, []);
+        }
+    });
+    it('rejects invalid ages and missing/escaping/wrong inventory specs', () => {
+        put('outside.spec.ts', 'test("outside", () => {});');
+        symlinkSync(join(env.root, 'outside.spec.ts'), join(env.testsRoot, 'escape.spec.ts'));
+        for (const overrides of [{lastSeen: 'bad'}, {lastSeen: undefined}, {lastSeen: '2000-01-01T00:00:00Z'}, {lastSeen: '2999-01-01T00:00:00Z'}, {test: '../outside.spec.ts'}, {test: 'escape.spec.ts'}, {test: '/tmp/absolute.spec.ts'}, {test: 'missing.spec.ts'}, {test: 'helpers.ts'}, {signalCount: -1}]) {
+            manifest(overrides);
+            const result = analyzeImpact([a, orphan], options);
+            assert.ok(result.impactedFeatures.find((f) => f.changedFiles.includes(a)).playwrightSpecs.includes(scanner), JSON.stringify(overrides));
+            assert.ok(result.unassessedFiles.includes(orphan));
+        }
+    });
+    it('rejects calendar rollovers while accepting real leap days and ISO offsets', (t) => {
+        let now = Date.parse('2026-09-16T00:00:00Z');
+        t.mock.method(Date, 'now', () => now);
+        const cases = [
+            ['2026-06-31T00:00:00Z', '2026-09-16', false],
+            ['2025-02-29T00:00:00Z', '2025-03-02', false],
+            ['2024-02-30T00:00:00Z', '2024-03-02', false],
+            ['2100-02-29T00:00:00Z', '2100-03-02', false],
+            ['2000-02-29T00:00:00Z', '2000-03-02', true],
+            ['2024-02-29T00:00:00.000Z', '2024-03-02', true],
+            ['2024-02-29', '2024-03-02', true],
+            ['2024-03-01T00:30:00+05:30', '2024-03-02', true],
+        ];
+        for (const [lastSeen, clock, eligible] of cases) {
+            now = Date.parse(clock);
+            manifest({lastSeen});
+            const result = analyzeImpact([orphan], options);
+            assert.equal(result.mappingProvenance[0].kind === 'declared-traceability', eligible, lastSeen);
+        }
+    });
+    it('never promotes forged revision/suite/measured claims into execution coverage', () => {
+        manifest({evidence: 'measured', revision: 'wrong', suite: 'wrong', source: 'instrumented'});
+        const result = analyzeImpact([orphan], options);
+        assert.equal(result.mappingProvenance[0].evidence, 'unverified');
+        assert.deepEqual(result.unassessedFiles, [orphan]);
+        assert.equal(result.evidence.measuredCoverageEdges, 0);
+    });
+    it('keeps newly declared expanded paths unassessed without changing the original diff', () => {
+        manifest({touchedFiles: [orphan]});
+        const result = analyzeImpact([b], {...options, expandedFiles: [orphan]});
+        assert.deepEqual(result.changedFiles, [b]);
+        assert.ok(result.unassessedFiles.includes(orphan));
+    });
+    it('retains full fallback for cold-start and exact Cypress candidates', () => {
+        const cy = 'tests/integration/channels/search/search_spec.js';
+        manifest({test: cy});
+        const traced = analyzeImpact([orphan], options);
+        assert.ok(traced.impactedFeatures[0].cypressSpecs[0].endsWith(cy));
+        assert.deepEqual(traced.unassessedFiles, [orphan]);
+        assert.equal(traced.mappingProvenance[0].kind, 'declared-traceability');
+        rmSync(join(env.testsRoot, '.e2e-ai-agents/route-families.json')); clearManifestCache();
+        const cold = analyzeImpact([b, 'server/app/post.go'], {...options, traceability: {...options.traceability, enabled: false}});
+        assert.ok(cold.impactedFeatures.find((f) => f.changedFiles.includes(b)).playwrightSpecs.includes(scanner));
+        assert.deepEqual(cold.unassessedFiles, [b, 'server/app/post.go']);
+        assert.equal(cold.mappingProvenance[0].kind, 'scanner-heuristic');
+        assert.deepEqual(cold.mappingProvenance[1].tests, []);
+    });
+    it('normalizes nested scanner paths and reads their scenarios', () => {
+        put('playwright/specs/functional/channels/search/deeper/more.spec.ts', "test('deep search title', () => {});");
+        const result = analyzeImpact([b], options);
+        const detail = result.impactedFeatures[0].playwrightSpecDetails.find((d) => d.file.endsWith('more.spec.ts'));
+        assert.equal(detail.file, 'specs/functional/channels/search/deeper/more.spec.ts');
+        assert.deepEqual(detail.scenarios, ['deep search title']);
     });
 });

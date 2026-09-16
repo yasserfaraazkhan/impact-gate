@@ -282,7 +282,7 @@ describe('renderCiSummaryMarkdown', () => {
         const impact = makeImpactResult();
         const plan = buildPlanFromImpact(impact);
         const md = renderCiSummaryMarkdown(plan);
-        assert.ok(md.includes('Covered flows'));
+        assert.ok(md.includes('Flows with associated specs'));
         assert.ok(md.includes('channels/search'));
     });
 });
@@ -299,4 +299,55 @@ describe('decision mapping wording', () => {
             assert.ok(!plan.decision.summary.includes('have test coverage'));
         });
     }
+});
+
+
+it('W3 plan retains provenance and both framework candidates while unassessed paths force full', () => {
+    const mappingProvenance = [{file: 'src/ledger.ts', kind: 'declared-traceability', tests: ['ledger.spec.ts'], origins: ['traceability-capture'], evidence: 'unverified'}];
+    const evidence = {coverage: 'unavailable', measuredCoverageEdges: 0};
+    const plan = buildPlanFromImpact(makeImpactResult({mappingProvenance, evidence, unassessedFiles: ['src/ledger.ts']}));
+    assert.equal(plan.runSet, 'full');
+    assert.deepEqual(plan.mappingProvenance, mappingProvenance);
+    assert.deepEqual(plan.evidence, evidence);
+    assert.ok(plan.recommendedTests.some((t) => t.endsWith('search_spec.js')));
+    const markdown = renderCiSummaryMarkdown(plan);
+    for (const label of ['declared-traceability', 'traceability-capture', 'unverified', 'Measured coverage unavailable']) assert.ok(markdown.includes(label), label);
+});
+
+
+it('describes Cypress-only declared and heuristic candidates as associations in plan and review renders', async () => {
+    const {mkdtempSync, mkdirSync, writeFileSync, rmSync} = await import('node:fs');
+    const {join} = await import('node:path');
+    const {tmpdir} = await import('node:os');
+    const {analyzeImpact} = await import('../dist/engine/impact_engine.js');
+    const {synthesizeReview} = await import('../dist/engine/review_synthesizer.js');
+    const {formatReviewText, formatReviewMarkdown} = await import('../dist/engine/review_formatter.js');
+    const root = mkdtempSync(join(tmpdir(), 'cypress-candidate-wording-'));
+    try {
+        for (const dir of ['src', 'playwright', 'cypress']) mkdirSync(join(root, dir));
+        writeFileSync(join(root, 'src/ledger.ts'), 'export const ledger = 1;');
+        writeFileSync(join(root, 'cypress/ledger_spec.js'), 'it("ledger", () => {});');
+        writeFileSync(join(root, 'playwright/trace.json'), JSON.stringify({schemaVersion: '1.0.0', tests: [{test: 'ledger_spec.js', touchedFiles: ['src/ledger.ts'], signalCount: 1, lastSeen: new Date().toISOString()}]}));
+        for (const enabled of [true, false]) {
+            const impact = analyzeImpact(['src/ledger.ts'], {testsRoot: join(root, 'playwright'), sourceRoot: root, traceability: {enabled, manifestPath: 'trace.json', minSignalsPerTest: 1}});
+            assert.equal(impact.mappingProvenance[0].kind, enabled ? 'declared-traceability' : 'scanner-heuristic');
+            assert.equal(impact.impactedFeatures[0].coverageStatus, 'partial');
+            for (const ai of [undefined, {enrichedFeatures: [{familyId: impact.impactedFeatures[0].familyId, aiReasons: [], aiMissingScenarios: ['fixture scenario']}]}]) {
+                const plan = buildPlanFromImpact(impact, undefined, ai);
+                assert.equal(plan.runSet, 'full');
+                const reasons = plan.gapDetails.flatMap((g) => g.reasons);
+                // Cold-start families retain P2, which the existing partial-gap predicate omits.
+                assert.equal(reasons.length, enabled ? (ai ? 2 : 1) : 0);
+                const review = synthesizeReview(impact, plan, {level: 'low', score: 0.1, factors: [], metrics: {change: {}, complexity: {}}, recommendation: 'Review fixture'});
+                for (const text of [...reasons, formatReviewText(review), formatReviewMarkdown(review)]) {
+                    if (enabled) {
+                        assert.ok(text.includes('associated Cypress specs'), text);
+                        assert.ok(text.includes('no associated Playwright specs'), text);
+                    }
+                    assert.doesNotMatch(text, /is covered by Cypress|Cypress but no Playwright coverage/);
+                }
+                assert.doesNotMatch(renderCiSummaryMarkdown(plan), /is covered by Cypress|Cypress but no Playwright coverage/);
+            }
+        }
+    } finally {rmSync(root, {recursive: true, force: true});}
 });

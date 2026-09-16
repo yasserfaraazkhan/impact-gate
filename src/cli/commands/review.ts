@@ -87,6 +87,8 @@ export async function runReviewCommand(
     const impact = analyzeImpact(gitResult.files, {
         testsRoot: reportRoot,
         routeFamilies: config.routeFamilies,
+        traceability: config.impact.traceability,
+        sourceRoot: gitResult.repositoryRoot || config.path,
         filteredTestFiles: gitResult.filteredTestFiles,
         expandedFiles,
     });

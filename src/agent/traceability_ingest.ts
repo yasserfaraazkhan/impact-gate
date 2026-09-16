@@ -10,6 +10,7 @@ export interface TraceabilityIngestEntry {
     test: string;
     touchedFiles: string[];
     timestamp?: string;
+    origin?: string;
 }
 
 export interface TraceabilityIngestOptions {
@@ -19,6 +20,7 @@ export interface TraceabilityIngestOptions {
 }
 
 interface TraceabilityStateEntry {
+    origins?: string[];
     files: Record<string, number>;
     seenCount: number;
     lastSeen: string;
@@ -72,7 +74,9 @@ function resolvePath(root: string, value: string): string {
 
 function parseDate(value: string): number | null {
     const parsed = Date.parse(value);
-    if (Number.isNaN(parsed)) {
+    // Accept ISO dates/zoned timestamps, but never Date.parse calendar rollovers.
+    const date = /^(\d{4}-\d{2}-\d{2})(?:T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d))?$/.exec(value);
+    if (!date || !Number.isFinite(parsed) || new Date(date[1]).toISOString().slice(0, 10) !== date[1]) {
         return null;
     }
     return parsed;
@@ -113,6 +117,8 @@ function normalizeTest(value: unknown): string | null {
 function buildEntriesFromInput(payload: unknown): {entries: TraceabilityIngestEntry[]; warnings: string[]} {
     const warnings: string[] = [];
     const entries: TraceabilityIngestEntry[] = [];
+    // Converter origin is a label, never instrumentation or execution identity.
+    const source = payload && typeof payload === 'object' && 'source' in payload && typeof payload.source === 'string' ? payload.source : 'legacy-import';
 
     const pushEntry = (testValue: unknown, filesValue: unknown, timestampValue?: unknown): void => {
         const test = normalizeTest(testValue);
@@ -122,6 +128,7 @@ function buildEntriesFromInput(payload: unknown): {entries: TraceabilityIngestEn
         }
         entries.push({
             test,
+            origin: source,
             touchedFiles: files,
             timestamp: typeof timestampValue === 'string' ? timestampValue : undefined,
         });
@@ -216,10 +223,7 @@ function pruneByAge(state: TraceabilityState, maxAgeDays: number): void {
     const cutoff = Date.now() - maxAgeDays * 24 * 60 * 60 * 1000;
     for (const [test, entry] of Object.entries(state.tests)) {
         const lastSeen = parseDate(entry.lastSeen);
-        if (lastSeen === null) {
-            continue;
-        }
-        if (lastSeen < cutoff) {
+        if (lastSeen === null || lastSeen > Date.now() || lastSeen < cutoff) {
             delete state.tests[test];
         }
     }
@@ -237,12 +241,15 @@ function buildManifest(
                 .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
                 .slice(0, maxFilesPerTest)
                 .map(([file]) => file);
+            // Imported file hits, not independent observed executions.
             const signalCount = Object.values(entry.files).reduce((acc, value) => acc + value, 0);
             return {
                 test,
                 touchedFiles,
                 signalCount,
                 lastSeen: entry.lastSeen,
+                origins: entry.origins || ['legacy-import'],
+                evidence: 'declared',
             };
         })
         .filter((entry) => entry.touchedFiles.length > 0)
@@ -297,6 +304,7 @@ export function ingestTraceabilityInput(
             seenCount: 0,
             lastSeen: now,
         };
+        bucket.origins = [...new Set([...(bucket.origins || (bucket.seenCount ? ['legacy-import'] : [])), entry.origin || 'legacy-import'])].sort();
         bucket.seenCount += 1;
         bucket.lastSeen = entry.timestamp || now;
         for (const file of entry.touchedFiles) {

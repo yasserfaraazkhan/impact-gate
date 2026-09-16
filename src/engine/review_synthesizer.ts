@@ -53,14 +53,14 @@ export function synthesizeReview(
     }
 
     // Enrich with behavior analysis when available
-    const report: ReviewReport = {impactedFlows, coverageGaps, riskAssessment, decision, metrics, affectedFunctions};
+    const report: ReviewReport = {mappingProvenance: impact.mappingProvenance, evidence: impact.evidence, impactedFlows, coverageGaps, riskAssessment, decision, metrics, affectedFunctions};
 
     if (behaviorAnalysis) {
         report.behaviorSummary = behaviorAnalysis.behaviorSummary;
         report.recommendations = behaviorAnalysis.recommendations;
         report.relevantExistingTests = behaviorAnalysis.relevantTests.map((t) => ({
             file: t.file,
-            matchReason: t.matchReason,
+            matchReason: t.matchReason === 'manifest' ? [...new Set((impact.mappingProvenance || []).filter((m) => m.tests.includes(t.file)).map((m) => m.kind))].join(', ') || t.matchReason : t.matchReason,
         }));
 
         if (behaviorAnalysis.prIncludedTests.length > 0) {
@@ -268,7 +268,7 @@ function buildDecisionSummary(
 
     switch (action) {
     case 'safe-to-merge':
-        return `This PR impacts ${flowCount} flow${flowCount !== 1 ? 's' : ''}, all with existing test coverage. Low defect risk.`;
+        return `This PR impacts ${flowCount} flow${flowCount !== 1 ? 's' : ''}, all with associated existing specs. Low defect risk.`;
     case 'review-recommended':
         return `This PR impacts ${flowCount} flow${flowCount !== 1 ? 's' : ''} with ${prediction.level} defect risk. Review recommended before merging.`;
     case 'must-add-tests':
@@ -292,13 +292,13 @@ function buildDecisionDetails(
     const partial = impact.impactedFeatures.filter((f) => f.coverageStatus === 'partial').length;
 
     if (uncovered > 0) {
-        details.push(`${uncovered} flow${uncovered !== 1 ? 's' : ''} have no E2E test coverage`);
+        details.push(`${uncovered} flow${uncovered !== 1 ? 's' : ''} have no associated E2E specs`);
     }
     if (partial > 0) {
-        details.push(`${partial} flow${partial !== 1 ? 's' : ''} have partial coverage`);
+        details.push(`${partial} flow${partial !== 1 ? 's' : ''} have only Cypress spec associations`);
     }
     if (covered > 0) {
-        details.push(`${covered} flow${covered !== 1 ? 's' : ''} are fully covered`);
+        details.push(`${covered} flow${covered !== 1 ? 's' : ''} have Playwright spec associations`);
     }
 
     // Risk info

@@ -1,6 +1,6 @@
 import assert from 'assert';
 import test from 'node:test';
-import {mkdtempSync, readFileSync, rmSync} from 'fs';
+import {mkdtempSync, readFileSync, rmSync, writeFileSync} from 'fs';
 import {join} from 'path';
 import {tmpdir} from 'os';
 import {ingestTraceabilityInput} from '../dist/agent/traceability_ingest.js';
@@ -86,4 +86,52 @@ test('traceability ingest honors minHits threshold across runs', () => {
     } finally {
         rmSync(root, {recursive: true, force: true});
     }
+});
+
+import {captureTraceabilityInput} from '../dist/agent/traceability_capture.js';
+
+test('W3 capture origins survive ingest without becoming measured and invalid dates are pruned', () => {
+    const root = mkdtempSync(join(tmpdir(), 'w3-origin-'));
+    try {
+        const reportPath = join(root, 'report.json'); const coverageMapPath = join(root, 'map.json'); const changedFilesPath = join(root, 'changed.txt');
+        writeFileSync(reportPath, JSON.stringify({suites: [{specs: [{file: 'ledger.spec.ts', tests: [{status: 'passed'}]}]}]}));
+        writeFileSync(coverageMapPath, JSON.stringify({tests: [{test: 'ledger.spec.ts', touchedFiles: ['ledger.ts', 'other.ts']}]}));
+        writeFileSync(changedFilesPath, 'unknown.ts');
+        const captured = captureTraceabilityInput({appPath: root, testsRoot: root, reportPath, coverageMapPath, changedFilesPath, sinceRef: 'HEAD'});
+        const result = ingestTraceabilityInput(root, TRACEABILITY_CONFIG, readJson(captured.outputPath));
+        let entry = readJson(result.manifestPath).tests[0];
+        assert.deepEqual(entry.origins, ['traceability-capture']);
+        assert.equal(entry.evidence, 'declared');
+        assert.equal(entry.signalCount, 2, 'two file hits are not two executions');
+        ingestTraceabilityInput(root, TRACEABILITY_CONFIG, {tests: [{test: 'ledger.spec.ts', touchedFiles: ['ledger.ts']}]});
+        entry = readJson(result.manifestPath).tests[0];
+        assert.deepEqual(entry.origins, ['legacy-import', 'traceability-capture']);
+        const bad = ingestTraceabilityInput(root, TRACEABILITY_CONFIG, {tests: [{test: 'bad.spec.ts', touchedFiles: ['bad.ts'], timestamp: 'invalid'}]});
+        assert.equal(readJson(bad.manifestPath).tests.some((x) => x.test === 'bad.spec.ts'), false);
+    } finally {rmSync(root, {recursive: true, force: true});}
+});
+
+
+test('rejects impossible calendar timestamps during ingest pruning and retains valid ISO forms', (t) => {
+    const root = mkdtempSync(join(tmpdir(), 'traceability-calendar-'));
+    let now = Date.parse('2026-09-16T00:00:00Z');
+    t.mock.method(Date, 'now', () => now);
+    try {
+        for (const [timestamp, clock, eligible] of [
+            ['2026-06-31T00:00:00Z', '2026-09-16', false],
+            ['2025-02-29T00:00:00Z', '2025-03-02', false],
+            ['2024-02-30T00:00:00Z', '2024-03-02', false],
+            ['2100-02-29T00:00:00Z', '2100-03-02', false],
+            ['2000-02-29T00:00:00Z', '2000-03-02', true],
+            ['2024-02-29T00:00:00.000Z', '2024-03-02', true],
+            ['2024-02-29', '2024-03-02', true],
+            ['2024-03-01T00:30:00+05:30', '2024-03-02', true],
+            ['2024-03-03T00:00:00Z', '2024-03-02', false],
+            ['2023-02-28T00:00:00Z', '2024-03-02', false],
+        ]) {
+            now = Date.parse(clock);
+            const result = ingestTraceabilityInput(root, TRACEABILITY_CONFIG, {runs: [{test: 'calendar.spec.ts', touchedFiles: ['calendar.ts'], timestamp}]});
+            assert.equal(readJson(result.manifestPath).tests.length > 0, eligible, timestamp);
+        }
+    } finally {rmSync(root, {recursive: true, force: true});}
 });
