@@ -232,7 +232,7 @@ describe('buildPlanFromImpact with AI enrichment', () => {
         assert.ok(partialGap.reasons.includes('Post component changed — Cypress coverage missing'));
         assert.ok(partialGap.reasons.includes('Thread reply path affected'));
         // Base partial reason should still be present
-        assert.ok(partialGap.reasons[0].includes('Cypress only'));
+        assert.ok(partialGap.reasons[0].includes('has associated Cypress specs and no associated Playwright specs'));
     });
 
     it('matches enriched feature by featureId when available', () => {
