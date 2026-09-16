@@ -75,7 +75,7 @@ export class GeneratorAgent implements Agent {
                 enrichedDecisions,
                 ctx.apiSurface,
                 ctx.testsRoot,
-                {provider: ctx.providerOverride},
+                {provider: ctx.providerOverride, repositoryRoot: ctx.appPath, baseRef: ctx.gitSince},
             );
 
             ctx.generatedSpecs.push(...result.generated);

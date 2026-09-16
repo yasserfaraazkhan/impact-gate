@@ -22,14 +22,14 @@
 
 ## Task 1: W1 generated-test verification
 
-**Files:** Exact ten-file approval in `DECISIONS.md`; agent owns those files only. The caller passes repository root and selected base separately from test output root. The new internal verifier is created before callers use it and is not a new public API.
+**Files:** Exact fourteen-file approval (including caller and independent-review amendments) in `DECISIONS.md`; agent owns those files only. The caller passes repository root and selected base separately from test output root. The new internal verifier is created before callers use it and is not a new public API.
 
 **Consumes:** Existing `runAgenticGeneration`, `ScenarioInput`, `AgenticConfig`, `runPlaywrightSpec`, stage-3 `GeneratedSpec`, crew `appPath`/`gitSince`, Git changed-file identity.
 
 **Produces:** Explicit verified/unverified mutation evidence in existing generation results and summary artifacts. `passed`/`verified` requires positive clean execution plus an assertion failure on an applicable changed-line mutant. Crew executes its already-written artifact instead of asking the provider to overwrite it.
 
-- [ ] Add failing regression cases to the existing runner/report tests before production edits. Exercise an actual temporary Git repo and real Playwright runner, not a runner stub.
-- [ ] Use a changed `eligible` function and these generated-spec bodies as the minimum acceptance controls:
+- [x] Add failing regression cases to the existing runner/report tests before production edits. Exercise an actual temporary Git repo and real Playwright runner, not a runner stub.
+- [x] Use a changed `eligible` function and these generated-spec bodies as the minimum acceptance controls:
 
 ```typescript
 import {test, expect} from '@playwright/test';
@@ -46,11 +46,11 @@ test('assertion-free control', async () => {});
 ```
 
   The fixture's actual path layout must make the import real. Provider responses are fixture data; no execution result is stubbed. Record the pre-fix failure.
-- [ ] Implement only the three approved operators over full changed-line hunks. Reject out-of-root, symlink/unsafe, binary, test-only, or unsupported mutation targets. Preserve original bytes and restore in `finally`; do not overwrite a concurrently changed file. Prefer a disposable source workspace when the runner can execute it correctly; never report a mutation of a file the application did not load as verified.
-- [ ] Tighten Playwright result parsing: positive executed tests for baseline; actual terminal assertion failure for a kill. Do not use `spec.ok`, process exit alone, empty/skipped/flaky reports, load/compile failures or timeouts as proof.
-- [ ] Wire the same verifier into the actual review generator and stage 3. Remove compile-only success. Keep unverified files/results explicitly marked and outside ordinary trusted discovery; preserve preexisting test files when verification fails.
-- [ ] Test good clean pass, mutant assertion failure, restored pass; bad clean pass and mutant pass => unverified. Cover missing base/source, no candidate, zero/skipped tests, and process/compile failure.
-- [ ] Independent adversarial review addresses source restoration, error paths, evidence authenticity, and all callers. Evidence Officer runs acceptance and records `gates/w1.txt`; Simplifier reports duplication removed; Arbiter closes W1 only after those checks.
+- [x] Implement only the three approved operators over full changed-line hunks. Reject out-of-root, symlink/unsafe, binary, test-only, or unsupported mutation targets. Preserve original bytes and restore in `finally`; do not overwrite a concurrently changed file. Prefer a disposable source workspace when the runner can execute it correctly; never report a mutation of a file the application did not load as verified.
+- [x] Tighten Playwright result parsing: positive executed tests for baseline; actual terminal assertion failure for a kill. Do not use `spec.ok`, process exit alone, empty/skipped/flaky reports, load/compile failures or timeouts as proof.
+- [x] Wire the same verifier into the actual review generator and stage 3. Remove compile-only success. Keep unverified files/results explicitly marked and outside ordinary trusted discovery; preserve preexisting test files when verification fails.
+- [x] Test good clean pass, mutant assertion failure, restored pass; bad clean pass and mutant pass => unverified. Cover missing base/source, no candidate, zero/skipped tests, and process/compile failure.
+- [x] Independent adversarial review addresses source restoration, error paths, evidence authenticity, and all callers. Evidence Officer runs acceptance and records `gates/w1.txt`; Simplifier reports duplication removed; Arbiter closes W1 only after those checks.
 
 ## Task 2: W2 reliable reports and fixed empirical replay
 

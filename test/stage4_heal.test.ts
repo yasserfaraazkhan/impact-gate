@@ -248,3 +248,16 @@ describe('renderHealMarkdown', () => {
         assert.ok(md.includes('test warning'));
     });
 });
+
+it('excludes mutation-evidenced artifacts from generated, report, and explicit healer inputs', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'heal-evidence-'));
+    const spec = path.join(root, 'specs/test.spec.ts');
+    const reportPath = path.join(root, 'report.json');
+    fs.writeFileSync(reportPath, JSON.stringify({suites: [{specs: [{file: spec, tests: [{outcome: 'unexpected', results: [{status: 'failed'}]}]}]}]}));
+    for (const verified of [false, true]) {
+        const targets = resolveHealTargets(root, {playwrightReportPath: reportPath,
+            generatedSpecs: [{flowId: 'test', specPath: spec, written: true, mode: 'create_spec', hallucinationWarnings: [], verified, verification: {verified, reason: 'fixture'}}],
+            explicitTargets: [{specPath: 'specs/../specs/test.spec.ts', status: 'failed'}, {specPath: 'other.spec.ts', status: 'failed'}]}, []);
+        assert.deepEqual(targets.map((target) => target.specPath), [path.join(root, 'other.spec.ts')]);
+    }
+});

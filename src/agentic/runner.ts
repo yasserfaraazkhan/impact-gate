@@ -5,7 +5,8 @@ import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'fs';
 import {dirname, join, resolve} from 'path';
 import type {LLMProvider} from '../provider_interface.js';
 import type {AgenticConfig, AgenticResult, AgenticSummary, PlaywrightRunResult} from './types.js';
-import {runPlaywrightSpec} from './playwright_runner.js';
+import {isCleanRun} from './playwright_runner.js';
+import {prepareQuarantine, quarantineSpec, safeArtifactPath, verifyGeneratedSpec} from '../pipeline/mutation_verification.js';
 import {generateFix} from './fix_loop.js';
 import {parseGenerationResponse} from '../prompts/generation.js';
 import {formatApiSurfaceForPrompt} from '../knowledge/api_surface.js';
@@ -140,7 +141,8 @@ async function runSingleScenario(
 ): Promise<AgenticResult> {
     const {config, provider} = options;
     const warnings: string[] = [];
-    const specPath = resolveSpecPath(scenario, config.testsRoot);
+    const specPath = safeArtifactPath(resolveSpecPath(scenario, config.testsRoot), config.testsRoot);
+    const original = existsSync(specPath) ? readFileSync(specPath) : undefined;
 
     // Build API surface hint
     let apiHint = options.apiSurfaceHint || '';
@@ -164,74 +166,50 @@ async function runSingleScenario(
         return {specPath, scenarioSource: scenario.id, status: 'failed', attempts: 0, warnings};
     }
 
-    // Write the spec file
-    const dir = dirname(specPath);
-    if (!existsSync(dir)) {
-        mkdirSync(dir, {recursive: true});
+    safeArtifactPath(specPath, config.testsRoot);
+    if (original ? !existsSync(specPath) || !readFileSync(specPath).equals(original) : existsSync(specPath)) {
+        return {specPath, scenarioSource: scenario.id, status: 'unverified', attempts: 0, warnings: ['Concurrent spec change; generated code was not written']};
     }
-    writeFileSync(specPath, specCode, 'utf-8');
-
-    // Dry run: skip execution
-    if (config.dryRun) {
-        return {specPath, scenarioSource: scenario.id, status: 'skipped', attempts: 0, warnings};
+    let quarantinePath: string;
+    try {quarantinePath = prepareQuarantine(config.testsRoot);} catch (error) {
+        return {specPath, scenarioSource: scenario.id, status: 'unverified', attempts: 0,
+            warnings: [`Quarantine unavailable; destination was not changed: ${String(error)}`]};
     }
-
-    // Step 2: Run -> Fix loop
+    mkdirSync(dirname(specPath), {recursive: true});
+    let generated = Buffer.from(specCode);
+    writeFileSync(specPath, generated);
     let lastRun: PlaywrightRunResult | undefined;
-    for (let attempt = 1; attempt <= config.maxAttempts; attempt++) {
-        lastRun = runPlaywrightSpec(specPath, config.testsRoot, {
-            project: config.project,
-            baseUrl: config.baseUrl,
-            timeoutMs: config.testTimeoutMs,
-        });
-
-        // All passed!
-        if (lastRun.failed === 0 && lastRun.compiled) {
-            return {
-                specPath,
-                scenarioSource: scenario.id,
-                status: 'passed',
-                attempts: attempt,
-                finalRun: lastRun,
-                warnings,
-            };
-        }
-
-        // If this is the last attempt, don't try to fix
-        if (attempt >= config.maxAttempts) {
-            break;
-        }
-
-        // Step 3: Fix
-        const currentCode = readFileSync(specPath, 'utf-8');
-        try {
-            const fixResult = await generateFix(provider, {
-                specCode: currentCode,
-                failures: lastRun.failures,
-                attempt,
-                maxAttempts: config.maxAttempts,
-                apiSurfaceHint: apiHint,
-            });
-
-            if (fixResult.code) {
-                writeFileSync(specPath, fixResult.code, 'utf-8');
-            } else {
-                warnings.push(`Fix attempt ${attempt} returned invalid code for ${scenario.id}`);
+    let verification;
+    let attempts = 0;
+    try {
+        if (!config.dryRun) {
+            for (let attempt = 1; attempt <= config.maxAttempts; attempt++) {
+                attempts = attempt;
+                verification = verifyGeneratedSpec(specPath, {...config, timeoutMs: config.testTimeoutMs});
+                lastRun = verification.baseline;
+                if (verification.verified) {
+                    return {specPath, scenarioSource: scenario.id, status: 'passed', attempts, finalRun: lastRun, verification, warnings};
+                }
+                // A clean but insensitive test is unverified; fixing it must not reuse old evidence.
+                if (!lastRun || isCleanRun(lastRun) || attempt === config.maxAttempts) break;
+                const fix = await generateFix(provider, {specCode: generated.toString('utf8'), failures: lastRun.failures, attempt, maxAttempts: config.maxAttempts, apiSurfaceHint: apiHint});
+                safeArtifactPath(specPath, config.testsRoot);
+                if (!readFileSync(specPath).equals(generated)) throw new Error('Concurrent spec edit; fix was not written');
+                if (!fix.code) break;
+                generated = Buffer.from(fix.code);
+                writeFileSync(specPath, generated);
             }
-        } catch (error) {
-            const msg = error instanceof Error ? error.message : String(error);
-            warnings.push(`Fix attempt ${attempt} failed for ${scenario.id}: ${msg}`);
         }
+    } catch (error) {
+        warnings.push(error instanceof Error ? error.message : String(error));
     }
+    if (verification) warnings.push(verification.reason);
+    let reviewPath = specPath;
+    try {reviewPath = quarantineSpec(specPath, config.testsRoot, original, generated, quarantinePath);} catch (error) {
+        warnings.push(`Quarantine unavailable after rejected-spec cleanup: ${String(error)}`);
+    }
+    return {specPath: reviewPath, scenarioSource: scenario.id, status: config.dryRun ? 'skipped' : 'unverified', attempts, finalRun: lastRun, verification, warnings};
 
-    return {
-        specPath,
-        scenarioSource: scenario.id,
-        status: lastRun?.compiled === false ? 'compile-error' : 'max-attempts',
-        attempts: config.maxAttempts,
-        finalRun: lastRun,
-        warnings,
-    };
 }
 
 export async function runAgenticGeneration(options: AgenticRunOptions): Promise<AgenticSummary> {

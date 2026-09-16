@@ -1,0 +1,245 @@
+W1 EVIDENCE GATE — PASS
+
+Evidence Officer: independent W1 acceptance run
+Date: 2026-09-16
+Worktree: /private/tmp/impact-gate-recovery-2026-09-16
+Evidence archive: /private/tmp/impact-gate-recovery-evidence/w1-independent
+
+Verdict
+=======
+
+PASS. The scoped independent re-review is PASS/APPROVE and reports all blockers addressed. My fresh full suite, build chain, test compilation, lint, fixture inspection, raw Playwright report inspection, byte-preservation checks, scope check, and diff check all satisfy the W1 acceptance contract.
+
+This gate covers deterministic provider fixture data executed by real local Playwright. It does not claim a live model, browser/server provenance, Mattermost browser E2E, or mutation applicability beyond the supported direct-source-import boundary.
+
+Git and scope receipt
+=====================
+
+Product base: 047651c5bd32c9e71ca54941141ecf3eeae06bb6
+HEAD / plan commit: 5f3370454322df7bfe04e346c34b6d99dc52aa7f
+merge-base(HEAD, product base): 047651c5bd32c9e71ca54941141ecf3eeae06bb6
+Tracked src/test diff SHA-256: 3fa5f1719d0bb02f89507b2e4aeb1572468ba02b07593a23169b6604963688e9
+New helper SHA-256, src/pipeline/mutation_verification.ts: 4253f27f6b0dd61181a0a70d7a98a620c249115d14381c7fe10b6fade0bf0922
+
+There are exactly 14 changed product/test files, matching the approved W1 scope in DECISIONS.md. DECISIONS.md and the recovery plan are root-owned documentation changes. I made no source, test, documentation, decision, or commit changes.
+
+Before the test run I hashed every file under src/ and test/. After npm test and npm run lint I repeated the same manifest and ran:
+
+  cmp -s product-test-pre.sha256 product-test-post.sha256
+  exit 0
+
+Therefore product/test bytes stayed unchanged during this evidence run. The manifests are in the evidence archive.
+
+Required commands and exits
+===========================
+
+All accepted commands ran from the worktree with /bin/bash, login=false and PATH=/opt/homebrew/bin:$PATH.
+
+1. export PATH=/opt/homebrew/bin:$PATH; npm test
+   exit 0
+
+   This is the full project suite, not a focused-only receipt. npm pretest ran npm run build (CJS and ESM), npm run build:scripts and npm run build:test. Final stdout:
+
+     ℹ tests 529
+     ℹ suites 106
+     ℹ pass 529
+     ℹ fail 0
+     ℹ cancelled 0
+     ℹ skipped 0
+     ℹ todo 0
+     ℹ duration_ms 59844.502042
+
+   Raw combined stdout/stderr: /private/tmp/impact-gate-recovery-evidence/w1-independent/npm-test.full.txt
+   SHA-256: 2aa21cb7eb48c2597d5e57aa9cc49f5a6ffed49d9f29d3587beaa9e6493d4cb7
+
+2. export PATH=/opt/homebrew/bin:$PATH; npm run lint
+   exit 0
+
+   Stdout:
+
+     > @yasserkhanorg/impact-gate@2.4.0 lint
+     > tsc -p tsconfig.json --noEmit
+
+   Raw combined stdout/stderr: /private/tmp/impact-gate-recovery-evidence/w1-independent/npm-lint.full.txt
+   SHA-256: 1d740e59e6baa90b21440eff52412a8492dfbf18d80dc6faa31d1e99a55fdb2c
+
+3. git diff --check
+   exit 0
+
+The first launch attempt, before exporting the brief-required PATH, exited 127 because the non-login shell could not resolve npm; no project code ran. That superseded environment-launch output is preserved as npm-test-launch-failure.full.txt and npm-test-launch-failure.exit. The required PATH-qualified run above is the acceptance run.
+
+Selected fixture bases and changed-line diff
+============================================
+
+GOOD baseRef: 448ad0f5e7b6b51686ebc65a1441f58c721483f7
+EMPTY baseRef: 6e2e80abd121907d9c4439fd259ac5c0a68962ac
+STAGE3 baseRef: 179e4cbf98b4c1fae8715c36120cc192abf59439
+
+Each fresh fixture selected its own HEAD as base and had the same actual working-tree change:
+
+  diff --git a/eligibility.ts b/eligibility.ts
+  index 906e440..f625c8c 100644
+  --- a/eligibility.ts
+  +++ b/eligibility.ts
+  @@ -1,3 +1,3 @@
+   export function eligible(age: number) {
+  -    return age > 18;
+  +    return age >= 18;
+   }
+
+The changed line supports the recorded return-null or invert-condition candidate. Original/current/workspace source bytes all have SHA-256 94420d86dbe0b3988bd6c39503a7253a2c704ede16583f157e34384bb8a62070 after execution.
+
+Fresh GOOD artifact: verified
+=============================
+
+Fixture: /private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-mutation-fixture-SdarDK
+Summary: /private/tmp/impact-gate-recovery-evidence/w1-independent/artifacts/good/summary.json
+Summary SHA-256: 44706eb260ae5bf5b6b12535f3ed50b2441e73b2a35d59eeed78fe980b8b9e88
+Verification workspace: /private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-YOfHqB
+Operator: return-null, eligibility.ts line 2
+Status: passed; verified=true
+
+Source after the selected diff:
+
+  export function eligible(age: number) {
+      return age >= 18;
+  }
+
+Generated spec (SHA-256 609aa4fedaaff100f8b39d504d90559ac26b8696a0bf747605ec42ed70ffef59):
+
+  import {test, expect} from '@playwright/test';
+  import {eligible} from '../../../../eligibility';
+  test('accepts the changed boundary', () => {
+      expect(eligible(18)).toBe(true);
+      expect(eligible(17)).toBe(false);
+  });
+
+Real Playwright execution sequence and stdout:
+
+  clean exit 0; passed=1, failed=0, assertionFailures=0
+    Running 1 test using 1 worker
+    [1/1] [chrome] › specs/functional/ai-assisted/boundary.spec.ts:3:5 › accepts the changed boundary
+    1 passed (583ms)
+
+  mutant exit 1; passed=0, failed=1, assertionFailures=1
+    Running 1 test using 1 worker
+    [1/1] [chrome] › specs/functional/ai-assisted/boundary.spec.ts:3:5 › accepts the changed boundary
+    1) [chrome] › specs/functional/ai-assisted/boundary.spec.ts:3:5 › accepts the changed boundary
+       Error: expect(received).toBe(expected) // Object.is equality
+       Expected: true
+       Received: null
+       at boundary.spec.ts:4:26
+    1 failed
+
+  restored exit 0; passed=1, failed=0, assertionFailures=0
+    Running 1 test using 1 worker
+    [1/1] [chrome] › specs/functional/ai-assisted/boundary.spec.ts:3:5 › accepts the changed boundary
+    1 passed (660ms)
+
+The mutant failure is unexpected/terminal in the raw report and names the generated test and actual matcher error. Raw report copies and SHA-256 values:
+
+  baseline-report.json  2d5db3ac69b62f75995c7471a85483c19eb0f4020000858be96dcc64ad092652
+  mutant-report.json    c3135b0f61bf613349007a6d987c34ac999cad842427a71a839e7d7dfee3c929
+  restored-report.json  efddad99d49ebd550c436bc993e0990c8b72ecc46d8425485f71ef2765b4a442
+
+The retained original source snapshot, restored workspace source, and fixture source are byte-identical to sourceSha256. The mutant snapshot differs, as expected. The generated spec matches specSha256.
+
+Fresh EMPTY artifact: deliberately unverified
+==============================================
+
+Fixture: /private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-mutation-fixture-BVWGFY
+Summary: /private/tmp/impact-gate-recovery-evidence/w1-independent/artifacts/empty/summary.json
+Summary SHA-256: 680acf4193df280567c53f0df21880d9760d345ea7bb883a57adc9bb1a1ab256
+Verification workspace: /private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-1st9aS
+Operator attempted: invert-condition, eligibility.ts line 2
+Status: unverified; verified=false
+Reason: No applicable assertion kill; only directly imported local source can be verified
+
+Generated code (SHA-256 bcf89a3f3d673ee49a2821619567f0462e498804bb6576847fa26ee75d7d4f07):
+
+  import {test} from '@playwright/test';
+  test('assertion-free control', async () => {});
+
+Real Playwright execution sequence and stdout:
+
+  clean exit 0; passed=1, failed=0, assertionFailures=0
+    Running 1 test using 1 worker
+    [1/1] [chrome] › specs/functional/ai-assisted/boundary.spec.ts:2:5 › assertion-free control
+    1 passed (606ms)
+
+  mutant exit 0; passed=1, failed=0, assertionFailures=0
+    Running 1 test using 1 worker
+    [1/1] [chrome] › specs/functional/ai-assisted/boundary.spec.ts:2:5 › assertion-free control
+    1 passed (515ms)
+
+  restored exit 0; passed=1, failed=0, assertionFailures=0
+    Running 1 test using 1 worker
+    [1/1] [chrome] › specs/functional/ai-assisted/boundary.spec.ts:2:5 › assertion-free control
+    1 passed (623ms)
+
+The generated code therefore cannot demonstrate changed-line sensitivity. It was removed from the discoverable path:
+
+  absent: /private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-mutation-fixture-BVWGFY/tests/specs/functional/ai-assisted/boundary.spec.ts
+  present quarantine: /private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-mutation-fixture-BVWGFY/tests/.e2e-ai-agents/unverified/1789538893695-o2v6tr2pg8.ts.unverified
+
+The `.ts.unverified` suffix is not Playwright spec discovery. Raw report copies and SHA-256 values:
+
+  baseline-report.json  651eae03d335f3808c5935fdef92cfc6bdd7de54fe8b807ae4750ba541866070
+  mutant-report.json    61b358a6acc6bc16e6657624c676b8c41b47934cb66a619dfa485d377e578cfb
+  restored-report.json  550285cedecd092752a5065261c8bf7036dab04821060a7e73a0dba1036913c7
+
+Original/current/workspace source hashes all equal recorded sourceSha256; the quarantined generated bytes equal recorded specSha256.
+
+Fresh STAGE3 artifact: verified and retained
+============================================
+
+Fixture: /private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-mutation-fixture-ORlwaN
+Summary: /private/tmp/impact-gate-recovery-evidence/w1-independent/artifacts/stage3/summary.json
+Summary SHA-256: bd03a36f2b64254264e1970bda40fcfe172e9e38c125a315c3b0a3a6362e1e00
+Verification workspace: /private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-gJ9iz6
+Operator: return-null, eligibility.ts line 2
+Status: generatedCount=1, verifiedCount=1, failedCount=0, verified=true
+
+The retained verified generated spec has SHA-256 cb60509c591333ff24b679d8e10901fc5d3d47897d5b33a182dbf00ebc9a54d6 and contains the same two boundary assertions shown in GOOD. Its real clean/mutant/restored exits are 0/1/0. The mutant report records the same named test, unexpected terminal matcher failure, Expected true / Received null, at boundary.spec.ts:4:26. Raw report copies:
+
+  baseline-report.json  86193dd6c06dc319fc0b494cb989ac33b1b9a37289703a7755f38c0246095dc8
+  mutant-report.json    9a8d0d4a38918148e6912a3232fa905ad3d26b5967269a426835506be67f5a65
+  restored-report.json  73f5efefc726e5e21f38eb40c02099b2bf7ce831fda3e4b545ed06992bc08747
+
+The test intentionally overwrote the fixture's post-verification spec with the empty control to check stale-evidence rejection. The verified bytes are preserved separately as artifacts/stage3/generated.verified.spec.ts; the later empty bytes are preserved as generated.current-after-stale-check.spec.ts. The source original/current/workspace hashes all remain 94420d86dbe0b3988bd6c39503a7253a2c704ede16583f157e34384bb8a62070.
+
+Negative regression lineage
+===========================
+
+The retained historical red receipts were read and copied under the independent archive:
+
+* w1-red.txt: exit 1, 5 passed / 6 failed; includes the pre-fix good/empty acceptance failures and report-control failures.
+* w1-assertion-red.txt: exit 1, 0 passed / 1 failed; runtime text was incorrectly counted as matcher evidence (actual 1, expected 0).
+* w1-fix1-red.txt: exit 1, 0 passed / 6 failed; reproduced source-symlink, restored-source, quarantine, crew metadata and healer failures. Its attribution fixture failed with a TypeError and is explicitly not used as behavioral evidence.
+* w1-fix1-attribution-red.txt: exit 1, 0 passed / 1 failed; valid behavioral red for borrowed existing-test mutation evidence (true !== false).
+* w1-fix1-crew-red.txt: exit 1, 0 passed / 1 failed; valid behavioral red for stale shared verification metadata (true !== false).
+
+The current full suite passes the corresponding regressions, including the five W1 independent-review tests, disappeared-quarantine-storage cases, stage-4 healer exclusion, real report controls, and real generated-test mutation acceptance.
+
+Evidence preservation and checksums
+===================================
+
+The archive retains:
+
+* full npm test and lint stdout/stderr and exit files;
+* pre/post product-test hash manifests and compare exit;
+* command and Git receipts;
+* GOOD, EMPTY and STAGE3 summaries;
+* all nine raw Playwright JSON reports;
+* generated specs, current/original/workspace source snapshots and mutant snapshots;
+* the five historical red-lineage receipts; and
+* checksums.sha256 covering the retained independent evidence files.
+
+Command receipt: /private/tmp/impact-gate-recovery-evidence/w1-independent/command-receipt.txt
+Command receipt SHA-256: 038158c310c88932e4643ee33dfc4d3c7d90e0d1ea479250ed07e62fccf5d0e4
+Checksum manifest: /private/tmp/impact-gate-recovery-evidence/w1-independent/checksums.sha256
+
+Limitations
+===========
+
+This evidence uses deterministic provider fixture responses; provider quality and live-model behavior were not tested. Playwright execution and JSON reports are real local process executions, but these fixture specs import local TypeScript directly and do not start a browser or server. No Mattermost browser suite or saved Mattermost checkout was run or changed. Unsupported imports, remote/prebuilt server provenance, untracked mutation sources, separate output roots, symlinked source inputs, missing base/source context, unsupported operators, and surviving candidates remain conservatively unverified. The verifier attempts at most the approved three operators. W1 acceptance therefore establishes the implemented direct-import verification and preservation contract, within these explicit limits.

@@ -17,6 +17,9 @@ export interface TestFailure {
 export interface PlaywrightRunResult {
     specPath: string;
     passed: number;
+    assertionFailures?: number;
+    exitCode?: number | null;
+    reportPath?: string;
     failed: number;
     flaky: number;
     skipped: number;
@@ -46,14 +49,18 @@ export interface AgenticConfig {
     dryRun?: boolean;
     /** Tests root directory */
     testsRoot: string;
+    /** Source repository and exact diff base; separate from test output. */
+    repositoryRoot?: string;
+    baseRef?: string;
 }
 
 export interface AgenticResult {
     specPath: string;
     scenarioSource: string;
-    status: 'passed' | 'failed' | 'max-attempts' | 'compile-error' | 'skipped';
+    status: 'passed' | 'failed' | 'max-attempts' | 'compile-error' | 'skipped' | 'unverified';
     attempts: number;
     finalRun?: PlaywrightRunResult;
+    verification?: import('../pipeline/mutation_verification.js').MutationVerification;
     warnings: string[];
 }
 

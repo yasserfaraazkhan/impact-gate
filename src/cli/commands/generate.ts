@@ -78,6 +78,8 @@ export async function runGenerateCommand(args: ParsedArgs, config: ReturnType<ty
             baseUrl: args.pipelineBaseUrl,
             testTimeoutMs: 120000,
             testsRoot: reportRoot,
+            repositoryRoot: config.path,
+            baseRef: config.git.since,
             dryRun: args.dryRun,
         },
         provider,
@@ -92,9 +94,9 @@ export async function runGenerateCommand(args: ParsedArgs, config: ReturnType<ty
     console.log(`  Duration:  ${(summary.durationMs / 1000).toFixed(1)}s`);
 
     for (const result of summary.results) {
-        const icon = result.status === 'passed' ? 'PASS' : result.status === 'skipped' ? 'SKIP' : 'FAIL';
+        const icon = result.status === 'passed' ? 'PASS' : result.status === 'skipped' ? 'SKIP' : result.status === 'unverified' ? 'UNVERIFIED' : 'FAIL';
         console.log(`  [${icon}] ${result.scenarioSource} (${result.attempts} attempts)`);
-        if (result.status === 'passed' || result.status === 'skipped') {
+        if (result.status === 'passed' || result.status === 'skipped' || result.status === 'unverified') {
             console.log(`     ${result.specPath}`);
         }
     }

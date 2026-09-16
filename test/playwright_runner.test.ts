@@ -79,3 +79,66 @@ describe('parsePlaywrightJsonReport', () => {
         assert.equal(result.failed, 0);
     });
 });
+
+describe('verification report evidence', () => {
+    const reportFor = (status, result, extra = {}) => ({suites: [{title: 'suite', specs: [{title: 'test', ok: true, tests: [{status, results: [result]}]}]}], stats: {expected: 1, unexpected: 0, flaky: 0, skipped: 0, duration: 1}, ...extra});
+    it('does not count skipped, timed out, or flaky tests as passes even when spec.ok is true', () => {
+        for (const [status, result] of [['skipped', 'skipped'], ['unexpected', 'timedOut'], ['flaky', 'passed']]) {
+            assert.equal(parsePlaywrightJsonReport(reportFor(status, {status: result, duration: 1}), 'test.spec.ts').passed, 0);
+        }
+    });
+    it('requires matcher evidence for assertion failures; runtime failures are not kills', () => {
+        const assertion = parsePlaywrightJsonReport(reportFor('unexpected', {status: 'failed', duration: 1, error: {message: 'expect(received).toBe(expected)', matcherResult: {name: 'toBe', pass: false}}}), 'test.spec.ts');
+        const runtime = parsePlaywrightJsonReport(reportFor('unexpected', {status: 'failed', duration: 1, error: {message: 'TypeError: broken'}}), 'test.spec.ts');
+        assert.equal(assertion.assertionFailures, 1);
+        assert.equal(runtime.assertionFailures, 0);
+        const spoof = parsePlaywrightJsonReport(reportFor('unexpected', {status: 'failed', duration: 1, error: {message: 'TypeError: expect(received).toBe(expected)'}}), 'test.spec.ts');
+        assert.equal(spoof.assertionFailures, 0);
+    });
+    it('does not treat report-level compile errors as executed passes', () => {
+        const result = parsePlaywrightJsonReport(reportFor('expected', {status: 'passed', duration: 1}, {errors: [{message: 'SyntaxError'}]}), 'test.spec.ts');
+        assert.equal(result.compiled, false);
+    });
+});
+
+import {runPlaywrightSpec, isCleanRun} from '../dist/agentic/playwright_runner.js';
+import {mkdtempSync, writeFileSync, symlinkSync, realpathSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join, resolve} from 'node:path';
+
+describe('real Playwright execution negatives', () => {
+    it('rejects zero/skipped tests, load errors, runtime failures, timeouts, and exit without a report', () => {
+        const root = realpathSync(mkdtempSync(join(tmpdir(), 'impact-report-fixture-')));
+        symlinkSync(realpathSync(resolve('node_modules')), join(root, 'node_modules'), 'dir');
+        writeFileSync(join(root, 'playwright.config.ts'), `export default {testDir: '.', projects: [{name: 'chrome'}], timeout: 200};`);
+        const bodies = [
+            `import {test} from '@playwright/test';`,
+            `import {test} from '@playwright/test'; test.skip('skip', () => {});`,
+            `import {test} from '@playwright/test'; import './missing-module'; test('load', () => {});`,
+            `import {test} from '@playwright/test'; test('runtime', () => {throw new TypeError('runtime failure')});`,
+            `import {test} from '@playwright/test'; test('timeout', async () => {await new Promise(() => {})});`,
+            `process.exit(0);`,
+        ];
+        for (const [index, body] of bodies.entries()) {
+            const path = join(root, `negative-${index}.spec.ts`);
+            writeFileSync(path, body);
+            const result = runPlaywrightSpec(path, root, {project: 'chrome', timeoutMs: 10000});
+            assert.equal(isCleanRun(result), false, body);
+            assert.equal(result.assertionFailures, 0, body);
+        }
+        console.log(`REAL_PLAYWRIGHT_NEGATIVE_FIXTURE=${root}`);
+    });
+    it('rejects other-file reports, expected failures and retry successes', () => {
+        const report = {config: {rootDir: '/tmp'}, suites: [{specs: [{file: 'other.spec.ts', title: 'other', tests: [{status: 'expected', results: [{status: 'passed'}]}]}]}], stats: {flaky: 0, skipped: 0, duration: 0}};
+        assert.equal(parsePlaywrightJsonReport(report, '/tmp/requested.spec.ts').passed, 0);
+        for (const test of [
+            {status: 'expected', expectedStatus: 'failed', results: [{status: 'failed', error: {message: 'expect(received).toBe(expected)'}}]},
+            {status: 'flaky', results: [{status: 'failed'}, {status: 'passed'}]},
+        ]) {
+            report.suites[0].specs[0].tests = [test];
+            const result = parsePlaywrightJsonReport(report, '/tmp/other.spec.ts');
+            assert.equal(result.passed, 0);
+            assert.equal(result.assertionFailures, 0);
+        }
+    });
+});
