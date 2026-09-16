@@ -8,6 +8,7 @@ import path from 'path';
 import os from 'os';
 
 import {
+    buildHeuristicFamilies,
     loadRouteFamilyManifest,
     bindFilesToFamilies,
     getFamilyById,
@@ -247,4 +248,24 @@ describe('route_families', () => {
             assert.deepEqual(familyRoutes, ['/admin']);
         });
     });
+});
+
+
+it('W3 cold-start matches narrow exact inventory candidates and keeps generic changes empty', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'w3-cold-'));
+    try {
+        const testsRoot = path.join(root, 'playwright');
+        for (const file of ['playwright/specs/functional/drafts/deep/draft_channel.spec.ts', 'playwright/specs/functional/content_flagging/flagging/flag.spec.ts', 'playwright/specs/functional/unrelated/other.spec.ts', 'playwright/specs/functional/saml/metadata.spec.ts', 'cypress/tests/integration/drafts/draft_spec.js', 'cypress/tests/integration/drafts/helper.js']) {
+            fs.mkdirSync(path.dirname(path.join(root, file)), {recursive: true}); fs.writeFileSync(path.join(root, file), '');
+        }
+        const files = ['server/channels/app/draft.go', 'server/channels/app/content_flagging.go', 'server/channels/app/post.go', 'server/channels/app/post_metadata.go'];
+        const manifest = buildHeuristicFamilies(files, testsRoot);
+        const bindings = bindFilesToFamilies(files, manifest);
+        const specs = (i) => bindings[i].bindings.flatMap((b) => getSpecDirsForBinding(manifest, b));
+        assert.deepEqual(specs(0), ['specs/functional/drafts/deep/draft_channel.spec.ts']);
+        assert.deepEqual(specs(1), ['specs/functional/content_flagging/flagging/flag.spec.ts']);
+        assert.deepEqual(specs(2), []);
+        assert.deepEqual(specs(3), [], 'generic metadata must not recommend unrelated SAML specs');
+        assert.deepEqual(manifest.families.find((f) => f.webappPaths.includes(files[0])).cypressSpecDirs, ['tests/integration/drafts/draft_spec.js']);
+    } finally {fs.rmSync(root, {recursive: true, force: true});}
 });

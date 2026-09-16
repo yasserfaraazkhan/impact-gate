@@ -1,0 +1,74 @@
+{
+  "completed": true,
+  "rowsCompleted": 30,
+  "sampleSize": 30,
+  "namedOmission": {
+    "numerator": 1,
+    "denominator": 1,
+    "fraction": 1.0
+  },
+  "effectiveOmission": {
+    "numerator": 0,
+    "denominator": 1,
+    "fraction": 0.0
+  },
+  "fullSuiteRows": 30,
+  "baseSpecOccurrences": 28833,
+  "effectiveSelectedSpecOccurrences": 28833,
+  "staticSelectionReduction": 0.0,
+  "runtimeSavings": "not measured; full fallback offers zero selection savings",
+  "failures": [
+    {
+      "suite": "playwright-full-enterprise",
+      "repo_spec_path": "e2e-tests/playwright/specs/functional/channels/locked_profile_fields/locked_profile_fields.spec.ts",
+      "spec_path": "specs/functional/channels/locked_profile_fields/locked_profile_fields.spec.ts",
+      "run_id": "34606389718",
+      "run_attempt": "1",
+      "head_sha": "b827957df936e781a7dcdd6e2d05a8b84f635c00",
+      "final_attempt_id": "01a090cc-2ed2-749f-833a-2b87971479fa",
+      "final_worker_job_id": "103286942385",
+      "final_worker_name": "e2e-playwright / playwright-full / dispatch-run-14",
+      "final_attempt_status": "failed",
+      "reported_at": "2026-09-11T14:09:30.592237Z",
+      "all_attempt_outcomes": [
+        {
+          "status": "failed",
+          "reported_at": "2026-09-11T14:01:23.405023Z",
+          "gh_job_id": "103286942475"
+        },
+        {
+          "status": "failed",
+          "reported_at": "2026-09-11T14:09:30.592237Z",
+          "gh_job_id": "103286942385"
+        }
+      ],
+      "test_cases": [
+        {
+          "title": "carries admin-provisioned profile data from invite email through signup and enforces the lock",
+          "status": "failed",
+          "ordinal": 1,
+          "full_title": "functional/channels/locked_profile_fields/locked_profile_fields.spec.ts > carries admin-provisioned profile data from invite email through signup and enforces the lock",
+          "duration_ms": 28241,
+          "retry_count": 1
+        }
+      ],
+      "pr": 38451,
+      "preexisting": true,
+      "eligible": true,
+      "namedIncluded": false,
+      "effectiveIncluded": true,
+      "sourceFiles": [
+        "38451/34606389718/playwright-full-enterprise.orchestration.json",
+        "38451/34606389718/playwright-full-enterprise.consolidated.json"
+      ]
+    }
+  ],
+  "ciSuitesObserved": 52,
+  "ciSuitesComplete": 46,
+  "headsWithoutObservedSuites": [
+    38388,
+    38532,
+    38530,
+    38427
+  ]
+}

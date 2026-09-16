@@ -262,18 +262,18 @@ function buildDecision(
         };
     }
 
+    const coveredCount = impact.impactedFeatures.filter((f) => f.coverageStatus === 'covered').length;
+    const partialCount = impact.impactedFeatures.filter((f) => f.coverageStatus === 'partial').length;
+    const uncoveredCount = impact.impactedFeatures.filter((f) => f.coverageStatus === 'uncovered').length;
+
     if (runSet === 'smoke' && confidence >= policy.safeMergeMinConfidence && impact.warnings.length === 0) {
         return {
             action: 'safe-to-merge',
             title: 'Safe to merge',
-            summary: 'No critical coverage gaps were detected and confidence is high.',
+            summary: `No critical coverage gaps were detected and confidence is high. Impacted features: ${coveredCount} mapped, ${partialCount} partial, ${uncoveredCount} uncovered.`,
         };
     }
 
-    const coveredCount = impact.impactedFeatures.filter((f) => f.coverageStatus !== 'uncovered').length;
-    const coveredSuffix = coveredCount > 0
-        ? ` All ${coveredCount} impacted feature(s) have test coverage.`
-        : '';
 
     // When files changed but no flows were mapped, be transparent about the gap
     if (impact.impactedFeatures.length === 0 && impact.changedFiles.length > 0) {
@@ -290,7 +290,7 @@ function buildDecision(
     return {
         action: 'run-now',
         title: 'Run now',
-        summary: `Impacted features are covered by existing tests.${coveredSuffix} Verify with the E2E suite before merge.`,
+        summary: `Impacted features: ${coveredCount} mapped, ${partialCount} partial, ${uncoveredCount} uncovered. Verify with the E2E suite before merge.`,
     };
 }
 
@@ -348,7 +348,7 @@ function buildRecommendedTests(impact: ImpactResult, alwaysIncludeSubsystems: st
         const shouldInclude = feature.coverageStatus !== 'uncovered' ||
             feature.playwrightSpecs.some((spec) => alwaysSet.has(inferSubsystemFromTestPath(spec)));
         if (shouldInclude) {
-            for (const spec of feature.playwrightSpecs) {
+            for (const spec of [...feature.playwrightSpecs, ...feature.cypressSpecs]) {
                 tests.add(spec);
             }
         }
@@ -393,6 +393,8 @@ export function buildPlanFromImpact(
     const confidence = computeConfidence(impact);
     const runSetResult = pickRunSet(impact, confidence, policy);
     const decision = buildDecision(impact, runSetResult.runSet, confidence, policy);
+    const candidateOrigins = [...new Set((impact.mappingProvenance || []).filter((m) => m.tests.length && (m.kind === 'declared-traceability' || m.kind === 'scanner-heuristic')).map((m) => `${m.kind} (${m.origins.join(', ')})`))];
+    if (candidateOrigins.length) decision.summary += ` Unverified run-first candidates: ${candidateOrigins.join('; ')}. Measured coverage unavailable.`;
     const enforcement = evaluateEnforcement(decision, policy);
 
     const {gaps, suppressedGaps} = getGapsWithSuppressed(impact);
@@ -449,21 +451,21 @@ export function buildPlanFromImpact(
         };
     });
 
-    // Add partial gaps as advisory info (Cypress-only coverage — Playwright migration recommended)
+    // Add partial gaps as advisory info (Cypress specs associated; no Playwright specs)
     for (const f of partialGaps) {
         const label = featureLabel(f);
         const aiFeature = f.featureId
             ? (aiFeatureByFeatureId.get(f.featureId) ?? aiFeatureByFamilyId.get(f.familyId))
             : aiFeatureByFamilyId.get(f.familyId);
 
-        const baseReasons = [`${label} is covered by Cypress only — consider adding Playwright tests`];
+        const baseReasons = [`${label} has associated Cypress specs and no associated Playwright specs — consider adding Playwright tests`];
         let partialAiReasons: string[] = [];
         if (aiFeature) {
             if (aiFeature.aiReasons.length > 0) {
                 partialAiReasons = aiFeature.aiReasons.slice(0, 2);
             } else {
                 const fileHint = f.changedFiles.slice(0, 3).map((p) => p.split('/').pop()).join(', ');
-                partialAiReasons = [`Changes to ${fileHint} affect the ${label} feature, which has Cypress but no Playwright coverage.`];
+                partialAiReasons = [`Changes to ${fileHint} affect the ${label} feature, which has associated Cypress specs and no associated Playwright specs.`];
             }
         }
         const reasons = partialAiReasons.length > 0
@@ -542,6 +544,8 @@ export function buildPlanFromImpact(
         runSet: runSetResult.runSet,
         confidence,
         confidenceKind: 'heuristic',
+        mappingProvenance: impact.mappingProvenance,
+        evidence: impact.evidence,
         reasons: runSetResult.reasons,
         recommendedTests,
         requiredNewTests,
@@ -580,6 +584,11 @@ export function writePlanReport(appRoot: string, plan: PlanReport): string {
 export function renderCiSummaryMarkdown(plan: PlanReport): string {
     if (plan.advisory) return `${plan.decision.summary}\n\n${plan.enforcement.summary}\n`;
     const lines: string[] = [];
+    if (plan.evidence) lines.push('Measured coverage unavailable; candidate mappings are unverified.', '');
+    for (const mapping of plan.mappingProvenance || []) {
+        lines.push(`- ${mapping.file}: ${mapping.kind} (unverified; ${mapping.origins.join(', ') || 'no origin'}) → ${mapping.tests.join(', ') || 'no candidates'}`);
+    }
+    if (plan.mappingProvenance?.length) lines.push('');
     const {uncoveredP0P1Flows, changedFiles, impactedFlows, coveredFlows: coveredCount, partialFlows: partialCount, unboundFiles: unboundCount} = plan.metrics;
     const mustAddTests = plan.decision.action === 'must-add-tests';
     const hasGapsButPrHasSpecs = !mustAddTests && plan.gapDetails.filter((g) => !g.name.includes('(partial)')).length > 0;
@@ -588,7 +597,7 @@ export function renderCiSummaryMarkdown(plan: PlanReport): string {
     const cleanFlows = plan.coveredFlows.filter((f) => !f.advisoryScenarios || f.advisoryScenarios.length === 0);
 
     const statusEmoji = mustAddTests ? '🔴' : plan.decision.action === 'safe-to-merge' ? '🟢' : '🟡';
-    lines.push(`## ${statusEmoji} E2E Coverage: ${plan.decision.title}`);
+    lines.push(`## ${statusEmoji} E2E Spec Mapping: ${plan.decision.title}`);
     lines.push('');
     lines.push(`${plan.decision.summary}`);
     lines.push('');
@@ -596,7 +605,7 @@ export function renderCiSummaryMarkdown(plan: PlanReport): string {
     // Coverage breakdown: "3 covered · 2 new · 1 gap · 1 partial"
     const parts: string[] = [];
     if ((coveredCount ?? 0) > 0) {
-        parts.push(`${coveredCount} covered`);
+        parts.push(`${coveredCount} with Playwright specs`);
     }
     if (flowsWithAdvisory.length > 0) {
         parts.push(`${flowsWithAdvisory.length} new behavior`);
@@ -663,7 +672,7 @@ export function renderCiSummaryMarkdown(plan: PlanReport): string {
     // ── Advisory: covered flows with new behavior ─────────────────────────────
     if (flowsWithAdvisory.length > 0) {
         lines.push('');
-        lines.push(`### 💡 New behavior detected in ${flowsWithAdvisory.length} covered feature${flowsWithAdvisory.length !== 1 ? 's' : ''} — consider adding tests`);
+        lines.push(`### 💡 New behavior detected in ${flowsWithAdvisory.length} mapped feature${flowsWithAdvisory.length !== 1 ? 's' : ''} — consider adding tests`);
         lines.push('');
         for (const flow of flowsWithAdvisory) {
             const specParts: string[] = [];
@@ -687,7 +696,7 @@ export function renderCiSummaryMarkdown(plan: PlanReport): string {
     // ── Clean covered flows (collapsed) ───────────────────────────────────────
     if (cleanFlows.length > 0) {
         lines.push('');
-        lines.push(`<details><summary>✅ Covered flows (${cleanFlows.length})</summary>`);
+        lines.push(`<details><summary>✅ Flows with associated specs (${cleanFlows.length})</summary>`);
         lines.push('');
         for (const flow of cleanFlows) {
             lines.push(`- **${flow.name}** [${flow.priority}] — ${flow.coveredBy.join(', ')}`);

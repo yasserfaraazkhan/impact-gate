@@ -1,0 +1,34 @@
+{
+  "outerExit": 0,
+  "snapshotUnchanged": true,
+  "snapshotFileCount": 964,
+  "subprocessReceipts": 216,
+  "subprocessNonzero": [],
+  "reviewStrictJson": 30,
+  "planStrictJson": 30,
+  "samePrBaseHeadBaseInventoryAsW2": true,
+  "sameCiObservationsAndEligibleFailuresAsW2": true,
+  "provenanceKinds": {
+    "scanner-heuristic": 780
+  },
+  "namedCandidatePrs": 26,
+  "namedCandidateCounts": {
+    "minAll": 0,
+    "medianAll": 71.0,
+    "maxAll": 817,
+    "minPositive": 2,
+    "medianPositive": 95.0,
+    "maxPositive": 817,
+    "sum": 4189
+  },
+  "maxCandidateRow": {
+    "pr": 38311,
+    "count": 817,
+    "baseE2ECount": 963,
+    "changedFiles": 154
+  },
+  "pr38048Named": 17,
+  "pr38048ChangedFiles": 14,
+  "pr38451NamedFailureIncluded": false,
+  "pr38451EffectiveFailureIncluded": true
+}

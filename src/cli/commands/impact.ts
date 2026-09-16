@@ -16,6 +16,8 @@ export function runImpactCommand(args: ParsedArgs, config: ReturnType<typeof res
     const impactResult = analyzeImpactV2(gitResult.files, {
         testsRoot: reportRoot,
         routeFamilies: config.routeFamilies,
+        traceability: config.impact.traceability,
+        sourceRoot: gitResult.repositoryRoot || config.path,
     });
     console.log(`Impact: ${impactResult.changedFiles.length} changed files → ${impactResult.impactedFeatures.length} features impacted`);
     console.log(`Unbound files: ${impactResult.unboundFiles.length}`);
@@ -27,6 +29,11 @@ export function runImpactCommand(args: ParsedArgs, config: ReturnType<typeof res
         for (const w of impactResult.warnings) {
             console.warn(`  Warning: ${w}`);
         }
+    }
+
+    if (impactResult.evidence) console.log('Measured coverage unavailable; candidate mappings are unverified.');
+    for (const mapping of impactResult.mappingProvenance || []) {
+        console.log(`  ${mapping.file}: ${mapping.kind} (unverified; ${mapping.origins.join(', ') || 'no origin'}) → ${mapping.tests.join(', ') || 'no candidates'}`);
     }
 
     const outputDir = join(reportRoot, '.e2e-ai-agents');

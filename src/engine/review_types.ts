@@ -1,6 +1,8 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import type {ImpactResult} from './impact_engine.js';
+
 /**
  * Types for the unified PR review report.
  *
@@ -97,6 +99,8 @@ export interface ReviewMetrics {
 
 /** The complete review report */
 export interface ReviewReport {
+    mappingProvenance?: ImpactResult['mappingProvenance'];
+    evidence?: ImpactResult['evidence'];
     /** Impacted user flows with coverage and risk */
     impactedFlows: ReviewedFlow[];
 

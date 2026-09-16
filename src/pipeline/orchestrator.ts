@@ -149,7 +149,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineResul
             decisions,
             preprocessResult.apiSurface,
             config.testsRoot,
-            {...(config.generation || {}), profile},
+            {...(config.generation || {}), profile, repositoryRoot: config.appPath, baseRef: config.gitSince},
         );
         generatedSpecs = generationResult.generated;
         timings.generation = generationTimer.end();

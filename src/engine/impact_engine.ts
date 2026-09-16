@@ -1,10 +1,10 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {assessAdvisoryChanges, conservativeChangeReason, type AdvisoryAssessment, type AdvisoryConfig} from './advisory.js';
+import {assessAdvisoryChanges, conservativeChangeReason, validateRepositoryPath, type AdvisoryAssessment, type AdvisoryConfig} from './advisory.js';
 import type {GitChangeResult} from '../agent/git.js';
-import {existsSync, readdirSync, readFileSync} from 'fs';
-import {join} from 'path';
+import {existsSync, readdirSync, readFileSync, realpathSync} from 'fs';
+import {join, relative, isAbsolute} from 'path';
 
 import type {
     RouteFamilyManifest,
@@ -20,8 +20,8 @@ import {
     getPriorityForBinding,
     getUserFlowsForBinding,
 } from '../knowledge/route_families.js';
-import type {RouteFamiliesConfig} from '../agent/config.js';
-import {isTestFile} from '../agent/git.js';
+import type {RouteFamiliesConfig, TraceabilityImpactConfig} from '../agent/config.js';
+import {isTestFile, runGitRaw} from '../agent/git.js';
 
 export type CoverageStatus = 'covered' | 'partial' | 'uncovered';
 
@@ -50,7 +50,17 @@ export interface PrTestFile {
     type: PrTestFileType;
 }
 
+export interface MappingProvenance {
+    file: string;
+    kind: 'declared-traceability' | 'scanner-manifest' | 'scanner-heuristic' | 'unmapped';
+    tests: string[];
+    origins: string[];
+    evidence: 'unverified';
+}
+
 export interface ImpactResult {
+    mappingProvenance?: MappingProvenance[];
+    evidence?: {coverage: 'unavailable'; measuredCoverageEdges: 0};
     advisory?: AdvisoryAssessment;
     unassessedFiles?: string[];
     changedFiles: string[];
@@ -63,6 +73,8 @@ export interface ImpactResult {
 }
 
 export interface ImpactEngineOptions {
+    sourceRoot?: string;
+    traceability?: TraceabilityImpactConfig;
     advisory?: {git: GitChangeResult; config: AdvisoryConfig; suite: string};
     testsRoot: string;
     cypressRoot?: string;
@@ -72,44 +84,20 @@ export interface ImpactEngineOptions {
     filteredTestFiles?: string[];
 }
 
-function scanDirForSpecs(baseDir: string, specDir: string, extension: string): string[] {
-    const fullDir = join(baseDir, specDir);
-    if (!existsSync(fullDir)) {
-        return [];
-    }
-    const specs: string[] = [];
+function scanDirForSpecs(baseDir: string, specDir: string, pattern: RegExp): string[] {
     try {
-        const items = readdirSync(fullDir, {withFileTypes: true});
-        for (const item of items) {
-            const itemPath = join(fullDir, item.name);
-            if (item.isDirectory()) {
-                specs.push(...scanDirForSpecsRecursive(itemPath, extension));
-            } else if (item.name.endsWith(extension)) {
-                specs.push(join(specDir, item.name));
-            }
-        }
-    } catch {
-        // Directory not readable
-    }
-    return specs;
-}
-
-function scanDirForSpecsRecursive(dir: string, extension: string): string[] {
-    const specs: string[] = [];
+        validateRepositoryPath(baseDir, specDir);
+        return pattern.test(specDir) ? [specDir] : [];
+    } catch { /* May be a directory rather than an exact spec. */ }
     try {
-        const items = readdirSync(dir, {withFileTypes: true});
-        for (const item of items) {
-            const fullPath = join(dir, item.name);
-            if (item.isDirectory()) {
-                specs.push(...scanDirForSpecsRecursive(fullPath, extension));
-            } else if (item.name.endsWith(extension)) {
-                specs.push(fullPath);
-            }
-        }
-    } catch {
-        // Directory not readable
-    }
-    return specs;
+        const dir = validateRepositoryPath(baseDir, specDir.replace(/\/$/, ''), true);
+        return readdirSync(dir, {withFileTypes: true}).flatMap((item) => {
+            const file = [specDir.replace(/\/$/, ''), item.name].join('/');
+            if (item.isDirectory()) return scanDirForSpecs(baseDir, file, pattern);
+            if (!item.isFile()) return [];
+            return pattern.test(file) ? [file] : [];
+        }).sort();
+    } catch {return [];}
 }
 
 // Regex patterns for extracting test scenario titles from spec files.
@@ -143,7 +131,7 @@ function resolvePlaywrightSpecs(testsRoot: string, specDirs: string[]): {paths: 
     const paths: string[] = [];
     const details: SpecWithScenarios[] = [];
     for (const dir of specDirs) {
-        const found = scanDirForSpecs(testsRoot, dir, '.spec.ts');
+        const found = scanDirForSpecs(testsRoot, dir, /\.spec\.[jt]sx?$/);
         for (const relPath of found) {
             paths.push(relPath);
             const absPath = join(testsRoot, relPath);
@@ -159,13 +147,9 @@ function resolveCypressSpecs(cypressRoot: string, specDirs: string[]): {paths: s
     for (const dir of specDirs) {
         // cypressSpecDirs are relative to testsRoot (e.g. ../cypress/tests/integration/channels/search/)
         // Resolve them relative to the cypress root
-        const resolvedDir = join(cypressRoot, dir.replace(/^\.\.\/cypress\//, ''));
-        if (!existsSync(resolvedDir)) {
-            continue;
-        }
-        const found = scanDirForSpecsRecursive(resolvedDir, '.js');
-        const tsFound = scanDirForSpecsRecursive(resolvedDir, '.ts');
-        for (const absPath of [...found, ...tsFound]) {
+        const found = scanDirForSpecs(cypressRoot, dir.replace(/^\.\.\/cypress\//, ''), /\.[jt]s$/);
+        for (const file of found) {
+            const absPath = join(cypressRoot, file);
             paths.push(absPath);
             details.push({file: absPath, scenarios: extractScenarios(absPath, 'cypress')});
         }
@@ -233,6 +217,53 @@ function classifyPrTestFiles(allFiles: string[], sourceFiles: string[]): PrTestF
         });
 }
 
+/** Imported relationships are declared advice: no supported input proves execution identity. */
+function declaredCandidates(files: string[], options: ImpactEngineOptions, cypressRoot?: string): Map<string, {pw: string[]; cy: string[]; origins: string[]}> {
+    const result = new Map<string, {pw: string[]; cy: string[]; origins: string[]}>();
+    const config = options.traceability;
+    if (!config?.enabled || !options.sourceRoot) return result;
+    try {
+        const manifestPath = isAbsolute(config.manifestPath) ? config.manifestPath : join(options.testsRoot, config.manifestPath);
+        if (!existsSync(manifestPath)) return result;
+        const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+        if (manifest?.schemaVersion !== '1.0.0' || !Array.isArray(manifest.tests)) return result;
+        const inventoryRoot = runGitRaw(['rev-parse', '--show-toplevel'], options.testsRoot)?.trim();
+        const exactSpec = (test: string, root: string, pattern: RegExp): string | undefined => {
+            if (!pattern.test(test)) return undefined;
+            // Only strip a repository prefix established from this inventory checkout.
+            const prefix = inventoryRoot ? relative(realpathSync(inventoryRoot), realpathSync(root)).replace(/\\/g, '/') : '';
+            const local = prefix && !prefix.startsWith('..') && test.startsWith(`${prefix}/`) ? test.slice(prefix.length + 1) : test;
+            try {validateRepositoryPath(root, local); return local;} catch {return undefined;}
+        };
+        for (const row of manifest.tests) {
+            if (!row || typeof row.test !== 'string' || !Array.isArray(row.touchedFiles) || typeof row.lastSeen !== 'string' || !Number.isFinite(row.signalCount) || row.signalCount <= 0 || row.signalCount < config.minSignalsPerTest) continue;
+            // Match ingest's ISO calendar validation; parseability alone accepts June 31.
+            const date = row.lastSeen.match(/^(\d{4}-\d{2}-\d{2})(?:T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d))?$/);
+            const timestamp = Date.parse(row.lastSeen);
+            if (!date || !Number.isFinite(timestamp) || new Date(date[1]).toISOString().slice(0, 10) !== date[1]) continue;
+            const age = Date.now() - timestamp;
+            if (!Number.isFinite(age) || age < 0 || age > 120 * 86400000) continue;
+            const test = row.test.replace(/\\/g, '/');
+            const pw = exactSpec(test, options.testsRoot, /\.spec\.[jt]sx?$/);
+            const cy = cypressRoot ? exactSpec(test, cypressRoot, /(?:\.cy|_spec)\.[jt]s$/) : undefined;
+            if (!pw && !cy) continue;
+            const origins: string[] = Array.isArray(row.origins) && row.origins.every((o: unknown) => typeof o === 'string') && row.origins.length ? row.origins : ['legacy-import'];
+            for (const raw of row.touchedFiles) {
+                if (typeof raw !== 'string') continue;
+                const file = raw.replace(/\\/g, '/');
+                if (!files.includes(file)) continue;
+                try {validateRepositoryPath(options.sourceRoot, file);} catch {continue;}
+                const entry = result.get(file) || {pw: [], cy: [], origins: []};
+                if (pw && !entry.pw.includes(pw)) entry.pw.push(pw);
+                if (cy && !entry.cy.includes(cy)) entry.cy.push(cy);
+                entry.origins = [...new Set([...entry.origins, ...origins])].sort();
+                result.set(file, entry);
+            }
+        }
+    } catch { /* Malformed input is unavailable, never measured. */ }
+    return result;
+}
+
 export function analyzeImpact(
     changedFiles: string[],
     options: ImpactEngineOptions,
@@ -269,8 +300,11 @@ export function analyzeImpact(
     // Combine original + expanded files
     const allFiles = [...new Set([...changedFiles, ...(options.expandedFiles || [])])];
 
+    const cypressRoot = options.cypressRoot || inferCypressRoot(testsRoot);
+    const declared = declaredCandidates(allFiles, options, cypressRoot);
+
     // Bind files to families
-    const fileBindings = bindFilesToFamilies(allFiles, manifest);
+    const fileBindings = bindFilesToFamilies(allFiles.filter((f) => !declared.has(f)), manifest);
 
     // Find unbound files
     const unboundFiles = fileBindings
@@ -279,9 +313,6 @@ export function analyzeImpact(
 
     // Group bindings into features
     const groups = groupBindings(fileBindings.filter((fb) => fb.bindings.length > 0));
-
-    // Determine cypress root
-    const cypressRoot = options.cypressRoot || inferCypressRoot(testsRoot);
 
     // Resolve specs and compute coverage for each feature
     const impactedFeatures: ImpactedFeature[] = [];
@@ -310,6 +341,18 @@ export function analyzeImpact(
         });
     }
 
+    for (const [file, candidates] of declared) {
+        const pw = resolvePlaywrightSpecs(testsRoot, candidates.pw);
+        const cy = cypressRoot ? resolveCypressSpecs(cypressRoot, candidates.cy) : {paths: [], details: []};
+        impactedFeatures.push({familyId: file, priority: 'P1', changedFiles: [file], playwrightSpecs: pw.paths, cypressSpecs: cy.paths,
+            playwrightSpecDetails: pw.details, cypressSpecDetails: cy.details, userFlows: [], coverageStatus: computeCoverageStatus(pw.paths, cy.paths)});
+    }
+    const mappingProvenance: MappingProvenance[] = allFiles.map((file) => {
+        const features = impactedFeatures.filter((f) => f.changedFiles.includes(file));
+        return {file, kind: declared.has(file) ? 'declared-traceability' : features.length ? manifest.source === 'heuristic' ? 'scanner-heuristic' : 'scanner-manifest' : 'unmapped',
+            tests: [...new Set(features.flatMap((f) => [...f.playwrightSpecs, ...f.cypressSpecs]))], origins: declared.get(file)?.origins || (features.length ? [manifest.source] : []), evidence: 'unverified'};
+    });
+
     // Sort by priority (P0 first, then P1, then P2)
     const priorityOrder: Record<FeaturePriority, number> = {P0: 0, P1: 1, P2: 2};
     impactedFeatures.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
@@ -321,8 +364,10 @@ export function analyzeImpact(
     }
 
     return {
+        mappingProvenance,
+        evidence: {coverage: 'unavailable', measuredCoverageEdges: 0},
         changedFiles: allOriginalFiles,
-        unassessedFiles: allOriginalFiles.filter((f) => conservativeChangeReason(f) || unboundFiles.includes(f)),
+        unassessedFiles: [...new Set([...allOriginalFiles, ...declared.keys()])].filter((f) => conservativeChangeReason(f) || unboundFiles.includes(f) || declared.has(f) || manifest.source === 'heuristic'),
         expandedFiles: options.expandedFiles || [],
         impactedFeatures,
         unboundFiles,

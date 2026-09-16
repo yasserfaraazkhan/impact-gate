@@ -1,0 +1,79 @@
+{
+  "generated": [
+    {
+      "flowId": "boundary",
+      "specPath": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-mutation-fixture-ORlwaN/tests/specs/functional/ai-assisted/boundary.spec.ts",
+      "mode": "create_spec",
+      "written": true,
+      "hallucinationWarnings": [],
+      "verified": true,
+      "verification": {
+        "verified": true,
+        "reason": "Direct source import passed clean, detected changed-line mutation with an assertion, and passed after restoration",
+        "workspace": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-gJ9iz6",
+        "specSha256": "cb60509c591333ff24b679d8e10901fc5d3d47897d5b33a182dbf00ebc9a54d6",
+        "baseline": {
+          "specPath": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-gJ9iz6/tests/specs/functional/ai-assisted/boundary.spec.ts",
+          "passed": 1,
+          "failed": 0,
+          "assertionFailures": 0,
+          "flaky": 0,
+          "skipped": 0,
+          "failures": [],
+          "stdout": "\nRunning 1 test using 1 worker\n\n\n\n\n\n\u001b[1A\u001b[2K[1/1] [chrome] › specs/functional/ai-assisted/boundary.spec.ts:3:5 › accepts the changed boundary\n\u001b[1A\u001b[2K  1 passed (490ms)\n\n\u001b[1A\u001b[2K(node:87486) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n\u001b[1A\u001b[2K(node:87486) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n",
+          "durationMs": 1463,
+          "compiled": true,
+          "exitCode": 0,
+          "reportPath": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-gJ9iz6/tests/.e2e-ai-agents/agentic-reports/report-1789538902822-ea4wmw.json"
+        },
+        "sourcePath": "eligibility.ts",
+        "line": 2,
+        "operator": "return-null",
+        "sourceSha256": "94420d86dbe0b3988bd6c39503a7253a2c704ede16583f157e34384bb8a62070",
+        "sourceSnapshot": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-gJ9iz6/return-null.source.original",
+        "mutantSnapshot": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-gJ9iz6/return-null.source.mutant",
+        "mutant": {
+          "specPath": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-gJ9iz6/tests/specs/functional/ai-assisted/boundary.spec.ts",
+          "passed": 0,
+          "failed": 1,
+          "assertionFailures": 1,
+          "flaky": 0,
+          "skipped": 0,
+          "failures": [
+            {
+              "testTitle": "accepts the changed boundary",
+              "specPath": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-gJ9iz6/tests/specs/functional/ai-assisted/boundary.spec.ts",
+              "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mtrue\u001b[39m\nReceived: \u001b[31mnull\u001b[39m",
+              "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mtrue\u001b[39m\nReceived: \u001b[31mnull\u001b[39m\n    at /private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-gJ9iz6/tests/specs/functional/ai-assisted/boundary.spec.ts:4:26"
+            }
+          ],
+          "stdout": "\nRunning 1 test using 1 worker\n\n\n\n\n\n\u001b[1A\u001b[2K[1/1] [chrome] › specs/functional/ai-assisted/boundary.spec.ts:3:5 › accepts the changed boundary\n\u001b[1A\u001b[2K  1) [chrome] › specs/functional/ai-assisted/boundary.spec.ts:3:5 › accepts the changed boundary ───\n\n    Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\n    Expected: \u001b[32mtrue\u001b[39m\n    Received: \u001b[31mnull\u001b[39m\n\n      2 | import {eligible} from '../../../../eligibility';\n      3 | test('accepts the changed boundary', () => {\n    > 4 |     expect(eligible(18)).toBe(true);\n        |                          ^\n      5 |     expect(eligible(17)).toBe(false);\n      6 | });\n      7 |\n        at /private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-gJ9iz6/tests/specs/functional/ai-assisted/boundary.spec.ts:4:26\n\n    Error Context: test-results/specs-functional-ai-assist-33165-ccepts-the-changed-boundary-chrome/error-context.md\n\n\n\u001b[1A\u001b[2K  1 failed\n    [chrome] › specs/functional/ai-assisted/boundary.spec.ts:3:5 › accepts the changed boundary ────\n\n\u001b[1A\u001b[2K(node:88019) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n\u001b[1A\u001b[2K(node:88019) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n",
+          "durationMs": 1734,
+          "compiled": true,
+          "exitCode": 1,
+          "reportPath": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-gJ9iz6/tests/.e2e-ai-agents/agentic-reports/report-1789538904285-ww42i5.json"
+        },
+        "restored": {
+          "specPath": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-gJ9iz6/tests/specs/functional/ai-assisted/boundary.spec.ts",
+          "passed": 1,
+          "failed": 0,
+          "assertionFailures": 0,
+          "flaky": 0,
+          "skipped": 0,
+          "failures": [],
+          "stdout": "\nRunning 1 test using 1 worker\n\n\n\n\n\n\u001b[1A\u001b[2K[1/1] [chrome] › specs/functional/ai-assisted/boundary.spec.ts:3:5 › accepts the changed boundary\n\u001b[1A\u001b[2K  1 passed (623ms)\n\n\u001b[1A\u001b[2K(node:88267) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n\u001b[1A\u001b[2K(node:88267) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n",
+          "durationMs": 1530,
+          "compiled": true,
+          "exitCode": 0,
+          "reportPath": "/private/var/folders/sb/4vcj8yl12y75f36q5rwh2tx00000gn/T/impact-verification-gJ9iz6/tests/.e2e-ai-agents/agentic-reports/report-1789538906019-wdzefm.json"
+        }
+      }
+    }
+  ],
+  "skipped": [],
+  "warnings": [],
+  "providerName": "mock",
+  "generatedCount": 1,
+  "verifiedCount": 1,
+  "failedCount": 0
+}

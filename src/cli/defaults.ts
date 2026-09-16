@@ -185,7 +185,7 @@ export function resolveDefaults(explicit: {
     gitSince?: string;
 }): ResolvedDefaults {
     const path = explicit.path || detectProjectRoot(process.cwd());
-    const testsRoot = explicit.testsRoot || detectTestsRoot(path) || '.';
+    const testsRoot = explicit.testsRoot || resolve(path, detectTestsRoot(path) || '.');
     const framework = explicit.framework || detectFramework(path);
     const since = explicit.gitSince || detectGitDefaultBranch(path);
 

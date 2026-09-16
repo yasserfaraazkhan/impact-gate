@@ -1,0 +1,59 @@
+{
+  "threshold": 80,
+  "coveragePercent": 50,
+  "totalFeatures": 6,
+  "coveredFeatures": 3,
+  "partialFeatures": 0,
+  "unassessedFiles": [
+    "server/channels/api4/abac_file_metadata_test.go",
+    "server/channels/api4/content_flagging_report_test.go",
+    "server/channels/api4/content_flagging_test.go",
+    "server/channels/api4/post.go",
+    "server/channels/app/content_flagging.go",
+    "server/channels/app/content_flagging_exposure_report_test.go",
+    "server/channels/app/content_flagging_report.go",
+    "server/channels/app/content_flagging_report_test.go",
+    "server/channels/app/content_flagging_test.go",
+    "server/channels/app/draft.go",
+    "server/channels/app/post.go",
+    "server/channels/app/post_metadata.go",
+    "server/channels/app/post_restore_test.go",
+    "server/channels/app/post_test.go"
+  ],
+  "changedFiles": [
+    "server/channels/api4/abac_file_metadata_test.go",
+    "server/channels/api4/content_flagging_report_test.go",
+    "server/channels/api4/content_flagging_test.go",
+    "server/channels/api4/post.go",
+    "server/channels/app/content_flagging.go",
+    "server/channels/app/content_flagging_exposure_report_test.go",
+    "server/channels/app/content_flagging_report.go",
+    "server/channels/app/content_flagging_report_test.go",
+    "server/channels/app/content_flagging_test.go",
+    "server/channels/app/draft.go",
+    "server/channels/app/post.go",
+    "server/channels/app/post_metadata.go",
+    "server/channels/app/post_restore_test.go",
+    "server/channels/app/post_test.go"
+  ],
+  "diffStatus": "changed",
+  "coverageBasis": "manifest-spec-presence",
+  "measuredCoverage": "unavailable",
+  "release": "not-assessed",
+  "passed": false,
+  "reason": "Incomplete or unassessed spec mapping; run the full suite.",
+  "uncoveredFeatures": [
+    {
+      "id": "server/channels/api4/post",
+      "priority": "P2"
+    },
+    {
+      "id": "server/channels/app/post",
+      "priority": "P2"
+    },
+    {
+      "id": "server/channels/app/post_metadata",
+      "priority": "P2"
+    }
+  ]
+}

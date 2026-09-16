@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {existsSync, readFileSync, statSync} from 'fs';
+import {existsSync, readFileSync, statSync, readdirSync} from 'fs';
 import {join} from 'path';
 import {logger} from '../logger.js';
 
@@ -440,47 +440,34 @@ export function clearManifestCache(): void {
 
 /**
  * Build heuristic route families from changed files when no manifest exists.
- * Groups files by their top-level directory to create rough family groupings.
+ * Keeps per-path candidate lists from the exact existing test inventory.
  * Results are lower confidence but allow analysis to proceed without training.
  */
 export function buildHeuristicFamilies(changedFiles: string[], testsRoot: string): RouteFamilyManifest {
-    const dirGroups = new Map<string, string[]>();
-
-    for (const file of changedFiles) {
-        const normalized = file.replace(/\\/g, '/');
-        const parts = normalized.split('/');
-        // Use the first meaningful directory segment as the family ID
-        // Skip common prefixes like 'src/', 'app/', 'lib/'
-        const skipDirs = new Set(['src', 'app', 'lib', 'packages', 'components']);
-        let familyDir = parts[0] || 'root';
-        if (skipDirs.has(familyDir) && parts.length > 1) {
-            familyDir = parts[1];
-        }
-        // Normalize to a clean family name
-        familyDir = familyDir.replace(/\.[^.]+$/, ''); // strip file extensions for single files
-
-        if (!dirGroups.has(familyDir)) {
-            dirGroups.set(familyDir, []);
-        }
-        dirGroups.get(familyDir)!.push(normalized);
-    }
-
-    const families: RouteFamily[] = [];
-    for (const [dir, files] of dirGroups) {
-        families.push({
-            id: dir,
-            routes: [`/${dir}`],
-            webappPaths: files.map((f) => `${f}*`),
-        });
-    }
-
-    logger.info(`Built ${families.length} heuristic families from ${changedFiles.length} changed files (no route-families.json found)`);
-    logger.info('Tip: Run `impact-gate train` to generate a proper route-families manifest for better accuracy.');
-
-    return {
-        families,
-        source: 'heuristic',
+    // Static filename/domain hints only. Broad infrastructure tokens are not domains.
+    const generic = new Set(['server', 'src', 'app', 'api', 'api4', 'model', 'components', 'post', 'test', 'spec', 'common', 'utils', 'index', 'channels', 'webapp', 'functional', 'integration', 'e2e', 'playwright', 'cypress', 'lib', 'packages', 'helper', 'metadata', 'type', 'config', 'action', 'util']);
+    const tokens = (value: string): string[] => value.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase().replace(/\.[^.]+$/, '').split(/[^a-z0-9]+/).map((t) => t.endsWith('s') ? t.slice(0, -1) : t).filter((t) => t.length >= 4 && !generic.has(t) && !generic.has(`${t}s`));
+    const inventory = (root: string, dir = ''): string[] => {
+        try {
+            return readdirSync(join(root, dir), {withFileTypes: true}).flatMap((entry) => {
+                if (entry.name.startsWith('.') || entry.name === 'node_modules') return [];
+                const file = [dir, entry.name].filter(Boolean).join('/');
+                if (entry.isDirectory()) return inventory(root, file);
+                return entry.isFile() && /(?:\.spec|\.cy|_spec)\.[jt]sx?$/.test(file) ? [file] : [];
+            }).sort();
+        } catch {return [];}
     };
+    const pw = inventory(testsRoot).filter((f) => /\.spec\.[jt]sx?$/.test(f));
+    const cy = inventory(join(testsRoot, '..', 'cypress')).filter((f) => /(?:\.cy|_spec)\.[jt]s$/.test(f));
+    const families: RouteFamily[] = [...new Set(changedFiles)].map((file) => {
+        const normalized = file.replace(/\\/g, '/');
+        const sourceTokens = tokens(normalized);
+        const matches = (spec: string) => tokens(spec).some((token) => sourceTokens.includes(token));
+        return {id: normalized.replace(/\.[^.]+$/, ''), routes: [], webappPaths: [normalized],
+            specDirs: pw.filter(matches), cypressSpecDirs: cy.filter(matches)};
+    });
+    logger.info(`Built ${families.length} heuristic families from ${changedFiles.length} changed files (no route-families.json found)`);
+    return {families, source: 'heuristic'};
 }
 
 /**

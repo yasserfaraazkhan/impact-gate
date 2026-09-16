@@ -60,6 +60,9 @@ export function resolveHealTargets(
 ): HealTarget[] {
     const targets: HealTarget[] = [];
     const seen = new Set<string>();
+    const protectedArtifacts = new Set((options.generatedSpecs || [])
+        .filter((spec) => spec.verification !== undefined)
+        .map((spec) => resolve(testsRoot, spec.specPath).replace(/\\/g, '/')));
 
     const addTarget = (specPath: string, status: 'failed' | 'flaky', reason?: string) => {
         // Normalize to absolute path so relative (from Playwright report) and absolute
@@ -68,7 +71,8 @@ export function resolveHealTargets(
         if (!specPath.startsWith('/') && !(/^[A-Za-z]:[\\/]/).test(specPath)) {
             normalized = join(testsRoot, specPath).replace(/\\/g, '/');
         }
-        if (seen.has(normalized)) {
+        normalized = resolve(normalized).replace(/\\/g, '/');
+        if (protectedArtifacts.has(normalized) || seen.has(normalized)) {
             return;
         }
         seen.add(normalized);

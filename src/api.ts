@@ -105,6 +105,8 @@ export function analyzeImpactDeterministic(options: AgentApiOptions = {}): Impac
     return analyzeImpactV2(gitResult.files, {
         testsRoot: reportRoot,
         routeFamilies: config.routeFamilies,
+        traceability: config.impact.traceability,
+        sourceRoot: gitResult.repositoryRoot || config.path,
         filteredTestFiles: gitResult.filteredTestFiles,
     });
 }
@@ -124,6 +126,8 @@ export function recommendTestsDeterministic(options: AgentApiOptions = {}): Reco
         advisory,
         testsRoot: reportRoot,
         routeFamilies: config.routeFamilies,
+        traceability: config.impact.traceability,
+        sourceRoot: gitResult.repositoryRoot || config.path,
         filteredTestFiles: gitResult.filteredTestFiles,
     });
     if (options.advisory) {
@@ -148,6 +152,8 @@ export async function recommendTestsAI(options: AgentApiOptions = {}): Promise<R
     const impact = analyzeImpactV2(gitResult.files, {
         testsRoot: reportRoot,
         routeFamilies: config.routeFamilies,
+        traceability: config.impact.traceability,
+        sourceRoot: gitResult.repositoryRoot || config.path,
         filteredTestFiles: gitResult.filteredTestFiles,
     });
 

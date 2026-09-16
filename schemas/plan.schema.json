@@ -19,6 +19,30 @@
     "metrics"
   ],
   "properties": {
+    "mappingProvenance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file", "kind", "tests", "origins", "evidence"],
+        "properties": {
+          "file": {"type": "string"},
+          "kind": {"enum": ["declared-traceability", "scanner-manifest", "scanner-heuristic", "unmapped"]},
+          "tests": {"type": "array", "items": {"type": "string"}},
+          "origins": {"type": "array", "items": {"type": "string"}},
+          "evidence": {"const": "unverified"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["coverage", "measuredCoverageEdges"],
+      "properties": {
+        "coverage": {"const": "unavailable"},
+        "measuredCoverageEdges": {"const": 0}
+      },
+      "additionalProperties": false
+    },
     "gapDetails": {"type": "array", "items": {"type": "object", "required": ["id", "name", "priority", "reasons", "files"]}},
     "coveredFlows": {"type": "array", "items": {"type": "object", "required": ["id", "name", "priority", "coveredBy"]}},
     "confidenceKind": {"enum": ["heuristic", "unavailable"]},

@@ -53,18 +53,20 @@ export async function runReviewCommand(
     const reportRoot = config.testsRoot || config.path;
     const baseRef = config.git.since || 'origin/main';
 
-    console.log(`Reviewing: ${baseRef}...HEAD`);
-    console.log(`Repository: ${config.path}`);
-    console.log('');
+    console.error(`Reviewing: ${baseRef}...HEAD`);
+    console.error(`Repository: ${config.path}`);
+    console.error('');
 
     // Step 1: Get changed files
     const gitResult = getChangedFiles(config.path, baseRef, {
         includeUncommitted: config.git.includeUncommitted,
     });
 
+    if (gitResult.error) {
+        throw new Error(gitResult.error);
+    }
     if (gitResult.files.length === 0) {
-        console.log('No changed files detected. Nothing to review.');
-        return;
+        console.error('No changed files detected. Nothing to review.');
     }
 
     // Step 1.5: Load knowledge graph if available (Graphify or Understand-Anything)
@@ -73,18 +75,20 @@ export async function runReviewCommand(
     let expandedFiles: string[] | undefined;
 
     if (kg) {
-        console.log(`Knowledge graph loaded (${kg.nodes.length} nodes, ${kg.edges.length} edges)`);
+        console.error(`Knowledge graph loaded (${kg.nodes.length} nodes, ${kg.edges.length} edges)`);
         kgImpact = expandChangedFilesViaKG(gitResult.files, kg, 3);
         expandedFiles = kgImpact.expandedFiles;
-        console.log(`KG expansion: ${kgImpact.stats.directFunctions} direct, ${kgImpact.stats.transitiveFunctions} transitive functions affected`);
-        console.log(`Function test coverage: ${kgImpact.stats.testedFunctions}/${kgImpact.stats.directFunctions + kgImpact.stats.transitiveFunctions} functions tested`);
-        console.log('');
+        console.error(`KG expansion: ${kgImpact.stats.directFunctions} direct, ${kgImpact.stats.transitiveFunctions} transitive functions affected`);
+        console.error(`Function test coverage: ${kgImpact.stats.testedFunctions}/${kgImpact.stats.directFunctions + kgImpact.stats.transitiveFunctions} functions tested`);
+        console.error('');
     }
 
     // Step 2: Impact analysis
     const impact = analyzeImpact(gitResult.files, {
         testsRoot: reportRoot,
         routeFamilies: config.routeFamilies,
+        traceability: config.impact.traceability,
+        sourceRoot: gitResult.repositoryRoot || config.path,
         filteredTestFiles: gitResult.filteredTestFiles,
         expandedFiles,
     });
@@ -95,9 +99,9 @@ export async function runReviewCommand(
         const diffs = loadDiffs(config.path, baseRef, gitResult.files);
         const manifest = loadRouteFamilyManifest(reportRoot, config.routeFamilies);
         if (diffs.size > 0) {
-            behaviorAnalysis = analyzeBehavior(diffs, impact, manifest, reportRoot);
+            behaviorAnalysis = analyzeBehavior(diffs, impact, manifest, gitResult.repositoryRoot || config.path);
             if (behaviorAnalysis.signals.length > 0) {
-                console.log(`Behavior analysis: ${behaviorAnalysis.signals.length} signals, ${behaviorAnalysis.recommendations.length} recommendations`);
+                console.error(`Behavior analysis: ${behaviorAnalysis.signals.length} signals, ${behaviorAnalysis.recommendations.length} recommendations`);
             }
         }
     } catch {
@@ -121,7 +125,6 @@ export async function runReviewCommand(
                 deep: true,
                 provider,
                 projectRoot: config.path,
-                record: true,
             });
         } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
@@ -131,26 +134,18 @@ export async function runReviewCommand(
     } else {
         prediction = await predict(config.path, baseRef, 'HEAD', {
             projectRoot: config.path,
-            record: true,
         });
     }
 
     // Step 5: Synthesize
     const report = synthesizeReview(impact, plan, prediction, kgImpact, behaviorAnalysis);
 
-    // Step 6: Output
-    if (args.jsonOutput) {
-        console.log(JSON.stringify(formatReviewJSON(report), null, 2));
-    } else {
-        console.log(formatReviewText(report));
-    }
-
     // Write markdown for CI comments if requested
     if (args.ciCommentPath) {
         const markdown = formatReviewMarkdown(report);
         writeFileSync(args.ciCommentPath, markdown, 'utf-8');
-        console.log('');
-        console.log(`PR comment written to ${args.ciCommentPath}`);
+        console.error('');
+        console.error(`PR comment written to ${args.ciCommentPath}`);
     }
 
     // --generate: feed uncovered recommendations into agentic test generation
@@ -158,17 +153,22 @@ export async function runReviewCommand(
         await runReviewGenerate(args, config, report, reportRoot);
     }
 
+    // Emit once, after all requested work that can throw. The CLI catch owns error JSON.
+    console.log(args.jsonOutput ? JSON.stringify(formatReviewJSON(report), null, 2) : formatReviewText(report));
+
     // Exit code based on enforcement
     if (plan.enforcement.shouldFail) {
-        process.exit(2);
+        process.exitCode = 2;
+        return;
     }
 
     // Also check predict threshold if set
     const threshold = args.threshold ?? args.gateThreshold;
     if (typeof threshold === 'number' && prediction.score > threshold) {
-        console.log('');
-        console.log(`GATE FAILED: defect risk ${prediction.score.toFixed(2)} exceeds threshold ${threshold}`);
-        process.exit(1);
+        console.error('');
+        console.error(`GATE FAILED: defect risk ${prediction.score.toFixed(2)} exceeds threshold ${threshold}`);
+        process.exitCode = 1;
+        return;
     }
 }
 
@@ -268,19 +268,19 @@ async function runReviewGenerate(
     report: ReviewReport,
     reportRoot: string,
 ): Promise<void> {
-    console.log('');
-    console.log('─── Test Generation ───');
+    console.error('');
+    console.error('─── Test Generation ───');
 
     const scenarios = buildScenariosFromReview(report);
 
     if (scenarios.length === 0) {
-        console.log('All recommendations are already covered. No tests to generate.');
+        console.error('All recommendations are already covered. No tests to generate.');
         return;
     }
 
     const totalScenarios = scenarios.reduce((sum, s) => sum + s.scenarios.length, 0);
-    console.log(`Generating tests for ${scenarios.length} flow(s), ${totalScenarios} scenario(s)...`);
-    console.log('');
+    console.error(`Generating tests for ${scenarios.length} flow(s), ${totalScenarios} scenario(s)...`);
+    console.error('');
 
     // Resolve LLM provider
     let provider;
@@ -320,6 +320,8 @@ async function runReviewGenerate(
             baseUrl: args.pipelineBaseUrl,
             testTimeoutMs: 120000,
             testsRoot: outputDir,
+            repositoryRoot: config.path,
+            baseRef: config.git.since,
             dryRun: args.dryRun,
         },
         provider,
@@ -328,25 +330,25 @@ async function runReviewGenerate(
     });
 
     // Print summary
-    console.log('');
-    console.log('Test Generation Summary:');
-    console.log(`  Generated: ${summary.totalGenerated}`);
-    console.log(`  Passed:    ${summary.totalPassed}`);
-    console.log(`  Failed:    ${summary.totalFailed}`);
-    console.log(`  Attempts:  ${summary.totalAttempts}`);
-    console.log(`  Duration:  ${(summary.durationMs / 1000).toFixed(1)}s`);
+    console.error('');
+    console.error('Test Generation Summary:');
+    console.error(`  Generated: ${summary.totalGenerated}`);
+    console.error(`  Passed:    ${summary.totalPassed}`);
+    console.error(`  Failed:    ${summary.totalFailed}`);
+    console.error(`  Attempts:  ${summary.totalAttempts}`);
+    console.error(`  Duration:  ${(summary.durationMs / 1000).toFixed(1)}s`);
 
     for (const result of summary.results) {
-        const icon = result.status === 'passed' ? 'PASS' : result.status === 'skipped' ? 'SKIP' : 'FAIL';
-        console.log(`  [${icon}] ${result.scenarioSource} (${result.attempts} attempts)`);
-        if (result.status === 'passed' || result.status === 'skipped') {
-            console.log(`     ${result.specPath}`);
+        const icon = result.status === 'passed' ? 'PASS' : result.status === 'skipped' ? 'SKIP' : result.status === 'unverified' ? 'UNVERIFIED' : 'FAIL';
+        console.error(`  [${icon}] ${result.scenarioSource} (${result.attempts} attempts)`);
+        if (result.status === 'passed' || result.status === 'skipped' || result.status === 'unverified') {
+            console.error(`     ${result.specPath}`);
         }
     }
 
     if (summary.warnings.length > 0) {
-        console.log('');
-        console.log('Warnings:');
+        console.error('');
+        console.error('Warnings:');
         for (const w of summary.warnings) {
             console.warn(`  - ${w}`);
         }
@@ -363,5 +365,5 @@ async function runReviewGenerate(
         scenarios: scenarios.map((s) => ({id: s.id, name: s.name, scenarioCount: s.scenarios.length})),
         ...summary,
     }, null, 2), 'utf-8');
-    console.log(`\nReport: ${summaryPath}`);
+    console.error(`\nReport: ${summaryPath}`);
 }

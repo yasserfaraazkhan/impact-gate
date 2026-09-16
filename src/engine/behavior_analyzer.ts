@@ -310,7 +310,7 @@ export function matchSignalsToFlows(
 export function findRelevantTests(
     signals: BehaviorSignal[],
     impact: ImpactResult,
-    testsRoot: string,
+    repositoryRoot: string,
 ): {existing: RelevantTest[]; prIncluded: RelevantTest[]} {
     const existing: RelevantTest[] = [];
     const prIncluded: RelevantTest[] = [];
@@ -319,7 +319,7 @@ export function findRelevantTests(
     // Source 1: PR-included test files (from impact engine's filteredTestFiles)
     for (const prTest of impact.prIncludedTestFiles) {
         if (prTest.type === 'playwright' || prTest.type === 'cypress') {
-            const absPath = prTest.file.startsWith('/') ? prTest.file : `${testsRoot}/${prTest.file}`;
+            const absPath = prTest.file.startsWith('/') ? prTest.file : `${repositoryRoot}/${prTest.file}`;
             const scenarios = extractScenarios(absPath, prTest.type === 'playwright' ? 'playwright' : 'cypress');
             prIncluded.push({
                 file: prTest.file,
@@ -359,7 +359,7 @@ export function findRelevantTests(
 
         for (const pattern of testPatterns) {
             const testPath = `${dir}/${pattern}`;
-            const fullPath = `${testsRoot}/${testPath}`;
+            const fullPath = `${repositoryRoot}/${testPath}`;
             if (existsSync(fullPath) && !seen.has(testPath)) {
                 seen.add(testPath);
                 existing.push({
@@ -373,7 +373,7 @@ export function findRelevantTests(
 
         // Check __tests__ directory
         const testsDir = `${dir}/__tests__`;
-        const fullTestsDir = `${testsRoot}/${testsDir}`;
+        const fullTestsDir = `${repositoryRoot}/${testsDir}`;
         if (existsSync(fullTestsDir)) {
             try {
                 for (const entry of readdirSync(fullTestsDir)) {
@@ -516,7 +516,7 @@ export function analyzeBehavior(
     diffs: Map<string, string>,
     impact: ImpactResult,
     manifest: RouteFamilyManifest | null,
-    testsRoot: string,
+    repositoryRoot: string,
 ): BehaviorAnalysisResult {
     // Stage 1: Extract signals from diffs
     const signals = extractBehaviorSignals(diffs);
@@ -525,7 +525,7 @@ export function analyzeBehavior(
     const behaviorSummary = matchSignalsToFlows(signals, impact, manifest);
 
     // Stage 3: Find tests
-    const {existing: relevantTests, prIncluded: prIncludedTests} = findRelevantTests(signals, impact, testsRoot);
+    const {existing: relevantTests, prIncluded: prIncludedTests} = findRelevantTests(signals, impact, repositoryRoot);
 
     // Stage 4: Generate recommendations
     const recommendations = generateRecommendations(signals, prIncludedTests, relevantTests);
