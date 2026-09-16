@@ -1,0 +1,4177 @@
+{
+  "sampleMethod": "30 most recently updated merged PRs targeting master; fixed historical query, not random or latest merge date",
+  "sourceRoot": "/private/tmp/impact-gate-pr-validation-2026-09-16",
+  "sourceSha256": {
+    "REPORT.md": "90b5578593d428d406e6bad4c503e89afbc646123356dc53dd617d1e4dba5c1c",
+    "ci/37300/32980222813/cypress-full-enterprise.consolidated.json": "aca6120bb765b87e1ef13fa421a3ba8ccf8b4a25cb8ada48019ea62cfa11d32a",
+    "ci/37300/32980222813/cypress-full-enterprise.orchestration.json": "09dd7ac2a6091625eec44f60588e95c6db83bf6d1a6677b6ed3c54abf29f43ee",
+    "ci/37300/32980222813/playwright-full-enterprise.consolidated.json": "5c822f84e01a907a97eade17e80714632dc10a47f4fcbf1851901e6329fa5448",
+    "ci/37300/32980222813/playwright-full-enterprise.orchestration.json": "1c14a3a1565b5c34f4a2f5e8edd82c34cc85186d4cfc762cab0fcbadb4f54316",
+    "ci/37314/34852208466/cypress-full-enterprise.consolidated.json": "45fbaac207c139aa8baff1e4cc46f7e855f23a56b0a9c1bbc0b14ff3952c5427",
+    "ci/37314/34852208466/cypress-full-enterprise.orchestration.json": "7f357242eb5aabe2c0b89a33e5d6ea5a3edbb0aaa32dd45f53754acf3850dece",
+    "ci/37314/34852208466/playwright-full-enterprise.consolidated.json": "cdf6d85c1f5b7612119d6e57d9a27e80bdbd795dec2324b7f1187e4c5657010b",
+    "ci/37314/34852208466/playwright-full-enterprise.orchestration.json": "00fb799630e1584351ad5b6c12f3791894543619f4e7972574d2c7193f1d0f53",
+    "ci/37341/34909665839/cypress-full-enterprise.consolidated.json": "c8e849ad90e24794e4407623d4f26df0589c7f0b6b40d1224e3b28f6ff988f50",
+    "ci/37341/34909665839/cypress-full-enterprise.orchestration.json": "ba168360105e48f1c173f455f1d0cdbaef554cd1ecf4cd7c51689cb8b244b68b",
+    "ci/37341/34909665839/playwright-full-enterprise.consolidated.json": "fc5479efc0a0560524c1b51ffa3392af95c230e92796b2107f3bec61825356cf",
+    "ci/37341/34909665839/playwright-full-enterprise.orchestration.json": "89cecc5d13721cc25a977c5274ba94469fe5cb8aab69c1c07031145fd0f09173",
+    "ci/37715/34896936687/cypress-full-enterprise.consolidated.json": "207ca63b54bf8bd1857554ad56f7b2483353bd7fed7a89f3a8f8ffaa2715a594",
+    "ci/37715/34896936687/cypress-full-enterprise.orchestration.json": "1ec4d0b49271a9d7d771c81369d5846f3d1bf004866284497e407aaa4ed2a9db",
+    "ci/37715/34896936687/playwright-full-enterprise.consolidated.json": "70f7c97616d20953f4c5a6dae639207989da3c73ee62fed6cb7e5223547f3835",
+    "ci/37715/34896936687/playwright-full-enterprise.orchestration.json": "6aecb7d7b8c00763ba27436a51424452474d45d9722e94c40910203be888673b",
+    "ci/37794/30646810306/cypress-full-enterprise.consolidated.json": "a75915c85a54f8a9b0393631e1a9b828a64b60046f8cf8849be55384838ef8a2",
+    "ci/37794/30646810306/cypress-full-enterprise.orchestration.json": "4f7711c97468b702b66d9e94f7f43b6180c3897430dd288d042dca4118481630",
+    "ci/37794/30646810306/playwright-full-enterprise.consolidated.json": "33bd1c6698e8031a88089d5ed6933d30f8373dfa7db5821d96afe0e363acb4c2",
+    "ci/37794/30646810306/playwright-full-enterprise.orchestration.json": "357ab1a6372de4fd925a4b0acfc4e2fbf91f75c16349987eccc269b51f3d9483",
+    "ci/37837/31777973994/cypress-full-enterprise.consolidated.json": "cc9bf98024995f5fd05eea12c0c061fb950ef4c00602f2c79d83060f3f5eede4",
+    "ci/37837/31777973994/cypress-full-enterprise.orchestration.json": "8bb57f909c8ae9cc4c9f49a91f35b7e1112c5ccc74faad144829f29511922636",
+    "ci/37837/31777973994/playwright-full-enterprise.consolidated.json": "0361ec7abe21c1e05a34a07c7a2be7b0b16db91afdd91e06cf0fe410801b458d",
+    "ci/37837/31777973994/playwright-full-enterprise.orchestration.json": "8ecbaf89ed9fd955242492672ce9965f380f27d26b216d57a678d2bf5beef606",
+    "ci/37868/35018180686/cypress-full-enterprise.consolidated.json": "3c5e09ed21c1626413c1f3cbf04c1a403756ab390f402e6ece58bd5b5f826570",
+    "ci/37868/35018180686/cypress-full-enterprise.orchestration.json": "11957ac3224e5add129f98aa973be06813f8bb28346eff7fe29c1d9a2cdff71f",
+    "ci/37868/35018180686/playwright-full-enterprise.consolidated.json": "0e8c30824d6c746fc807a1dd94e5451dfdd3993e905d458559960b37eb7d370f",
+    "ci/37868/35018180686/playwright-full-enterprise.orchestration.json": "c03255b09d9b4f65e62e33635123fe08c7709468716461791c78cc64a66c9057",
+    "ci/38048/33388435696/cypress-full-enterprise.consolidated.json": "036165b2c044aa92f96f67da2d507030eb55dc038110b4e1ce62029ee33783b3",
+    "ci/38048/33388435696/cypress-full-enterprise.orchestration.json": "5d76ecbc8cd6b012f69f5815ba53b19e5c4dd7cba1e5c6c66d14660f8b472b74",
+    "ci/38048/33388435696/playwright-full-enterprise.consolidated.json": "7b8bc7afc93a2be1d9a94db8ded25b575f87305d1d16624f5ae678e2602985d5",
+    "ci/38048/33388435696/playwright-full-enterprise.orchestration.json": "06cc6a7f4caca3b947f1502c1f5062975bedd14057e0c8a1dc9a12c968262bdc",
+    "ci/38193/34887133622/cypress-full-enterprise.consolidated.json": "f57160c466789d16ca76888ee8147781c345b968c38b9a102b4e26fe3b3a07ee",
+    "ci/38193/34887133622/cypress-full-enterprise.orchestration.json": "3b9c5a317b396231f5f568ddab48b3a34502b2967bc0cc2c69b155d4bc34b4b0",
+    "ci/38193/34887133622/playwright-full-enterprise.consolidated.json": "acfd09603384bd6d3c2626cd5af117b289be293207d937ec3176ef8d5fcb1183",
+    "ci/38193/34887133622/playwright-full-enterprise.orchestration.json": "b3e771b69425222ec5b1ed0a387f531c6ca684cd90f379529089d5af45af3bd6",
+    "ci/38245/34187912178/cypress-full-enterprise.consolidated.json": "a4170427b07d223ba656f0bafec08ac062324b4ed34ec096307aca5673ce372b",
+    "ci/38245/34187912178/cypress-full-enterprise.orchestration.json": "b46d7f69536bf60e679fcef3396b8baeca8026f0ff1fdb3c655baaa4f0135c0a",
+    "ci/38245/34187912178/playwright-full-enterprise.consolidated.json": "50cae87fe5e734bf69baebacf60f0ce8f99ad3c4bf93b7d814f777f42e747720",
+    "ci/38245/34187912178/playwright-full-enterprise.orchestration.json": "38dd0ac17bf2bfca34edb1186d1c80fbad5aace44f7fdc6b51afa529c6c2e381",
+    "ci/38280/33765486489/cypress-full-enterprise.consolidated.json": "3e051c902747b22c7bfe7105f56157c0e286462e6960bfbf3fe879a2597110a1",
+    "ci/38280/33765486489/cypress-full-enterprise.orchestration.json": "a8642739f0bab733a7e47a71e2b9507ac50107c923790b2a8f613a3bb1dda392",
+    "ci/38280/33765486489/playwright-full-enterprise.consolidated.json": "76e24e91294aa073cda18e3ce9452d21264dee26d638e3822ec5ee2802dfeb12",
+    "ci/38280/33765486489/playwright-full-enterprise.orchestration.json": "c559e581cf0fc8da99fe51cfb54690f626950cffb38a57481ba48c35e8d96fe8",
+    "ci/38289/34993112358/cypress-full-enterprise.consolidated.json": "2708bac98bca11c317c0c0d5f186b09d368f97d4e77700efb2cba2e39fa568d6",
+    "ci/38289/34993112358/cypress-full-enterprise.orchestration.json": "0713cc3a4016e535bd5743974c6bcdb29045e9e70604fae812163117cc35990d",
+    "ci/38289/34993112358/playwright-full-enterprise.consolidated.json": "5a8993f98184a01196945ce4443504fc3eedf45ede5a812d250c29af712426ff",
+    "ci/38289/34993112358/playwright-full-enterprise.orchestration.json": "14d4a2670c6ebcd772ab491873802114cf7116fcad6a4ccbfc8b894a61e77c5b",
+    "ci/38311/34491583015/cypress-full-enterprise.consolidated.json": "2231410ae7b404511285abbe5763a9005597962529c84d82202a8c221b4e1682",
+    "ci/38311/34491583015/cypress-full-enterprise.orchestration.json": "7a72a140155cd5806e92c921ce22a005848f3e532c595d25b6ba090ac3a146a6",
+    "ci/38311/34491583015/playwright-full-enterprise.consolidated.json": "94f558c485a0f009143f9d8283927c30c24d628f3777120272264fc844ab991f",
+    "ci/38311/34491583015/playwright-full-enterprise.orchestration.json": "f1af3a6f3c1a9b52a963f4bde9dfa9b3f2cf62518dd771cd68c1168ec679b584",
+    "ci/38327/34921707931/cypress-full-enterprise.consolidated.json": "1fd0dceaa563ab69787ccf8cd76754bb490b21a9ba070ab9f0f7a6b525c9d695",
+    "ci/38327/34921707931/cypress-full-enterprise.orchestration.json": "a4efa918e1b6f88f5021edfb15c3661b2a90eb567723d14a9559a80d9a182aa4",
+    "ci/38327/34921707931/playwright-full-enterprise.consolidated.json": "aeded1a4d728c1ef403d4f0e27d92a3b761a0f388c7bc850168c947eb6e9d586",
+    "ci/38327/34921707931/playwright-full-enterprise.orchestration.json": "3f565005c062306a73a2c47bca7f593347e26e74650df86dd6a4fc4475e1677b",
+    "ci/38451/34606389718/cypress-full-enterprise.consolidated.json": "0d3f98e25cdf9c3028d422701e2bab34df690c7c92c95fc1341ebee0c7b16d97",
+    "ci/38451/34606389718/cypress-full-enterprise.orchestration.json": "e2cfde1412bfb974bc4b7b3af6592316131a2fa8655f5ab0da9c268cc9e1b5d3",
+    "ci/38451/34606389718/playwright-full-enterprise.consolidated.json": "6ec95ec6877f6d7e9431948649f0f1a3b0afd2acd8723d4e90ecd9ca0848eaca",
+    "ci/38451/34606389718/playwright-full-enterprise.orchestration.json": "397b6fdfe778da9ff8b7a53cd7e6fe6a5530e3eb46983c769bfe60106d073cdc",
+    "ci/38454/34845016051/cypress-full-enterprise.consolidated.json": "e03e22175974f594b1b05e8d1492f1b6f3fe5f377efc1f5386d3afbb644bbedb",
+    "ci/38454/34845016051/cypress-full-enterprise.orchestration.json": "e4dae9a68204e0e458ab26edf686a9788a1dc6f04a7ce5fb7ec2c3dc3061b8a1",
+    "ci/38454/34845016051/playwright-full-enterprise.consolidated.json": "f94cd8d296eb1f477da764a09d8681a440e2e92248b91f9211c08e195c120e7e",
+    "ci/38454/34845016051/playwright-full-enterprise.orchestration.json": "dc30a367045702c570180353e3eb20a46930c539016b905d619ee35cd25445b7",
+    "ci/38473/34954273569/cypress-full-enterprise.consolidated.json": "8876575f03db7dfcf347789db3398cd0d12849f41eabcbbcf61a134f895c8c0a",
+    "ci/38473/34954273569/cypress-full-enterprise.orchestration.json": "8557146833650457960e4e2c6a8a0534a0de9ac30cae264482f2b9338443df93",
+    "ci/38473/34954273569/playwright-full-enterprise.consolidated.json": "103a68fb4398a9b59338a3190e403397e3996b3e7eb00954d32fc0afd36541ae",
+    "ci/38473/34954273569/playwright-full-enterprise.orchestration.json": "84f8346318821475146a07cdb8df6a6fc6cf3abe151ec2dbe8a758f09650ca57",
+    "ci/38474/34870841273/cypress-full-enterprise.consolidated.json": "9987f5f7d54e7ea0ba5fcc680d61cc93a38cb0da2b0de958c1671cadb993a33d",
+    "ci/38474/34870841273/cypress-full-enterprise.orchestration.json": "7a88a82546390b1eb8687bf46cd1de5c257780c4116b98f788e78abec5b836e4",
+    "ci/38474/34870841273/playwright-full-enterprise.consolidated.json": "5e9330ac68c27cfff8efe293b2478400ea8ad9d5f891d72f6976d6683fecd576",
+    "ci/38474/34870841273/playwright-full-enterprise.orchestration.json": "574fc017e62e733fa9c44b86ab7b5b98502b189f1a65f0b2e4fdaeb7727ee43b",
+    "ci/38485/34846735346/cypress-full-enterprise.consolidated.json": "0d63d84f3f77df5c73c6d98ca204e90ea097100a4c0d995948459643daa39cff",
+    "ci/38485/34846735346/cypress-full-enterprise.orchestration.json": "39dceae55319c4ee8291657fbcbb2707507a0fce6ce8794af5329066037790f0",
+    "ci/38485/34846735346/playwright-full-enterprise.consolidated.json": "dfbd36d4fbe0d32fbdd909efdbf858b1a7ec62c355708f0b9dab960ec464f884",
+    "ci/38485/34846735346/playwright-full-enterprise.orchestration.json": "83c76f7767c7ae5266bb86ab7c3392106691b88234457e6c74e6b2dea1d6ff39",
+    "ci/38486/34858168397/cypress-full-enterprise.consolidated.json": "b5040688d129e55f2df356fb1e57a12f63f6aff9109afa40e163a0cc679bd865",
+    "ci/38486/34858168397/cypress-full-enterprise.orchestration.json": "8d83e44ba5dc594d33e558b218ab918bac0051c45538d019ec6e468bc17b7ec1",
+    "ci/38486/34858168397/playwright-full-enterprise.consolidated.json": "825909761dde228c498277d433e3facb1289012821c35c9aec3ad8ad82a8c38b",
+    "ci/38486/34858168397/playwright-full-enterprise.orchestration.json": "143d474b597474ae433832399df8b6d3ec70ed7ddc05d97b4b744a606a30d2a7",
+    "ci/38489/34865576264/cypress-full-enterprise.consolidated.json": "a67eb6c2c8f28183a54bd5192db38f5b11b783195f84401b84b99a7650c6d1c2",
+    "ci/38489/34865576264/cypress-full-enterprise.orchestration.json": "de4baae499e46ff67d96cb7278de51a95b44ee54fa17cf1d90dfdc808619d466",
+    "ci/38489/34865576264/playwright-full-enterprise.consolidated.json": "4148e36534609e81f85a6f0037b96765b25a1f68b4e6947a70caa6c5b27c1701",
+    "ci/38489/34865576264/playwright-full-enterprise.orchestration.json": "878b2044f8be810d1d7a07924f51e302f7261fc6f241291d932d1133234d26ea",
+    "ci/38490/34879914699/cypress-full-enterprise.consolidated.json": "5365cc8a9b426617f367da5790d5f431973a03c942421ef54438102b6f7ee050",
+    "ci/38490/34879914699/cypress-full-enterprise.orchestration.json": "d4c1ff1d016cfe378f139a0b82fc997a27e516e75c17882698cc5054362f91b4",
+    "ci/38490/34879914699/playwright-full-enterprise.consolidated.json": "137d4888c0edbfa2850d4877062e89a2396d858a9d0195689394023f8f0d4bb3",
+    "ci/38490/34879914699/playwright-full-enterprise.orchestration.json": "6acfde912adba431951c1d2d9988e10e18dde3735ef6cce20cf2b3b7757f9442",
+    "ci/38491/34891316081/cypress-full-enterprise.consolidated.json": "4788d2cd07eda0f4a61fbe6e4a97716d28dfd8a9a35c78a9fb0dcea8b9fc8cae",
+    "ci/38491/34891316081/cypress-full-enterprise.orchestration.json": "68973a5678aede5869d4ac3bffc5d61068030566fb6e738647b4e4764a3fbcbb",
+    "ci/38491/34891316081/playwright-full-enterprise.consolidated.json": "6e79bae55e57f28e35b4171e135db8b919c28519537e0285ecd26329e44fe514",
+    "ci/38491/34891316081/playwright-full-enterprise.orchestration.json": "acc6d234de5b1ff997746a77755c756b704d440e0acf669fc61b3498ff846402",
+    "ci/38492/34876452462/cypress-full-enterprise.consolidated.json": "970e28fe17779216bc9a58d05de15baa935933a78c052b6e1bf4b69691c353b3",
+    "ci/38492/34876452462/cypress-full-enterprise.orchestration.json": "fb3cce14354e042d45bbc17e7c32fb7c2057dd38278c241e8c93ab37f7f4d04c",
+    "ci/38492/34876452462/playwright-full-enterprise.consolidated.json": "ece31440fd6d1e98f6e5094f8ba9d3ccd857073138156199b9ba2b3de7ccc46b",
+    "ci/38492/34876452462/playwright-full-enterprise.orchestration.json": "7954fb857639d0f04310c1734adec92dbd94388d5cc8503cb5a1b7aa0e212b84",
+    "ci/38493/34876385011/cypress-full-enterprise.consolidated.json": "8e52817b0f597700ab6a0cc1af16831913d5fe5124fe00b24446f4731c1e8585",
+    "ci/38493/34876385011/cypress-full-enterprise.orchestration.json": "0568ab43af121ecf7307481a9ce9d78a827131ac3a3d1e127c8e3f4a92a4ab6f",
+    "ci/38493/34876385011/playwright-full-enterprise.consolidated.json": "cddb7a0c4427c7797a5be3abcbf17a3da248689951d6dcc0610b5d309638eeb7",
+    "ci/38493/34876385011/playwright-full-enterprise.orchestration.json": "eb94de445aaf5beb8db249b96cd0359b927a60c235f26721638be2c255bb7799",
+    "ci/38529/34832688144/cypress-full-enterprise.consolidated.json": "e5b86e20662d6e049768d30d329c9dcdc753e5aa40580b8faa54a07f7eb08a3d",
+    "ci/38529/34832688144/cypress-full-enterprise.orchestration.json": "c15d23f7048e3b403bc1f0d11695b00b9168f7084a7ca084711c95f875c53d5b",
+    "ci/38529/34832688144/playwright-full-enterprise.consolidated.json": "2a2d7980b903e91f5e7341593eb74f3dad5d9236a45f1feb192677f9637bb748",
+    "ci/38529/34832688144/playwright-full-enterprise.orchestration.json": "55f95efb9176b1183065880a2d40868eb5bc63d1a21dfbb75049799822f97cc5",
+    "ci/README.md": "ee8f614a1088febafa9d6031b1b3aaa7cd8c8ff855773e4872569a86f2b3bd2e",
+    "ci/validated-index.json": "a8c86fb22855753c5d62ce3c16a9d47da72b456d48df9af6ce580b135e1f5d33",
+    "corrected-results.json": "7f4cae3059e085d9de8fe090f7febba6e1c330db99360471a39d2f50299905dc",
+    "prs.json": "34a32e7ed1203bfecaf5e7e85a7cd8f2e93a725563a71e7ff0d69c34e8937b68",
+    "summary.json": "89e350ad6e1e59fde4b7a298955e7bc5563c1d8b5a24320ca4e1054b5de8699c"
+  },
+  "prs": [
+    {
+      "baseRefOid": "d9ab8dd076601fb00815c4b5ce4b3416ad0311b6",
+      "changedFiles": 54,
+      "headRefOid": "2522cfab58519d006ee873896432e3750652efc9",
+      "mergeCommit": {
+        "oid": "41c482b497c5236878019689bc202914f8425f40"
+      },
+      "mergedAt": "2026-09-15T21:00:00Z",
+      "number": 37868,
+      "title": "Enable single team and channel migrations between instances",
+      "url": "https://github.com/mattermost/mattermost/pull/37868",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 35018180686,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "2522cfab58519d006ee873896432e3750652efc9",
+              "head_branch": "kyledoliente_team_and_channel_migration",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/35018180686",
+              "created_at": "2026-09-15T20:12:13Z",
+              "updated_at": "2026-09-15T20:38:17Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 104547880253,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 104547880498,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 430,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "37868/35018180686/cypress-full-enterprise.orchestration.json",
+                  "37868/35018180686/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "2522cfab58519d006ee873896432e3750652efc9",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a6b6-4bc4-7040-9ba3-e348eae47683",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 40,
+                      "reports_received": 40,
+                      "reports_complete": 40,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 293,
+                  "completed_skipped": 25,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/functional/channels/direct_messages_modal/group_message_lifecycle.spec.ts"
+                ],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "37868/35018180686/playwright-full-enterprise.orchestration.json",
+                  "37868/35018180686/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "2522cfab58519d006ee873896432e3750652efc9",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a6b6-e175-7b06-85e8-e1d78b062504",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "0a5c312cf90152f5db0a016d9f40c93037530bec",
+      "changedFiles": 20,
+      "headRefOid": "1441af6c72b4908655baa6b7be8ff3ed3394581d",
+      "mergeCommit": {
+        "oid": "b3c66c7d17f1c55d7551a162fcac8455104918e0"
+      },
+      "mergedAt": "2026-09-01T13:08:31Z",
+      "number": 37300,
+      "title": "MM-68613: raise post message size limit to 1MB",
+      "url": "https://github.com/mattermost/mattermost/pull/37300",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 32980222813,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "1441af6c72b4908655baa6b7be8ff3ed3394581d",
+              "head_branch": "mm-68613-raise-post-size-limit",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/32980222813",
+              "created_at": "2026-08-26T14:25:45Z",
+              "updated_at": "2026-08-26T15:06:35Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 98216621160,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 98216621493,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 446,
+                  "completed_skipped": 5,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [
+                  "e2e-tests/cypress/tests/integration/channels/auth_sso/authentication_4_spec.ts",
+                  "e2e-tests/cypress/tests/integration/channels/accessibility/accessibility_post_spec.js"
+                ],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "37300/32980222813/cypress-full-enterprise.orchestration.json",
+                  "37300/32980222813/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "1441af6c72b4908655baa6b7be8ff3ed3394581d",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [
+                    {
+                      "full_title": "Authentication \u203a MM-T1755 - Restrict Domains - Email invite",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/cypress/tests/integration/channels/auth_sso/authentication_4_spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "Authentication MM-T1755 - Restrict Domains - Email invite",
+                          "worker_job_id": "98217837677"
+                        }
+                      ]
+                    },
+                    {
+                      "full_title": "Verify Accessibility Support in Post \u203a MM-T1479 Verify Reader reads out the post correctly on Center Channel",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/cypress/tests/integration/channels/accessibility/accessibility_post_spec.js",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "Verify Accessibility Support in Post MM-T1479 Verify Reader reads out the post correctly on Center Channel",
+                          "worker_job_id": "98217837677"
+                        }
+                      ]
+                    }
+                  ],
+                  "groups": [
+                    {
+                      "id": "01a03e7e-9608-77d5-8950-61906f606571",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 40,
+                      "reports_received": 40,
+                      "reports_complete": 40,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 265,
+                  "completed_skipped": 18,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/accessibility/common/login.spec.ts"
+                ],
+                "internal_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/accessibility/channels/add_people_to_channel_dialog.spec.ts",
+                  "e2e-tests/playwright/specs/functional/channels/channel_settings/channel_headers.spec.ts",
+                  "e2e-tests/playwright/specs/functional/channels/team_settings/team_settings_policy_editor.spec.ts",
+                  "e2e-tests/playwright/specs/functional/system_console/abac/policies/ranked_operators.spec.ts"
+                ],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "37300/32980222813/playwright-full-enterprise.orchestration.json",
+                  "37300/32980222813/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "1441af6c72b4908655baa6b7be8ff3ed3394581d",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [
+                    {
+                      "full_title": "accessibility/common/login.spec.ts \u203a /login accessibility tab support",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/accessibility/common/login.spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "accessibility/common/login.spec.ts > /login accessibility tab support",
+                          "worker_job_id": "98220084822"
+                        }
+                      ]
+                    }
+                  ],
+                  "groups": [
+                    {
+                      "id": "01a03e84-91d9-7bb1-86fd-5f589f810ce0",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "e97df5b6e18a227cf9aa3cf47317f44672d9eaef",
+      "changedFiles": 11,
+      "headRefOid": "89fe4de53bcc08c7e6a14950f0b968a1998c244a",
+      "mergeCommit": {
+        "oid": "d9ab8dd076601fb00815c4b5ce4b3416ad0311b6"
+      },
+      "mergedAt": "2026-09-15T17:30:53Z",
+      "number": 38490,
+      "title": "[MM-47076] Migrate \"components/suggestion/suggestion_box\" and its tests to Typescript",
+      "url": "https://github.com/mattermost/mattermost/pull/38490",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 34879914699,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "89fe4de53bcc08c7e6a14950f0b968a1998c244a",
+              "head_branch": "cursor/mm-47076-suggestion-box-behavior-tests",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/34879914699",
+              "created_at": "2026-09-14T18:17:40Z",
+              "updated_at": "2026-09-14T18:39:55Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 104097041595,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 104097041664,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 430,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38490/34879914699/cypress-full-enterprise.orchestration.json",
+                  "38490/34879914699/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "89fe4de53bcc08c7e6a14950f0b968a1998c244a",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a127-2284-77f8-a260-af0c1f653fd6",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 40,
+                      "reports_received": 40,
+                      "reports_complete": 40,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 292,
+                  "completed_skipped": 25,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38490/34879914699/playwright-full-enterprise.orchestration.json",
+                  "38490/34879914699/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "89fe4de53bcc08c7e6a14950f0b968a1998c244a",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a126-d860-737e-821a-aa99f57f0431",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "e97df5b6e18a227cf9aa3cf47317f44672d9eaef",
+      "changedFiles": 7,
+      "headRefOid": "5770d5acea2adcd02462d1b2a031dc5efb16b84e",
+      "mergeCommit": {
+        "oid": "0576319d9bfbc323e797b435055015ab33e78c03"
+      },
+      "mergedAt": "2026-09-15T16:37:56Z",
+      "number": 38289,
+      "title": "MM-61876: Add Playwright tests for message priority cases",
+      "url": "https://github.com/mattermost/mattermost/pull/38289",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 34993112358,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "5770d5acea2adcd02462d1b2a031dc5efb16b84e",
+              "head_branch": "MM-61876-message-priority-e2e",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/34993112358",
+              "created_at": "2026-09-15T16:08:44Z",
+              "updated_at": "2026-09-15T16:42:35Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 104467182247,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 104467182760,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 430,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38289/34993112358/cypress-full-enterprise.orchestration.json",
+                  "38289/34993112358/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "5770d5acea2adcd02462d1b2a031dc5efb16b84e",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a5e0-a6c0-72e8-829e-6d1730b7f86f",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 40,
+                      "reports_received": 40,
+                      "reports_complete": 40,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 292,
+                  "completed_skipped": 25,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/functional/channels/direct_messages_modal/group_message_creation_members.spec.ts",
+                  "e2e-tests/playwright/specs/functional/channels/search/mobile_rhs_focus.spec.ts"
+                ],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38289/34993112358/playwright-full-enterprise.orchestration.json",
+                  "38289/34993112358/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "5770d5acea2adcd02462d1b2a031dc5efb16b84e",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a5e1-5180-7ba2-97a0-12ba045a5d24",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "cfa66f0ea57ddf1b607addb22f4d906882936f0d",
+      "changedFiles": 22,
+      "headRefOid": "8275a52ace79d459feef550e4355b150089cac42",
+      "mergeCommit": {
+        "oid": "1e0a76ee9a41ef2de19745e74e97178844b245df"
+      },
+      "mergedAt": "2026-09-15T13:52:49Z",
+      "number": 38327,
+      "title": "MM-70575: Support paid `add-on` plugin licenses",
+      "url": "https://github.com/mattermost/mattermost/pull/38327",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 34921707931,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "8275a52ace79d459feef550e4355b150089cac42",
+              "head_branch": "MM-70575_add-on_plugins",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "failure",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/34921707931",
+              "created_at": "2026-09-15T02:34:33Z",
+              "updated_at": "2026-09-15T02:58:05Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 104231478084,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 104231478379,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 430,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": false,
+                "source_files": [
+                  "38327/34921707931/cypress-full-enterprise.orchestration.json",
+                  "38327/34921707931/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "8275a52ace79d459feef550e4355b150089cac42",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a2ed-9ad9-7b55-a1e6-ae7210282f58",
+                      "identity_and_workers_valid": true,
+                      "status": "incomplete",
+                      "reports_expected": 40,
+                      "reports_received": 39,
+                      "reports_complete": 39,
+                      "all_expected_reports_complete": false
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 292,
+                  "completed_skipped": 25,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38327/34921707931/playwright-full-enterprise.orchestration.json",
+                  "38327/34921707931/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "8275a52ace79d459feef550e4355b150089cac42",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a2ed-c323-75ae-9031-2a40ba14ed47",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "41cdeab36c818050cfd3409e18a50ef03bc9aebf",
+      "changedFiles": 58,
+      "headRefOid": "7fcc11db86bbfcfc37929d4d351e9391ab3fc768",
+      "mergeCommit": {
+        "oid": "68c4bb52e5e094d7c26f627f949973040c9c56a7"
+      },
+      "mergedAt": "2026-09-15T12:39:51Z",
+      "number": 38473,
+      "title": "MM-70626: Migrate sort to slices",
+      "url": "https://github.com/mattermost/mattermost/pull/38473",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 34954273569,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "7fcc11db86bbfcfc37929d4d351e9391ab3fc768",
+              "head_branch": "MM-70626.sort.slices",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/34954273569",
+              "created_at": "2026-09-15T09:45:31Z",
+              "updated_at": "2026-09-15T10:07:45Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 104333030665,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 104333031275,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 430,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38473/34954273569/cypress-full-enterprise.orchestration.json",
+                  "38473/34954273569/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "7fcc11db86bbfcfc37929d4d351e9391ab3fc768",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a477-9b7d-745d-affd-56b9b9def343",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 40,
+                      "reports_received": 40,
+                      "reports_complete": 40,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 293,
+                  "completed_skipped": 25,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/functional/channels/direct_messages_modal/group_message_creation_members.spec.ts"
+                ],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38473/34954273569/playwright-full-enterprise.orchestration.json",
+                  "38473/34954273569/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "7fcc11db86bbfcfc37929d4d351e9391ab3fc768",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a478-1bd7-7838-9693-bb1bc5817842",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "20d3cdd6f5774869be6ed100ced6d8b68568b514",
+      "changedFiles": 2,
+      "headRefOid": "4e64d5bcdba3a1a0f6d261cc6819fc8646d53662",
+      "mergeCommit": {
+        "oid": "9c8d4164abd4e3dd585b97ab2f7efcf11b2fc141"
+      },
+      "mergedAt": "2026-09-08T08:25:55Z",
+      "number": 37794,
+      "title": "MM-70074: Fix output formatting issue in mmctl",
+      "url": "https://github.com/mattermost/mattermost/pull/37794",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 30646810306,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "4e64d5bcdba3a1a0f6d261cc6819fc8646d53662",
+              "head_branch": "task/MM-70074",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "failure",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/30646810306",
+              "created_at": "2026-07-31T16:21:49Z",
+              "updated_at": "2026-07-31T16:55:56Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 91211174251,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 91211174530,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 450,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": false,
+                "source_files": [
+                  "37794/30646810306/cypress-full-enterprise.orchestration.json",
+                  "37794/30646810306/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "4e64d5bcdba3a1a0f6d261cc6819fc8646d53662",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "019fb901-7854-7180-87f2-2475a852fe10",
+                      "identity_and_workers_valid": true,
+                      "status": "incomplete",
+                      "reports_expected": 40,
+                      "reports_received": 38,
+                      "reports_complete": 38,
+                      "all_expected_reports_complete": false
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 248,
+                  "completed_skipped": 16,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/accessibility/common/login.spec.ts"
+                ],
+                "internal_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/functional/channels/categories/default_categories.spec.ts",
+                  "e2e-tests/playwright/specs/functional/channels/team_settings/team_settings_policy_editor.spec.ts"
+                ],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "37794/30646810306/playwright-full-enterprise.orchestration.json",
+                  "37794/30646810306/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "4e64d5bcdba3a1a0f6d261cc6819fc8646d53662",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [
+                    {
+                      "full_title": "accessibility/common/login.spec.ts \u203a /login accessibility tab support",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/accessibility/common/login.spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "accessibility/common/login.spec.ts > /login accessibility tab support",
+                          "worker_job_id": "91213017787"
+                        }
+                      ]
+                    }
+                  ],
+                  "groups": [
+                    {
+                      "id": "019fb907-1b39-7ffc-8009-383b2bc92fd9",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 15,
+                      "reports_received": 15,
+                      "reports_complete": 15,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "76b47c3ba9ca333ada289264e9e9900f77ae36c3",
+      "changedFiles": 9,
+      "headRefOid": "1c4b82c78aba2940f12cda5f0db1c4082a2f8ce4",
+      "mergeCommit": {
+        "oid": "0760aee32b79fe98997a76b9363648e0ea3a5dae"
+      },
+      "mergedAt": "2026-09-03T14:35:02Z",
+      "number": 38280,
+      "title": "[MM-70529] Fix OpenSearch plugin discovery on AWS",
+      "url": "https://github.com/mattermost/mattermost/pull/38280",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 33765486489,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "1c4b82c78aba2940f12cda5f0db1c4082a2f8ce4",
+              "head_branch": "MM-70529-ES-analysis-icu",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/33765486489",
+              "created_at": "2026-09-03T14:12:27Z",
+              "updated_at": "2026-09-03T14:35:00Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 100682855101,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 100682855526,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 446,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38280/33765486489/cypress-full-enterprise.orchestration.json",
+                  "38280/33765486489/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "1c4b82c78aba2940f12cda5f0db1c4082a2f8ce4",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a067a1-7ee8-702c-ad50-247318d68981",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 40,
+                      "reports_received": 40,
+                      "reports_complete": 40,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 272,
+                  "completed_skipped": 19,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/functional/system_console/abac/file_access/file_permissions_live_updates.spec.ts",
+                  "e2e-tests/playwright/specs/functional/system_console/abac/file_access/file_permissions_render.spec.ts"
+                ],
+                "internal_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/accessibility/channels/add_people_to_channel_dialog.spec.ts",
+                  "e2e-tests/playwright/specs/functional/system_console/single_channel_guests.spec.ts"
+                ],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38280/33765486489/playwright-full-enterprise.orchestration.json",
+                  "38280/33765486489/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "1c4b82c78aba2940f12cda5f0db1c4082a2f8ce4",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [
+                    {
+                      "full_title": "ABAC file permissions - attribute-based policy \u203a MM-T5826_b shows file attachments to a user whose attributes match the policy",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/functional/system_console/abac/file_access/file_permissions_render.spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "functional/system_console/abac/file_access/file_permissions_render.spec.ts > ABAC file permissions - attribute-based policy > MM-T5826_b shows file attachments to a user whose attributes match the policy",
+                          "worker_job_id": "100683407526"
+                        }
+                      ]
+                    },
+                    {
+                      "full_title": "ABAC file permissions - live updates \u203a disables the upload control on an open page when the user attribute changes",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/functional/system_console/abac/file_access/file_permissions_live_updates.spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "functional/system_console/abac/file_access/file_permissions_live_updates.spec.ts > ABAC file permissions - live updates > disables the upload control on an open page when the user attribute changes",
+                          "worker_job_id": "100683407908"
+                        }
+                      ]
+                    }
+                  ],
+                  "groups": [
+                    {
+                      "id": "01a067a0-94aa-71bc-b924-96911acf2917",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "e97df5b6e18a227cf9aa3cf47317f44672d9eaef",
+      "changedFiles": 28,
+      "headRefOid": "fbef8166f713dfe136a47b39a4890e2210a1f9ec",
+      "mergeCommit": {
+        "oid": "791ab8f0f4f8ba1c66b7d241c4e732eb48257144"
+      },
+      "mergedAt": "2026-09-15T09:34:53Z",
+      "number": 38474,
+      "title": "MM-70627: Convert loops to range-over-int",
+      "url": "https://github.com/mattermost/mattermost/pull/38474",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 34870841273,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "fbef8166f713dfe136a47b39a4890e2210a1f9ec",
+              "head_branch": "MM-70627.range.int",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "failure",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/34870841273",
+              "created_at": "2026-09-14T16:48:02Z",
+              "updated_at": "2026-09-14T17:17:31Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 104068713963,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 104068713994,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 430,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": false,
+                "source_files": [
+                  "38474/34870841273/cypress-full-enterprise.orchestration.json",
+                  "38474/34870841273/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "fbef8166f713dfe136a47b39a4890e2210a1f9ec",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a0da-06b3-785c-b1c3-3b6b794f8cfe",
+                      "identity_and_workers_valid": true,
+                      "status": "incomplete",
+                      "reports_expected": 40,
+                      "reports_received": 39,
+                      "reports_complete": 39,
+                      "all_expected_reports_complete": false
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 292,
+                  "completed_skipped": 25,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/functional/channels/search/mobile_rhs_focus.spec.ts"
+                ],
+                "internal_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/accessibility/channels/account_menu_keyboard.spec.ts"
+                ],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38474/34870841273/playwright-full-enterprise.orchestration.json",
+                  "38474/34870841273/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "fbef8166f713dfe136a47b39a4890e2210a1f9ec",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [
+                    {
+                      "full_title": "Mobile view RHS auto-focus \u203a closes mobile menu when clicking the backdrop layer",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/functional/channels/search/mobile_rhs_focus.spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "functional/channels/search/mobile_rhs_focus.spec.ts > Mobile view RHS auto-focus > closes mobile menu when clicking the backdrop layer",
+                          "worker_job_id": "104069211459"
+                        }
+                      ]
+                    }
+                  ],
+                  "groups": [
+                    {
+                      "id": "01a0a0da-2d4e-747a-8d85-ef282ff7ec24",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "597d9c429602d119552b4a7cc7c2b50ce41f895b",
+      "changedFiles": 5,
+      "headRefOid": "4594c4560824f8ba27f74f25d1af13aecb561917",
+      "mergeCommit": {
+        "oid": "41cdeab36c818050cfd3409e18a50ef03bc9aebf"
+      },
+      "mergedAt": "2026-09-15T08:02:57Z",
+      "number": 38388,
+      "title": "Add dot release docs for server v11.10.2, v11.9.2, v11.7.11",
+      "url": "https://github.com/mattermost/mattermost/pull/38388",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [
+          "No actual E2E Tests (pull request) workflow at frozen head; skipped verifier checks do not prove execution. Landed-merge runs excluded from head-SHA comparison."
+        ],
+        "runs": []
+      }
+    },
+    {
+      "baseRefOid": "f29d0431de2dccaf8535024be76396dfa12da29b",
+      "changedFiles": 14,
+      "headRefOid": "7ba4fb39712a48961726a3583611e6c008471883",
+      "mergeCommit": {
+        "oid": "46bfb71725b710702dabfdd2df8a719bb520e716"
+      },
+      "mergedAt": "2026-09-15T07:05:05Z",
+      "number": 37715,
+      "title": "add new ephemeral mode audit logging endpoints",
+      "url": "https://github.com/mattermost/mattermost/pull/37715",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 34896936687,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "7ba4fb39712a48961726a3583611e6c008471883",
+              "head_branch": "MM-68295-server-audit-for-ephemeral-mode",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/34896936687",
+              "created_at": "2026-09-14T21:07:02Z",
+              "updated_at": "2026-09-14T21:31:33Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 104154003979,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 104154004416,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 430,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [
+                  "e2e-tests/cypress/tests/integration/channels/channel/leave_and_archive_channel_destructive_spec.ts"
+                ],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "37715/34896936687/cypress-full-enterprise.orchestration.json",
+                  "37715/34896936687/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "7ba4fb39712a48961726a3583611e6c008471883",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [
+                    {
+                      "full_title": "Leave and Archive channel actions display as destructive \u203a MM-T4943_2 Leave channel actions display as destructive in the Edit Channel Menu ",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/cypress/tests/integration/channels/channel/leave_and_archive_channel_destructive_spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "Leave and Archive channel actions display as destructive MM-T4943_2 Leave channel actions display as destructive in the Edit Channel Menu ",
+                          "worker_job_id": "104154250835"
+                        }
+                      ]
+                    }
+                  ],
+                  "groups": [
+                    {
+                      "id": "01a0a1c1-58e5-7d46-801e-be9ba3ef5fe8",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 40,
+                      "reports_received": 40,
+                      "reports_complete": 40,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 292,
+                  "completed_skipped": 25,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "37715/34896936687/playwright-full-enterprise.orchestration.json",
+                  "37715/34896936687/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "7ba4fb39712a48961726a3583611e6c008471883",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a1c1-e764-7923-b117-167899965bb5",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "69f0f2c22cfb346566bc02ad67347bd65a7cabdf",
+      "changedFiles": 2,
+      "headRefOid": "92a2648074598760566a4d6888e0874db16dcff0",
+      "mergeCommit": {
+        "oid": "0c75e8fd1f66800285a2df168def6aab7ddf1bff"
+      },
+      "mergedAt": "2026-09-14T20:41:23Z",
+      "number": 38491,
+      "title": "[MM-67353] Respect collapsed image previews for GIF-picker images",
+      "url": "https://github.com/mattermost/mattermost/pull/38491",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 34891316081,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "92a2648074598760566a4d6888e0874db16dcff0",
+              "head_branch": "cursor/jira-bug-fix-agent-workflow-ee74",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "failure",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/34891316081",
+              "created_at": "2026-09-14T20:10:35Z",
+              "updated_at": "2026-09-14T20:35:35Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 104135164456,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 104135164976,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 430,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": false,
+                "source_files": [
+                  "38491/34891316081/cypress-full-enterprise.orchestration.json",
+                  "38491/34891316081/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "92a2648074598760566a4d6888e0874db16dcff0",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a18d-ac37-7303-b6a8-324915233892",
+                      "identity_and_workers_valid": true,
+                      "status": "incomplete",
+                      "reports_expected": 40,
+                      "reports_received": 37,
+                      "reports_complete": 37,
+                      "all_expected_reports_complete": false
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 293,
+                  "completed_skipped": 25,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38491/34891316081/playwright-full-enterprise.orchestration.json",
+                  "38491/34891316081/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "92a2648074598760566a4d6888e0874db16dcff0",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a18e-5a48-729a-a538-3ea8af1b1841",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "87168644a48fa66f0229a64d1706a3223c465cea",
+      "changedFiles": 12,
+      "headRefOid": "b827957df936e781a7dcdd6e2d05a8b84f635c00",
+      "mergeCommit": {
+        "oid": "69f0f2c22cfb346566bc02ad67347bd65a7cabdf"
+      },
+      "mergedAt": "2026-09-14T19:49:36Z",
+      "number": 38451,
+      "title": "[MM-70642] Add Global Relay SenderAddress config setting",
+      "url": "https://github.com/mattermost/mattermost/pull/38451",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 34606389718,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "b827957df936e781a7dcdd6e2d05a8b84f635c00",
+              "head_branch": "cursor/global-relay-sender-address-064c",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "failure",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/34606389718",
+              "created_at": "2026-09-11T13:48:04Z",
+              "updated_at": "2026-09-11T14:12:46Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 103286453281,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 103286453451,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 429,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": false,
+                "source_files": [
+                  "38451/34606389718/cypress-full-enterprise.orchestration.json",
+                  "38451/34606389718/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "b827957df936e781a7dcdd6e2d05a8b84f635c00",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a090bc-9298-76dc-bf39-d528d03690a9",
+                      "identity_and_workers_valid": true,
+                      "status": "incomplete",
+                      "reports_expected": 40,
+                      "reports_received": 39,
+                      "reports_complete": 39,
+                      "all_expected_reports_complete": false
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 1,
+                  "completed_pass": 290,
+                  "completed_skipped": 25,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38451/34606389718/playwright-full-enterprise.orchestration.json",
+                  "38451/34606389718/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "b827957df936e781a7dcdd6e2d05a8b84f635c00",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [
+                    {
+                      "full_title": "functional/channels/locked_profile_fields/locked_profile_fields.spec.ts \u203a carries admin-provisioned profile data from invite email through signup and enforces the lock",
+                      "consolidated_status": "failed",
+                      "classification": "terminal_failure_confirmed",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/functional/channels/locked_profile_fields/locked_profile_fields.spec.ts",
+                          "unit_state": "completed_fail",
+                          "terminal_test_status": "failed",
+                          "full_title": "functional/channels/locked_profile_fields/locked_profile_fields.spec.ts > carries admin-provisioned profile data from invite email through signup and enforces the lock",
+                          "worker_job_id": "103286942385"
+                        }
+                      ]
+                    }
+                  ],
+                  "groups": [
+                    {
+                      "id": "01a090bd-2449-70fa-8fbe-6d6a469147c5",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": [
+                  {
+                    "suite": "playwright-full-enterprise",
+                    "repo_spec_path": "e2e-tests/playwright/specs/functional/channels/locked_profile_fields/locked_profile_fields.spec.ts",
+                    "spec_path": "specs/functional/channels/locked_profile_fields/locked_profile_fields.spec.ts",
+                    "run_id": "34606389718",
+                    "run_attempt": "1",
+                    "head_sha": "b827957df936e781a7dcdd6e2d05a8b84f635c00",
+                    "final_attempt_id": "01a090cc-2ed2-749f-833a-2b87971479fa",
+                    "final_worker_job_id": "103286942385",
+                    "final_worker_name": "e2e-playwright / playwright-full / dispatch-run-14",
+                    "final_attempt_status": "failed",
+                    "reported_at": "2026-09-11T14:09:30.592237Z",
+                    "all_attempt_outcomes": [
+                      {
+                        "status": "failed",
+                        "reported_at": "2026-09-11T14:01:23.405023Z",
+                        "gh_job_id": "103286942475"
+                      },
+                      {
+                        "status": "failed",
+                        "reported_at": "2026-09-11T14:09:30.592237Z",
+                        "gh_job_id": "103286942385"
+                      }
+                    ],
+                    "test_cases": [
+                      {
+                        "title": "carries admin-provisioned profile data from invite email through signup and enforces the lock",
+                        "status": "failed",
+                        "ordinal": 1,
+                        "full_title": "functional/channels/locked_profile_fields/locked_profile_fields.spec.ts > carries admin-provisioned profile data from invite email through signup and enforces the lock",
+                        "duration_ms": 28241,
+                        "retry_count": 1
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "e97df5b6e18a227cf9aa3cf47317f44672d9eaef",
+      "changedFiles": 5,
+      "headRefOid": "33fcdb54ec3b182fe461556aa9bf1ad7f54c1213",
+      "mergeCommit": {
+        "oid": "461f214c6bd2567e672b1639a3ab750c0fd42042"
+      },
+      "mergedAt": "2026-09-14T18:22:05Z",
+      "number": 38492,
+      "title": "[MM-67330] Apply the search term to the System Console user CSV export",
+      "url": "https://github.com/mattermost/mattermost/pull/38492",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 34876452462,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "33fcdb54ec3b182fe461556aa9bf1ad7f54c1213",
+              "head_branch": "cursor/jira-bug-fix-agent-workflow-1a29",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/34876452462",
+              "created_at": "2026-09-14T17:43:17Z",
+              "updated_at": "2026-09-14T18:05:37Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 104085426571,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 104085427334,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 430,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38492/34876452462/cypress-full-enterprise.orchestration.json",
+                  "38492/34876452462/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "33fcdb54ec3b182fe461556aa9bf1ad7f54c1213",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a106-aa4c-73b4-8c58-1bc21be389b9",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 40,
+                      "reports_received": 40,
+                      "reports_complete": 40,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 292,
+                  "completed_skipped": 25,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/functional/channels/search/mobile_rhs_focus.spec.ts"
+                ],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38492/34876452462/playwright-full-enterprise.orchestration.json",
+                  "38492/34876452462/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "33fcdb54ec3b182fe461556aa9bf1ad7f54c1213",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a107-5b03-7324-a2d6-1856bd18c977",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "5de31f8e868f61636ee9d556176cd6ab5f956f2b",
+      "changedFiles": 26,
+      "headRefOid": "881f2f2835c921d11e6b811e69a695471cbf5c5b",
+      "mergeCommit": {
+        "oid": "fcf51cdd2604d74a25887c25c63a2e2c787b1320"
+      },
+      "mergedAt": "2026-09-14T20:16:08Z",
+      "number": 38193,
+      "title": "[MM-70251] Fix interactive dialog submitting against wrong channel",
+      "url": "https://github.com/mattermost/mattermost/pull/38193",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 34887133622,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "881f2f2835c921d11e6b811e69a695471cbf5c5b",
+              "head_branch": "fix/MM-70251-dialog-channel-id",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/34887133622",
+              "created_at": "2026-09-14T19:28:46Z",
+              "updated_at": "2026-09-14T19:51:27Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 104121115005,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 104121115225,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 430,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38193/34887133622/cypress-full-enterprise.orchestration.json",
+                  "38193/34887133622/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "881f2f2835c921d11e6b811e69a695471cbf5c5b",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a167-2f88-7cd7-bb49-97de773c7332",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 40,
+                      "reports_received": 40,
+                      "reports_complete": 40,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 293,
+                  "completed_skipped": 25,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38193/34887133622/playwright-full-enterprise.orchestration.json",
+                  "38193/34887133622/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "881f2f2835c921d11e6b811e69a695471cbf5c5b",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a168-4385-7347-95d7-099fd685f95d",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "846df3d3f3e29375bad1342af0d194651239df82",
+      "changedFiles": 36,
+      "headRefOid": "d14c64c4198ccf44b84215d6d4284ae1d102f9ed",
+      "mergeCommit": {
+        "oid": "5de31f8e868f61636ee9d556176cd6ab5f956f2b"
+      },
+      "mergedAt": "2026-09-14T19:07:10Z",
+      "number": 37314,
+      "title": "MM-68909: Add per-channel setting to disable join/leave system messages",
+      "url": "https://github.com/mattermost/mattermost/pull/37314",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 34852208466,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "d14c64c4198ccf44b84215d6d4284ae1d102f9ed",
+              "head_branch": "feature/channel-joinleave",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "failure",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/34852208466",
+              "created_at": "2026-09-14T13:54:53Z",
+              "updated_at": "2026-09-14T14:20:13Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 104003530551,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 104003530747,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 430,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "37314/34852208466/cypress-full-enterprise.orchestration.json",
+                  "37314/34852208466/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "d14c64c4198ccf44b84215d6d4284ae1d102f9ed",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a035-db82-70e7-96e1-1dbb44646e64",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 40,
+                      "reports_received": 40,
+                      "reports_complete": 40,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 293,
+                  "completed_skipped": 25,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/functional/channels/search/mobile_rhs_focus.spec.ts"
+                ],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "37314/34852208466/playwright-full-enterprise.orchestration.json",
+                  "37314/34852208466/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "d14c64c4198ccf44b84215d6d4284ae1d102f9ed",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a036-c637-7dfc-b2d7-09db3dd992fb",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "98371929edae113a6af7a7f73b964c1a6378168b",
+      "changedFiles": 5,
+      "headRefOid": "f533941f071558d31b7f04f6abcef93e315ff6ae",
+      "mergeCommit": {
+        "oid": "e97df5b6e18a227cf9aa3cf47317f44672d9eaef"
+      },
+      "mergedAt": "2026-09-14T16:23:31Z",
+      "number": 38489,
+      "title": "[MM-70687] Expose host JSX runtimes to web app plugins",
+      "url": "https://github.com/mattermost/mattermost/pull/38489",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 34865576264,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "f533941f071558d31b7f04f6abcef93e315ff6ae",
+              "head_branch": "MM-70687-export-jsx",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/34865576264",
+              "created_at": "2026-09-14T15:57:47Z",
+              "updated_at": "2026-09-14T16:23:31Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 104049908273,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 104049908705,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 430,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38489/34865576264/cypress-full-enterprise.orchestration.json",
+                  "38489/34865576264/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "f533941f071558d31b7f04f6abcef93e315ff6ae",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a0a8-c482-752a-8ec1-f79a076ab5cb",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 40,
+                      "reports_received": 40,
+                      "reports_complete": 40,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 292,
+                  "completed_skipped": 25,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38489/34865576264/playwright-full-enterprise.orchestration.json",
+                  "38489/34865576264/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "f533941f071558d31b7f04f6abcef93e315ff6ae",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a0a9-3f35-7e3d-9471-5332876b32da",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "846df3d3f3e29375bad1342af0d194651239df82",
+      "changedFiles": 6,
+      "headRefOid": "289c3e8f2bb139cf374f3a4fd4b68abdcdf9b347",
+      "mergeCommit": {
+        "oid": "98371929edae113a6af7a7f73b964c1a6378168b"
+      },
+      "mergedAt": "2026-09-14T15:39:28Z",
+      "number": 38486,
+      "title": "[MM-70678] Prevent plugin startup failures from blocking the web app",
+      "url": "https://github.com/mattermost/mattermost/pull/38486",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 34858168397,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "289c3e8f2bb139cf374f3a4fd4b68abdcdf9b347",
+              "head_branch": "MM-70678-plugin-startup-failure-guard",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/34858168397",
+              "created_at": "2026-09-14T14:49:51Z",
+              "updated_at": "2026-09-14T15:13:27Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 104024093446,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 104024093553,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 430,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38486/34858168397/cypress-full-enterprise.orchestration.json",
+                  "38486/34858168397/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "289c3e8f2bb139cf374f3a4fd4b68abdcdf9b347",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a068-904c-7999-a277-0dd30f681465",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 40,
+                      "reports_received": 40,
+                      "reports_complete": 40,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 292,
+                  "completed_skipped": 25,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/functional/plugins/demo_plugin/server/slash_commands/demo_interactive.spec.ts"
+                ],
+                "internal_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/functional/channels/burn_on_read/restrictions.spec.ts"
+                ],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38486/34858168397/playwright-full-enterprise.orchestration.json",
+                  "38486/34858168397/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "289c3e8f2bb139cf374f3a4fd4b68abdcdf9b347",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [
+                    {
+                      "full_title": "functional/plugins/demo_plugin/server/slash_commands/demo_interactive.spec.ts \u203a should post interactive button and respond with click attribution via /interactive command",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/functional/plugins/demo_plugin/server/slash_commands/demo_interactive.spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "functional/plugins/demo_plugin/server/slash_commands/demo_interactive.spec.ts > should post interactive button and respond with click attribution via /interactive command",
+                          "worker_job_id": "104024752877"
+                        }
+                      ]
+                    }
+                  ],
+                  "groups": [
+                    {
+                      "id": "01a0a069-715f-767c-a96a-227fb564c725",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "87168644a48fa66f0229a64d1706a3223c465cea",
+      "changedFiles": 154,
+      "headRefOid": "46c65509845029a3a9e47baf9ec0d1747e8cacf3",
+      "mergeCommit": {
+        "oid": "4322d9e9a2dbef25b3860ec2279afd6634ceb61f"
+      },
+      "mergedAt": "2026-09-14T12:20:51Z",
+      "number": 38311,
+      "title": "Update the web app to React 19",
+      "url": "https://github.com/mattermost/mattermost/pull/38311",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 34491583015,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "46c65509845029a3a9e47baf9ec0d1747e8cacf3",
+              "head_branch": "cursor/update-to-react-19-0193",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/34491583015",
+              "created_at": "2026-09-10T14:49:20Z",
+              "updated_at": "2026-09-10T15:13:13Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 102920185858,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 102920185997,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 429,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38311/34491583015/cypress-full-enterprise.orchestration.json",
+                  "38311/34491583015/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "46c65509845029a3a9e47baf9ec0d1747e8cacf3",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a08bce-0d9f-7fe4-a759-d8d2323fd686",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 40,
+                      "reports_received": 40,
+                      "reports_complete": 40,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 291,
+                  "completed_skipped": 25,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/functional/channels/direct_messages_modal/group_message_lifecycle.spec.ts"
+                ],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38311/34491583015/playwright-full-enterprise.orchestration.json",
+                  "38311/34491583015/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "46c65509845029a3a9e47baf9ec0d1747e8cacf3",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a08bcf-56e5-7cc3-8096-943dedf39049",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "e97df5b6e18a227cf9aa3cf47317f44672d9eaef",
+      "changedFiles": 37,
+      "headRefOid": "fff8d0d936728615fed971d4a40418afda44c811",
+      "mergeCommit": {
+        "oid": "d16665723616ee8b63a127816cbad2022668354f"
+      },
+      "mergedAt": "2026-09-14T18:07:15Z",
+      "number": 38493,
+      "title": "[MM-70679] Migrate remaining JS test files to TypeScript",
+      "url": "https://github.com/mattermost/mattermost/pull/38493",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 34876385011,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "fff8d0d936728615fed971d4a40418afda44c811",
+              "head_branch": "test-files-js",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/34876385011",
+              "created_at": "2026-09-14T17:42:35Z",
+              "updated_at": "2026-09-14T18:07:50Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 104086115888,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 104086116523,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 430,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38493/34876385011/cypress-full-enterprise.orchestration.json",
+                  "38493/34876385011/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "fff8d0d936728615fed971d4a40418afda44c811",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a108-91d5-7a3c-9ad5-dbc758239e63",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 40,
+                      "reports_received": 40,
+                      "reports_complete": 40,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 292,
+                  "completed_skipped": 25,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/functional/channels/direct_messages_modal/group_message_lifecycle.spec.ts"
+                ],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38493/34876385011/playwright-full-enterprise.orchestration.json",
+                  "38493/34876385011/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "fff8d0d936728615fed971d4a40418afda44c811",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a109-416b-79f0-a0fe-7c1552b0d0bc",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "0c75e8fd1f66800285a2df168def6aab7ddf1bff",
+      "changedFiles": 16,
+      "headRefOid": "3e4f2f361f92c0e6981c46d6347d90d936cd4f59",
+      "mergeCommit": {
+        "oid": "5b866b8c22de69f68e025d4a08163bc68d6d3f3c"
+      },
+      "mergedAt": "2026-09-15T00:06:50Z",
+      "number": 37341,
+      "title": "Add collapsible section support to interactive dialogs",
+      "url": "https://github.com/mattermost/mattermost/pull/37341",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 34909665839,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "3e4f2f361f92c0e6981c46d6347d90d936cd4f59",
+              "head_branch": "kyledoliente_collapsible_interactivedialog",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "failure",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/34909665839",
+              "created_at": "2026-09-14T23:37:00Z",
+              "updated_at": "2026-09-15T00:00:21Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 104194570253,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 104194570574,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 430,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": false,
+                "source_files": [
+                  "37341/34909665839/cypress-full-enterprise.orchestration.json",
+                  "37341/34909665839/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "3e4f2f361f92c0e6981c46d6347d90d936cd4f59",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a24a-7be8-7920-b59f-6c97fe7f6725",
+                      "identity_and_workers_valid": true,
+                      "status": "incomplete",
+                      "reports_expected": 40,
+                      "reports_received": 39,
+                      "reports_complete": 39,
+                      "all_expected_reports_complete": false
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 294,
+                  "completed_skipped": 24,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/functional/plugins/demo_plugin/server/slash_commands/demo_interactive.spec.ts"
+                ],
+                "internal_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/functional/channels/direct_messages_modal/group_message_creation_members.spec.ts"
+                ],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "37341/34909665839/playwright-full-enterprise.orchestration.json",
+                  "37341/34909665839/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "3e4f2f361f92c0e6981c46d6347d90d936cd4f59",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [
+                    {
+                      "full_title": "functional/plugins/demo_plugin/server/slash_commands/demo_interactive.spec.ts \u203a should post interactive button and respond with click attribution via /interactive command",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/functional/plugins/demo_plugin/server/slash_commands/demo_interactive.spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "functional/plugins/demo_plugin/server/slash_commands/demo_interactive.spec.ts > should post interactive button and respond with click attribution via /interactive command",
+                          "worker_job_id": "104194874977"
+                        }
+                      ]
+                    }
+                  ],
+                  "groups": [
+                    {
+                      "id": "01a0a24b-05a6-7d43-8cbd-ccefdd940908",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "797148b6c31082cea398f05aecefaa649db8d73c",
+      "changedFiles": 10,
+      "headRefOid": "a35802bdcd345279b4437e10b64143714d822278",
+      "mergeCommit": {
+        "oid": "cfa66f0ea57ddf1b607addb22f4d906882936f0d"
+      },
+      "mergedAt": "2026-09-14T15:45:08Z",
+      "number": 38532,
+      "title": "docs: advertise Playbooks as Entry + Enterprise + Enterprise Advanced only",
+      "url": "https://github.com/mattermost/mattermost/pull/38532",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [
+          "No actual E2E Tests (pull request) workflow at frozen head; skipped verifier checks do not prove execution. Landed-merge runs excluded from head-SHA comparison."
+        ],
+        "runs": []
+      }
+    },
+    {
+      "baseRefOid": "4322d9e9a2dbef25b3860ec2279afd6634ceb61f",
+      "changedFiles": 12,
+      "headRefOid": "0cec63dba27ad9d32cccacab06211eb203101be7",
+      "mergeCommit": {
+        "oid": "846df3d3f3e29375bad1342af0d194651239df82"
+      },
+      "mergedAt": "2026-09-14T13:31:54Z",
+      "number": 38485,
+      "title": "Rename Global Attributes System Console section to Attribute Management",
+      "url": "https://github.com/mattermost/mattermost/pull/38485",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 34846735346,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "0cec63dba27ad9d32cccacab06211eb203101be7",
+              "head_branch": "cursor/attributes-management-rename-7908",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/34846735346",
+              "created_at": "2026-09-14T13:01:50Z",
+              "updated_at": "2026-09-14T13:27:16Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 103985294435,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 103985294453,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 430,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38485/34846735346/cypress-full-enterprise.orchestration.json",
+                  "38485/34846735346/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "0cec63dba27ad9d32cccacab06211eb203101be7",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a0a005-c993-73a1-b1e9-4f5b074c5b66",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 40,
+                      "reports_received": 40,
+                      "reports_complete": 40,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 292,
+                  "completed_skipped": 25,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/functional/channels/custom_groups/custom_group_management.spec.ts",
+                  "e2e-tests/playwright/specs/functional/channels/locked_profile_fields/locked_profile_fields.spec.ts"
+                ],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38485/34846735346/playwright-full-enterprise.orchestration.json",
+                  "38485/34846735346/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "0cec63dba27ad9d32cccacab06211eb203101be7",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [
+                    {
+                      "full_title": "functional/channels/custom_groups/custom_group_management.spec.ts \u203a MM-T5584 views and unarchives a custom group",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/functional/channels/custom_groups/custom_group_management.spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "functional/channels/custom_groups/custom_group_management.spec.ts > MM-T5584 views and unarchives a custom group",
+                          "worker_job_id": "103985880166"
+                        }
+                      ]
+                    }
+                  ],
+                  "groups": [
+                    {
+                      "id": "01a0a006-a74e-7298-95fe-4faa438e9d50",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "4322d9e9a2dbef25b3860ec2279afd6634ceb61f",
+      "changedFiles": 6,
+      "headRefOid": "3fa2f94351a6da484b0e991734f874ecf89575ae",
+      "mergeCommit": {
+        "oid": "f801461e2bab10e34b2369088b158461e6b19667"
+      },
+      "mergedAt": "2026-09-14T13:08:26Z",
+      "number": 38454,
+      "title": "[MM-70612] Add temporary plugin React DOM root logging",
+      "url": "https://github.com/mattermost/mattermost/pull/38454",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 34845016051,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "3fa2f94351a6da484b0e991734f874ecf89575ae",
+              "head_branch": "MM-70641-log-plugin-compatability-shim",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/34845016051",
+              "created_at": "2026-09-14T12:43:47Z",
+              "updated_at": "2026-09-14T13:08:16Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 103979380053,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 103979380370,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 430,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38454/34845016051/cypress-full-enterprise.orchestration.json",
+                  "38454/34845016051/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "3fa2f94351a6da484b0e991734f874ecf89575ae",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a09ff4-7e46-709d-b07b-c86d44541538",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 40,
+                      "reports_received": 40,
+                      "reports_complete": 40,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 292,
+                  "completed_skipped": 25,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38454/34845016051/playwright-full-enterprise.orchestration.json",
+                  "38454/34845016051/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "3fa2f94351a6da484b0e991734f874ecf89575ae",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a09ff5-16bd-737b-8163-8a5030e057cd",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "438af2598398efdaf46056d46b3ac7324464d4eb",
+      "changedFiles": 1,
+      "headRefOid": "087dfc70bf3b126dcd8b14a1dc63415b3d850bfa",
+      "mergeCommit": {
+        "oid": "797148b6c31082cea398f05aecefaa649db8d73c"
+      },
+      "mergedAt": "2026-09-14T10:58:38Z",
+      "number": 38529,
+      "title": "Fix stale merge defect from #38048",
+      "url": "https://github.com/mattermost/mattermost/pull/38529",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 34832688144,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "087dfc70bf3b126dcd8b14a1dc63415b3d850bfa",
+              "head_branch": "fix-38048-test",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/34832688144",
+              "created_at": "2026-09-14T10:20:34Z",
+              "updated_at": "2026-09-14T10:43:21Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 103940040905,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 103940041791,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 430,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [
+                  "e2e-tests/cypress/tests/integration/channels/messaging/scroll_channel_messages_spec.js"
+                ],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38529/34832688144/cypress-full-enterprise.orchestration.json",
+                  "38529/34832688144/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "087dfc70bf3b126dcd8b14a1dc63415b3d850bfa",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [
+                    {
+                      "full_title": "Scroll channel`s messages in mobile view \u203a MM-T127 Floating timestamp in mobile view",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/cypress/tests/integration/channels/messaging/scroll_channel_messages_spec.js",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "Scroll channel`s messages in mobile view MM-T127 Floating timestamp in mobile view",
+                          "worker_job_id": "103940277339"
+                        }
+                      ]
+                    }
+                  ],
+                  "groups": [
+                    {
+                      "id": "01a09f71-a5eb-7cee-8cc2-c1550741dff3",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 40,
+                      "reports_received": 40,
+                      "reports_complete": 40,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 292,
+                  "completed_skipped": 25,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/functional/channels/threads/threads_list.spec.ts"
+                ],
+                "internal_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/functional/channels/burn_on_read/dm_gm_flow.spec.ts"
+                ],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38529/34832688144/playwright-full-enterprise.orchestration.json",
+                  "38529/34832688144/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "087dfc70bf3b126dcd8b14a1dc63415b3d850bfa",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [
+                    {
+                      "full_title": "functional/channels/threads/threads_list.spec.ts \u203a Should be able to change threads with arrow keys",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/functional/channels/threads/threads_list.spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "functional/channels/threads/threads_list.spec.ts > Should be able to change threads with arrow keys",
+                          "worker_job_id": "103940442681"
+                        }
+                      ]
+                    }
+                  ],
+                  "groups": [
+                    {
+                      "id": "01a09f72-3eeb-725b-b841-32bfc1d6a3e4",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "4ce99ddd38636bb6916613efc892606db3fe75f9",
+      "changedFiles": 14,
+      "headRefOid": "1af180e6bbf9853963bcbb19b69f82e1cb0275a1",
+      "mergeCommit": {
+        "oid": "438af2598398efdaf46056d46b3ac7324464d4eb"
+      },
+      "mergedAt": "2026-09-14T09:03:31Z",
+      "number": 38048,
+      "title": "MM-69969: re-work file attachment when serving draft and edit history file metadata",
+      "url": "https://github.com/mattermost/mattermost/pull/38048",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 33388435696,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "1af180e6bbf9853963bcbb19b69f82e1cb0275a1",
+              "head_branch": "cursor/repro-abac-file-metadata-leak-1678",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/33388435696",
+              "created_at": "2026-08-31T11:45:13Z",
+              "updated_at": "2026-08-31T12:07:37Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 99476767356,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 99476767867,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 446,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38048/33388435696/cypress-full-enterprise.orchestration.json",
+                  "38048/33388435696/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "1af180e6bbf9853963bcbb19b69f82e1cb0275a1",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a057a6-951e-7272-a4cc-15fcfc4a7e1d",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 40,
+                      "reports_received": 40,
+                      "reports_complete": 40,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 269,
+                  "completed_skipped": 18,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/functional/system_console/abac/file_access/file_permissions_live_updates.spec.ts",
+                  "e2e-tests/playwright/specs/functional/system_console/abac/file_access/file_permissions_render.spec.ts",
+                  "e2e-tests/playwright/specs/functional/system_console/system_users/user_attributes_admin_editing.spec.ts"
+                ],
+                "internal_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/accessibility/channels/add_people_to_channel_dialog.spec.ts",
+                  "e2e-tests/playwright/specs/functional/channels/burn_on_read/restrictions.spec.ts",
+                  "e2e-tests/playwright/specs/functional/channels/content_flagging/deletion-report/deletion-report.spec.ts",
+                  "e2e-tests/playwright/specs/functional/system_console/single_channel_guests.spec.ts"
+                ],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38048/33388435696/playwright-full-enterprise.orchestration.json",
+                  "38048/33388435696/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "1af180e6bbf9853963bcbb19b69f82e1cb0275a1",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [
+                    {
+                      "full_title": "ABAC file permissions - attribute-based policy \u203a MM-T5826_b shows file attachments to a user whose attributes match the policy",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/functional/system_console/abac/file_access/file_permissions_render.spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "functional/system_console/abac/file_access/file_permissions_render.spec.ts > ABAC file permissions - attribute-based policy > MM-T5826_b shows file attachments to a user whose attributes match the policy",
+                          "worker_job_id": "99477139913"
+                        }
+                      ]
+                    },
+                    {
+                      "full_title": "ABAC file permissions - live updates \u203a disables the upload control on an open page when the user attribute changes",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/functional/system_console/abac/file_access/file_permissions_live_updates.spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "functional/system_console/abac/file_access/file_permissions_live_updates.spec.ts > ABAC file permissions - live updates > disables the upload control on an open page when the user attribute changes",
+                          "worker_job_id": "99477139961"
+                        }
+                      ]
+                    },
+                    {
+                      "full_title": "System Console - Admin User Profile Editing \u203a MM-65126 Should edit custom user attributes from system console",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/functional/system_console/system_users/user_attributes_admin_editing.spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "functional/system_console/system_users/user_attributes_admin_editing.spec.ts > System Console - Admin User Profile Editing > MM-65126 Should edit custom user attributes from system console",
+                          "worker_job_id": "99477139855"
+                        }
+                      ]
+                    },
+                    {
+                      "full_title": "System Console - Admin User Profile Editing \u203a Should display custom multiselect attribute and save form",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/functional/system_console/system_users/user_attributes_admin_editing.spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "functional/system_console/system_users/user_attributes_admin_editing.spec.ts > System Console - Admin User Profile Editing > Should display custom multiselect attribute and save form",
+                          "worker_job_id": "99477139855"
+                        }
+                      ]
+                    },
+                    {
+                      "full_title": "System Console - Admin User Profile Editing \u203a Should display user attributes in two-column layout",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/functional/system_console/system_users/user_attributes_admin_editing.spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "functional/system_console/system_users/user_attributes_admin_editing.spec.ts > System Console - Admin User Profile Editing > Should display user attributes in two-column layout",
+                          "worker_job_id": "99477139855"
+                        }
+                      ]
+                    },
+                    {
+                      "full_title": "System Console - Admin User Profile Editing \u203a Should edit custom select attribute and save",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/functional/system_console/system_users/user_attributes_admin_editing.spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "functional/system_console/system_users/user_attributes_admin_editing.spec.ts > System Console - Admin User Profile Editing > Should edit custom select attribute and save",
+                          "worker_job_id": "99477139855"
+                        }
+                      ]
+                    },
+                    {
+                      "full_title": "System Console - Admin User Profile Editing \u203a Should edit system email attribute and save",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/functional/system_console/system_users/user_attributes_admin_editing.spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "functional/system_console/system_users/user_attributes_admin_editing.spec.ts > System Console - Admin User Profile Editing > Should edit system email attribute and save",
+                          "worker_job_id": "99477139855"
+                        }
+                      ]
+                    },
+                    {
+                      "full_title": "System Console - Admin User Profile Editing \u203a Should save all user attribute changes atomically",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/functional/system_console/system_users/user_attributes_admin_editing.spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "functional/system_console/system_users/user_attributes_admin_editing.spec.ts > System Console - Admin User Profile Editing > Should save all user attribute changes atomically",
+                          "worker_job_id": "99477139855"
+                        }
+                      ]
+                    },
+                    {
+                      "full_title": "System Console - Admin User Profile Editing \u203a Should show save/cancel buttons when changes are made",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/functional/system_console/system_users/user_attributes_admin_editing.spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "functional/system_console/system_users/user_attributes_admin_editing.spec.ts > System Console - Admin User Profile Editing > Should show save/cancel buttons when changes are made",
+                          "worker_job_id": "99477139855"
+                        }
+                      ]
+                    },
+                    {
+                      "full_title": "System Console - Admin User Profile Editing \u203a Should validate invalid URL and show error with cancel option",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/functional/system_console/system_users/user_attributes_admin_editing.spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "functional/system_console/system_users/user_attributes_admin_editing.spec.ts > System Console - Admin User Profile Editing > Should validate invalid URL and show error with cancel option",
+                          "worker_job_id": "99477139855"
+                        }
+                      ]
+                    },
+                    {
+                      "full_title": "System Console - Admin User Profile Editing \u203a Should validate invalid email and show error with cancel option",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/functional/system_console/system_users/user_attributes_admin_editing.spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "functional/system_console/system_users/user_attributes_admin_editing.spec.ts > System Console - Admin User Profile Editing > Should validate invalid email and show error with cancel option",
+                          "worker_job_id": "99477139855"
+                        }
+                      ]
+                    },
+                    {
+                      "full_title": "System Console - Admin User Profile Editing \u203a Should validate invalid email in custom email attribute",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/functional/system_console/system_users/user_attributes_admin_editing.spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "functional/system_console/system_users/user_attributes_admin_editing.spec.ts > System Console - Admin User Profile Editing > Should validate invalid email in custom email attribute",
+                          "worker_job_id": "99477139855"
+                        }
+                      ]
+                    }
+                  ],
+                  "groups": [
+                    {
+                      "id": "01a057a6-94ef-79a3-ae08-4c64788aa2c2",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "438af2598398efdaf46056d46b3ac7324464d4eb",
+      "changedFiles": 1,
+      "headRefOid": "916d7b05bf23a488dfe4568558281419aeeeaaef",
+      "mergeCommit": {
+        "oid": "f29d0431de2dccaf8535024be76396dfa12da29b"
+      },
+      "mergedAt": "2026-09-14T10:34:37Z",
+      "number": 38530,
+      "title": "chore: Update NOTICE.txt file with updated dependencies",
+      "url": "https://github.com/mattermost/mattermost/pull/38530",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [
+          "No actual E2E Tests (pull request) workflow at frozen head; skipped verifier checks do not prove execution. Landed-merge runs excluded from head-SHA comparison."
+        ],
+        "runs": []
+      }
+    },
+    {
+      "baseRefOid": "f45e25d54b17da5ec666c68c0e807b84a1078414",
+      "changedFiles": 12,
+      "headRefOid": "4407f8e3aba544ae5ee67fbd4ba2aba2ab7a6dc9",
+      "mergeCommit": {
+        "oid": "e594b2116ce7bacf76c0173f306ac68a35a1f140"
+      },
+      "mergedAt": "2026-09-14T08:36:22Z",
+      "number": 38427,
+      "title": "MM-70619: Add live Security Updates bulletin to product docs",
+      "url": "https://github.com/mattermost/mattermost/pull/38427",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [
+          "No actual E2E Tests (pull request) workflow at frozen head; skipped verifier checks do not prove execution. Landed-merge runs excluded from head-SHA comparison."
+        ],
+        "runs": []
+      }
+    },
+    {
+      "baseRefOid": "663ad3dae93f9eaf0c8ce01afa87bafdf7f22b71",
+      "changedFiles": 9,
+      "headRefOid": "543bc6c374a65fd8518628ea50d39b03ffd346fe",
+      "mergeCommit": {
+        "oid": "22eaa8b03bbe2deb4728f4cf5cd5e870b90c6539"
+      },
+      "mergedAt": "2026-08-14T07:36:18Z",
+      "number": 37837,
+      "title": "[MM-69889] Improve handling of RelayState in SAML flow",
+      "url": "https://github.com/mattermost/mattermost/pull/37837",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 31777973994,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "543bc6c374a65fd8518628ea50d39b03ffd346fe",
+              "head_branch": "MM-69889-saml-relay-state",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/31777973994",
+              "created_at": "2026-08-14T06:55:01Z",
+              "updated_at": "2026-08-14T07:19:48Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 94697716219,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 94697716335,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 450,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [
+                  "e2e-tests/cypress/tests/integration/channels/system_console/user_management/users_spec.js"
+                ],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "37837/31777973994/cypress-full-enterprise.orchestration.json",
+                  "37837/31777973994/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "543bc6c374a65fd8518628ea50d39b03ffd346fe",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [
+                    {
+                      "full_title": "System Console > User Management > Users \u203a MM-T936 Users - System admin changes own password - Blank fields",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/cypress/tests/integration/channels/system_console/user_management/users_spec.js",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "System Console > User Management > Users MM-T936 Users - System admin changes own password - Blank fields",
+                          "worker_job_id": "94698028216"
+                        }
+                      ]
+                    }
+                  ],
+                  "groups": [
+                    {
+                      "id": "019fff10-f0b3-70ca-84f2-a4ef8006470b",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 40,
+                      "reports_received": 40,
+                      "reports_complete": 40,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 260,
+                  "completed_skipped": 16,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/accessibility/common/login.spec.ts"
+                ],
+                "internal_retry_survivor_specs": [
+                  "e2e-tests/playwright/specs/accessibility/channels/add_people_to_channel_dialog.spec.ts",
+                  "e2e-tests/playwright/specs/functional/channels/ai/recaps.spec.ts",
+                  "e2e-tests/playwright/specs/functional/channels/categories/default_categories.spec.ts",
+                  "e2e-tests/playwright/specs/functional/channels/content_flagging/deletion-report/deletion-report.spec.ts",
+                  "e2e-tests/playwright/specs/functional/channels/team_settings/team_settings_policy_editor.spec.ts"
+                ],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "37837/31777973994/playwright-full-enterprise.orchestration.json",
+                  "37837/31777973994/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "543bc6c374a65fd8518628ea50d39b03ffd346fe",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [
+                    {
+                      "full_title": "accessibility/common/login.spec.ts \u203a /login accessibility tab support",
+                      "consolidated_status": "failed",
+                      "classification": "retry_survivor_excluded",
+                      "terminal_matches": [
+                        {
+                          "repo_spec_path": "e2e-tests/playwright/specs/accessibility/common/login.spec.ts",
+                          "unit_state": "completed_pass",
+                          "terminal_test_status": "passed",
+                          "full_title": "accessibility/common/login.spec.ts > /login accessibility tab support",
+                          "worker_job_id": "94698025352"
+                        }
+                      ]
+                    }
+                  ],
+                  "groups": [
+                    {
+                      "id": "019fff10-eb4c-70ae-abcd-41f4e259b5b5",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 15,
+                      "reports_received": 15,
+                      "reports_complete": 15,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "baseRefOid": "597d9c429602d119552b4a7cc7c2b50ce41f895b",
+      "changedFiles": 8,
+      "headRefOid": "c74d89ac02aa88b40b0e16aff509cda0f1925a6c",
+      "mergeCommit": {
+        "oid": "012e6dda5d685760f8e91c1f9fb54b3a9a789079"
+      },
+      "mergedAt": "2026-09-14T03:23:33Z",
+      "number": 38245,
+      "title": "File download policy enforcement for content reviewers",
+      "url": "https://github.com/mattermost/mattermost/pull/38245",
+      "ci": {
+        "sha_scope": "exact_frozen_pr_head",
+        "fips": "not_observed",
+        "notes": [],
+        "runs": [
+          {
+            "github": {
+              "sha_kind": "pr_head",
+              "id": 34187912178,
+              "name": "E2E Tests (pull request)",
+              "event": "workflow_dispatch",
+              "head_sha": "c74d89ac02aa88b40b0e16aff509cda0f1925a6c",
+              "head_branch": "file_download_policy_enforcement_for_content_reviewers",
+              "run_attempt": 1,
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/mattermost/mattermost/actions/runs/34187912178",
+              "created_at": "2026-09-08T04:42:00Z",
+              "updated_at": "2026-09-08T05:03:18Z",
+              "pull_requests": []
+            },
+            "all_job_identities_valid": true,
+            "fips_jobs": [
+              {
+                "id": 101940228144,
+                "name": "e2e-playwright-fips",
+                "conclusion": "skipped"
+              },
+              {
+                "id": 101940228258,
+                "name": "e2e-cypress-fips",
+                "conclusion": "skipped"
+              }
+            ],
+            "suites": [
+              {
+                "suite": "cypress-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 446,
+                  "completed_skipped": 1,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38245/34187912178/cypress-full-enterprise.orchestration.json",
+                  "38245/34187912178/cypress-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "c74d89ac02aa88b40b0e16aff509cda0f1925a6c",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a07f55-30a1-7a96-8fa1-151dcfe970de",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 40,
+                      "reports_received": 40,
+                      "reports_complete": 40,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              },
+              {
+                "suite": "playwright-full-enterprise",
+                "identity_valid": true,
+                "orchestration_complete": true,
+                "all_orchestration_workers_valid": true,
+                "unknown_or_mismatched_worker_ids": [],
+                "counts": {
+                  "abandoned": 0,
+                  "completed_fail": 0,
+                  "completed_pass": 272,
+                  "completed_skipped": 20,
+                  "leased": 0,
+                  "pending": 0,
+                  "retest_eligible": 0
+                },
+                "dispatch_retry_survivor_specs": [],
+                "internal_retry_survivor_specs": [],
+                "full_report_evidence_available": true,
+                "source_files": [
+                  "38245/34187912178/playwright-full-enterprise.orchestration.json",
+                  "38245/34187912178/playwright-full-enterprise.consolidated.json"
+                ],
+                "consolidated": {
+                  "latest_commit_sha": "c74d89ac02aa88b40b0e16aff509cda0f1925a6c",
+                  "latest_run_attempt": 1,
+                  "contributing_group_identities_valid": true,
+                  "artifact_failure_reconciliation": [],
+                  "groups": [
+                    {
+                      "id": "01a07f55-f2a8-79fd-8fca-ec00020d156f",
+                      "identity_and_workers_valid": true,
+                      "status": "completed",
+                      "reports_expected": 20,
+                      "reports_received": 20,
+                      "reports_complete": 20,
+                      "all_expected_reports_complete": true
+                    }
+                  ]
+                },
+                "terminal_failed_specs": []
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

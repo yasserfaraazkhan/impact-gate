@@ -56,12 +56,12 @@ test('assertion-free control', async () => {});
 
 Implement only after W1's gate exists. Repair the measured output/input defects before treating machine-readable reports as baseline recommendations. Exact approval will name the reporter files, tests and at most three measurement files under `scripts/`.
 
-- [ ] Make review stdout one JSON object on success, empty diff, invalid ref, threshold failure and comment-write failure. Progress goes to stderr. Invalid Git input fails; review does not add its own prediction artifact to future diffs.
-- [ ] Preserve computed behavior, scenario recommendations, matched test paths and PR test details in both JSON and Markdown.
-- [ ] Resolve repository-relative PR tests from the repository root; keep manifest inventory under its separate test root. Resolve auto-detected test roots against `--path`, while preserving portable init config and explicit path semantics.
-- [ ] Replace unsupported coverage wording with actual covered/partial/uncovered facts. Do not change selection policy in these repairs.
-- [ ] Promote the existing fixed replay into a reproducible script and exact pinned sample/evidence inputs, within the three-file script budget. Record both named-list and effective full-suite selection outcomes; never equate them.
-- [ ] Re-run all 30 PRs against the repaired baseline. Record table, exact commands, and observed escaped-failure fraction with its denominator/limitations in `gates/w2.txt`. One failure cannot establish general accuracy. Keep unknown CI observations separate.
+- [x] Make review stdout one JSON object on success, empty diff, invalid ref, threshold failure and comment-write failure. Progress goes to stderr. Invalid Git input fails; review does not add its own prediction artifact to future diffs.
+- [x] Preserve computed behavior, scenario recommendations, matched test paths and PR test details in both JSON and Markdown.
+- [x] Resolve repository-relative PR tests from the repository root; keep manifest inventory under its separate test root. Resolve auto-detected test roots against `--path`, while preserving portable init config and explicit path semantics.
+- [x] Replace unsupported coverage wording with actual covered/partial/uncovered facts. Do not change selection policy in these repairs.
+- [x] Promote the existing fixed replay into a reproducible script and exact pinned sample/evidence inputs, within the three-file script budget. Record both named-list and effective full-suite selection outcomes; never equate them.
+- [x] Re-run all 30 PRs against the repaired baseline. Record table, exact commands, and observed escaped-failure fraction with its denominator/limitations in `gates/w2.txt`. One failure cannot establish general accuracy. Keep unknown CI observations separate.
 
 ## Task 3: W3 evidence precedence and useful mapping
 

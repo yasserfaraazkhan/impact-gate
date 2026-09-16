@@ -1,0 +1,89 @@
+# W2 independent evidence gate — PASS
+
+Gate result: **PASS**. The final accepted build completed the frozen 30-PR replay with 30/30 successful rows, 30 strict-JSON review receipts, 30 strict-JSON plan receipts, no error row, no timeout and no retry.
+
+## Invocation and integrity
+
+Working directory: `/private/tmp/impact-gate-recovery-2026-09-16`  
+Shell: `/bin/bash`, login false  
+Command:
+
+```sh
+PATH=/opt/homebrew/bin:$PATH python3 scripts/mattermost-replay.py --cli /private/tmp/impact-gate-recovery-2026-09-16/dist/cli.js --source-cache /private/tmp/impact-gate-pr-validation-2026-09-16/source --evidence-root /private/tmp/impact-gate-pr-validation-2026-09-16 --output /private/tmp/impact-gate-recovery-evidence/w2-independent
+```
+
+Outer exit: **0**. Exact outer command/environment/exit/stdout/stderr are retained in `w2-independent/invocation.command.json`, `invocation.exit`, `invocation.stdout.txt`, and `invocation.stderr.txt`; stderr is empty. The harness's credential-free subprocess environment and exact per-command argv/cwd/exits are in `provenance.json` and 215 `*.command.json` receipts. All 215 recorded subprocesses exited 0.
+
+Pre/post integrity checks:
+
+- accepted implementation manifest: 10/10 files match `/private/tmp/impact-gate-recovery-evidence/w2/final-implementation-hashes.json`;
+- built CLI SHA-256 before and after: `5efc2a047ea6029600cb64c16c10510a14bcc8310669a0746a5ddbd23c1334fd`;
+- all 170 `src` file hashes and all 677 `dist` file hashes equal the pre-run `provenance.json` fingerprints after the run;
+- harness SHA-256 before/after: `5d5a421c8016c0a747f92b1a64e0d66f7de9a602e6efd8d203e284cd2e833a56`;
+- fixture SHA-256 before/after: `caa9a317546081744723f8eee1bd85f670a1b07d880d05e64103d4ce8d0ae8ed`;
+- immutable `prs.json`: `34a32e7ed1203bfecaf5e7e85a7cd8f2e93a725563a71e7ff0d69c34e8937b68`;
+- immutable `ci/validated-index.json`: `a8c86fb22855753c5d62ce3c16a9d47da72b456d48df9af6ce580b135e1f5d33`.
+
+## Headline observations
+
+- Named-recommendation escaped-failure fraction: **1/1 = 100%**. The sole eligible terminal failed preexisting spec was absent from named recommendations.
+- Effective-selection escaped-failure fraction: **0/1 = 0%**. The same spec was included only because every row selected full-suite fallback.
+- Full fallback: **30/30 rows**.
+- Base spec occurrences: **28,833**; effective selected occurrences: **28,833**; static selection reduction: **0%**. Runtime savings were not measured, and full fallback provides zero selection savings.
+- CI observations: **52 suites**, of which **46** have complete corresponding worker-report evidence. Six incomplete Cypress suites remain unknown. PR38388, PR38532, PR38530 and PR38427 have no observed exact-head E2E suite and remain unknown. All FIPS observations remain skipped/not observed.
+- Eligible denominator: the one PR38451 Playwright terminal failure at run `34606389718`, attempt `1`, worker `103286942385`. Its suite is complete 20/20 and its spec exists at the merge base; the same PR's Cypress suite is independently incomplete 39/40 and remains unknown. Retry survivors are excluded.
+
+Required receipt spot checks passed:
+
+- PR38289 `review.stdout.txt` strictly parses and reports `prIncludedTestSummary.scenarioCount=4` across two PR-included changed paths: added `message_priority.spec.ts` contributes all four scenarios, while deleted `standard_priority.spec.ts` contributes zero. PR-added tests remain separate from preexisting named recommendations, and deleted tests do not fabricate scenarios.
+- PR37868 `review.stdout.txt` equals saved `review.json` byte-for-byte and retains all six recommendations: Export version, Bulk import worker, Import team, Import data, Changes persist after page reload, and API returns appropriate error for invalid input. `review.md` also retains all six.
+- PR38451 records `namedExistingE2E=[]`, `namedIncluded=false`, `effectiveRunSet=full`, `effectiveIncluded=true`, complete Playwright 20/20 and incomplete Cypress 39/40.
+
+## Exact 30-row result
+
+| PR | Base | Head | Named preexisting E2E | Effective set/count | CI completeness | Eligible failures: named/effective included |
+|---|---|---|---:|---|---|---|
+| 37868 | d9ab8dd076601fb00815c4b5ce4b3416ad0311b6 | 2522cfab58519d006ee873896432e3750652efc9 | 0 | full/966 | Cypress 35018180686/1 40/40 complete; Playwright 20/20 complete | 0 eligible observed |
+| 37300 | 0a5c312cf90152f5db0a016d9f40c93037530bec | 1441af6c72b4908655baa6b7be8ff3ed3394581d | 0 | full/951 | Cypress 32980222813/1 40/40 complete; Playwright 20/20 complete | 0 eligible observed |
+| 38490 | e97df5b6e18a227cf9aa3cf47317f44672d9eaef | 89fe4de53bcc08c7e6a14950f0b968a1998c244a | 0 | full/965 | Cypress 34879914699/1 40/40 complete; Playwright 20/20 complete | 0 eligible observed |
+| 38289 | e97df5b6e18a227cf9aa3cf47317f44672d9eaef | 5770d5acea2adcd02462d1b2a031dc5efb16b84e | 0 | full/965 | Cypress 34993112358/1 40/40 complete; Playwright 20/20 complete | 0 eligible observed |
+| 38327 | cfa66f0ea57ddf1b607addb22f4d906882936f0d | 8275a52ace79d459feef550e4355b150089cac42 | 0 | full/965 | Cypress 34921707931/1 39/40 unknown; Playwright 20/20 complete | 0 eligible observed |
+| 38473 | 41cdeab36c818050cfd3409e18a50ef03bc9aebf | 7fcc11db86bbfcfc37929d4d351e9391ab3fc768 | 0 | full/966 | Cypress 34954273569/1 40/40 complete; Playwright 20/20 complete | 0 eligible observed |
+| 37794 | 466b5bb783a814c173fc2ccf06ad3d4bebc1b3b3 | 4e64d5bcdba3a1a0f6d261cc6819fc8646d53662 | 0 | full/932 | Cypress 30646810306/1 38/40 unknown; Playwright 15/15 complete | 0 eligible observed |
+| 38280 | 76b47c3ba9ca333ada289264e9e9900f77ae36c3 | 1c4b82c78aba2940f12cda5f0db1c4082a2f8ce4 | 0 | full/955 | Cypress 33765486489/1 40/40 complete; Playwright 20/20 complete | 0 eligible observed |
+| 38474 | 846df3d3f3e29375bad1342af0d194651239df82 | fbef8166f713dfe136a47b39a4890e2210a1f9ec | 0 | full/965 | Cypress 34870841273/1 39/40 unknown; Playwright 20/20 complete | 0 eligible observed |
+| 38388 | 2266df0c33c84ce66f62e1dfd0b1479732b47ce7 | 4594c4560824f8ba27f74f25d1af13aecb561917 | 0 | full/956 | unknown: no exact-head E2E run | 0 eligible observed |
+| 37715 | f29d0431de2dccaf8535024be76396dfa12da29b | 7ba4fb39712a48961726a3583611e6c008471883 | 0 | full/965 | Cypress 34896936687/1 40/40 complete; Playwright 20/20 complete | 0 eligible observed |
+| 38491 | 69f0f2c22cfb346566bc02ad67347bd65a7cabdf | 92a2648074598760566a4d6888e0874db16dcff0 | 0 | full/966 | Cypress 34891316081/1 37/40 unknown; Playwright 20/20 complete | 0 eligible observed |
+| 38451 | 87168644a48fa66f0229a64d1706a3223c465cea | b827957df936e781a7dcdd6e2d05a8b84f635c00 | 0 | full/963 | Cypress 34606389718/1 39/40 unknown; Playwright 20/20 complete | locked_profile_fields.spec.ts: false/true |
+| 38492 | e97df5b6e18a227cf9aa3cf47317f44672d9eaef | 33fcdb54ec3b182fe461556aa9bf1ad7f54c1213 | 0 | full/965 | Cypress 34876452462/1 40/40 complete; Playwright 20/20 complete | 0 eligible observed |
+| 38193 | 5de31f8e868f61636ee9d556176cd6ab5f956f2b | 881f2f2835c921d11e6b811e69a695471cbf5c5b | 0 | full/966 | Cypress 34887133622/1 40/40 complete; Playwright 20/20 complete | 0 eligible observed |
+| 37314 | 846df3d3f3e29375bad1342af0d194651239df82 | d14c64c4198ccf44b84215d6d4284ae1d102f9ed | 0 | full/965 | Cypress 34852208466/1 40/40 complete; Playwright 20/20 complete | 0 eligible observed |
+| 38489 | 98371929edae113a6af7a7f73b964c1a6378168b | f533941f071558d31b7f04f6abcef93e315ff6ae | 0 | full/965 | Cypress 34865576264/1 40/40 complete; Playwright 20/20 complete | 0 eligible observed |
+| 38486 | 846df3d3f3e29375bad1342af0d194651239df82 | 289c3e8f2bb139cf374f3a4fd4b68abdcdf9b347 | 0 | full/965 | Cypress 34858168397/1 40/40 complete; Playwright 20/20 complete | 0 eligible observed |
+| 38311 | 87168644a48fa66f0229a64d1706a3223c465cea | 46c65509845029a3a9e47baf9ec0d1747e8cacf3 | 0 | full/963 | Cypress 34491583015/1 40/40 complete; Playwright 20/20 complete | 0 eligible observed |
+| 38493 | e97df5b6e18a227cf9aa3cf47317f44672d9eaef | fff8d0d936728615fed971d4a40418afda44c811 | 0 | full/965 | Cypress 34876385011/1 40/40 complete; Playwright 20/20 complete | 0 eligible observed |
+| 37341 | 0c75e8fd1f66800285a2df168def6aab7ddf1bff | 3e4f2f361f92c0e6981c46d6347d90d936cd4f59 | 0 | full/966 | Cypress 34909665839/1 39/40 unknown; Playwright 20/20 complete | 0 eligible observed |
+| 38532 | 438af2598398efdaf46056d46b3ac7324464d4eb | a35802bdcd345279b4437e10b64143714d822278 | 0 | full/965 | unknown: no exact-head E2E run | 0 eligible observed |
+| 38485 | 4322d9e9a2dbef25b3860ec2279afd6634ceb61f | 0cec63dba27ad9d32cccacab06211eb203101be7 | 0 | full/965 | Cypress 34846735346/1 40/40 complete; Playwright 20/20 complete | 0 eligible observed |
+| 38454 | 4322d9e9a2dbef25b3860ec2279afd6634ceb61f | 3fa2f94351a6da484b0e991734f874ecf89575ae | 0 | full/965 | Cypress 34845016051/1 40/40 complete; Playwright 20/20 complete | 0 eligible observed |
+| 38529 | 438af2598398efdaf46056d46b3ac7324464d4eb | 087dfc70bf3b126dcd8b14a1dc63415b3d850bfa | 0 | full/965 | Cypress 34832688144/1 40/40 complete; Playwright 20/20 complete | 0 eligible observed |
+| 38048 | 4ce99ddd38636bb6916613efc892606db3fe75f9 | 1af180e6bbf9853963bcbb19b69f82e1cb0275a1 | 0 | full/951 | Cypress 33388435696/1 40/40 complete; Playwright 20/20 complete | 0 eligible observed |
+| 38530 | 438af2598398efdaf46056d46b3ac7324464d4eb | 916d7b05bf23a488dfe4568558281419aeeeaaef | 0 | full/965 | unknown: no exact-head E2E run | 0 eligible observed |
+| 38427 | f45e25d54b17da5ec666c68c0e807b84a1078414 | 4407f8e3aba544ae5ee67fbd4ba2aba2ab7a6dc9 | 0 | full/957 | unknown: no exact-head E2E run | 0 eligible observed |
+| 37837 | 663ad3dae93f9eaf0c8ce01afa87bafdf7f22b71 | 543bc6c374a65fd8518628ea50d39b03ffd346fe | 0 | full/944 | Cypress 31777973994/1 40/40 complete; Playwright 15/15 complete | 0 eligible observed |
+| 38245 | 597d9c429602d119552b4a7cc7c2b50ce41f895b | c74d89ac02aa88b40b0e16aff509cda0f1925a6c | 0 | full/956 | Cypress 34187912178/1 40/40 complete; Playwright 20/20 complete | 0 eligible observed |
+
+## Evidence and limits
+
+Primary raw artifacts:
+
+- `/private/tmp/impact-gate-recovery-evidence/w2-independent/provenance.json`
+- `/private/tmp/impact-gate-recovery-evidence/w2-independent/rows.json`
+- `/private/tmp/impact-gate-recovery-evidence/w2-independent/summary.json`
+- `/private/tmp/impact-gate-recovery-evidence/w2-independent/REPORT.md`
+- per-PR command/stdout/stderr/JSON/Markdown receipts under `/private/tmp/impact-gate-recovery-evidence/w2-independent/<PR>/`
+
+Artifact SHA-256: `provenance.json` `59922e81d4f91b8a0d0b5778028a0ebccf01b4cd3240ac7a3972a0a46d74dea6`; `rows.json` `f36eeae34a36088b6a355589ab950f5a1d15c6b0d10b072894eff6043e1358ff`; `summary.json` `12b696b284a82878c2ef8cf98a3d1f092189c44c505bb6837d5a07da72689214`; `REPORT.md` `c5d4587d4790d61ce2fe9e3ecf244f275b3792ec2bc219a090c39c69bf4d8d9f`.
+
+No live Mattermost E2E, CI workflow, provider call, causal regression test or runtime-savings measurement was run. This fixed sample is the 30 most recently updated merged PRs targeting master, not a random sample or latest-merge-date sample. One eligible observed failure cannot establish general accuracy or causality. The earlier 541/541 full test and lint receipts predate the stdout-drain fix; the final focused repair has a separate red 0/2 and green 30/30 lineage. No broad suite rerun was required or performed. The original `red-build-test.txt` and later `flush-red-build-test.txt` do not have separate build-exit companions, so no exit assertion is made for those two earlier build steps; final build, test-build and focused-green receipts each record exit 0.

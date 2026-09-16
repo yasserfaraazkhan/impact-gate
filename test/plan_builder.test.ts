@@ -286,3 +286,17 @@ describe('renderCiSummaryMarkdown', () => {
         assert.ok(md.includes('channels/search'));
     });
 });
+
+describe('decision mapping wording', () => {
+    for (const statuses of [['uncovered'], ['covered', 'partial', 'uncovered'], ['covered']]) {
+        it(`reports exact mapped/partial/uncovered facts for ${statuses.join('/')}`, () => {
+            const features = statuses.map((status, i) => ({...makeImpactResult().impactedFeatures[0], familyId: `family${i}`, featureId: `family${i}`, priority: 'P2', coverageStatus: status}));
+            const plan = buildPlanFromImpact(makeImpactResult({impactedFeatures: features}));
+            const covered = statuses.filter((s) => s === 'covered').length;
+            const partial = statuses.filter((s) => s === 'partial').length;
+            const uncovered = statuses.filter((s) => s === 'uncovered').length;
+            assert.ok(plan.decision.summary.includes(`${covered} mapped, ${partial} partial, ${uncovered} uncovered`), plan.decision.summary);
+            assert.ok(!plan.decision.summary.includes('have test coverage'));
+        });
+    }
+});

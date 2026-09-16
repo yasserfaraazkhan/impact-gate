@@ -231,6 +231,38 @@ export function formatReviewMarkdown(report: ReviewReport): string {
     lines.push(d.summary);
     lines.push('');
 
+    if (report.behaviorSummary?.length) {
+        lines.push('### Behavior changes', '', ...report.behaviorSummary.map((b) => `- ${b}`), '');
+    }
+    if (report.recommendations?.length) {
+        lines.push('### Recommended tests', '');
+        for (const r of report.recommendations) {
+            lines.push(`- **[${r.priority}] ${r.scenario}**${r.dimension ? ` (${r.dimension})` : ''}`);
+            lines.push(`  - Rationale: ${r.rationale}`);
+            if (r.alreadyCoveredBy) lines.push(`  - Covered by: ${r.alreadyCoveredBy}`);
+        }
+        lines.push('');
+    }
+    if (report.relevantExistingTests?.length) {
+        lines.push('### Relevant existing tests', '');
+        for (const test of report.relevantExistingTests) lines.push(`- ${test.file} (${test.matchReason})`);
+        lines.push('');
+    }
+    if (report.prIncludedTestSummary) {
+        lines.push(`### Tests included in this PR (${report.prIncludedTestSummary.scenarioCount} scenarios)`, '');
+        for (const file of report.prIncludedTestSummary.files) lines.push(`- ${file}`);
+        lines.push('');
+    }
+    if (report.affectedFunctions?.length) {
+        lines.push('### Affected functions', '');
+        for (const f of report.affectedFunctions) {
+            lines.push(`- ${f.node.name} (${f.node.id}, ${f.node.kind}${f.node.filePath ? `, ${f.node.filePath}` : ''}) — ${f.impact}, depth ${f.depth}`);
+            for (const caller of f.calledBy) lines.push(`  - Called by: ${caller.name}${caller.filePath ? ` (${caller.filePath})` : ''}`);
+            for (const test of f.testedBy) lines.push(`  - Tested by: ${test.name}${test.filePath ? ` (${test.filePath})` : ''}`);
+        }
+        lines.push('');
+    }
+
     // Flows table
     if (report.impactedFlows.length > 0) {
         lines.push('### Impacted User Flows');
@@ -240,10 +272,18 @@ export function formatReviewMarkdown(report: ReviewReport): string {
         for (const flow of report.impactedFlows) {
             const statusIcon = flow.status === 'covered' ? '✅' : flow.status === 'partial' ? '⚠️' : '❌';
             const testCount = flow.existingTests.length > 0 ? `${flow.existingTests.length} test${flow.existingTests.length !== 1 ? 's' : ''}` : 'none';
-            const gapText = flow.gaps.length > 0 ? flow.gaps[0] : '-';
+            const gapText = flow.gaps.length > 0 ? flow.gaps.join('; ') : '-';
             lines.push(`| ${statusIcon} ${flow.status} | ${flow.priority} | ${escapeTableCell(flow.name)} | ${testCount} | ${escapeTableCell(gapText)} |`);
         }
         lines.push('');
+        for (const flow of report.impactedFlows) {
+            lines.push(`**${flow.name}**`);
+            for (const file of flow.existingTests) lines.push(`- Existing test: ${file}`);
+            for (const file of flow.changedFiles) lines.push(`- Changed: ${file}`);
+            for (const userFlow of flow.userFlows) lines.push(`- User flow: ${userFlow}`);
+            if (flow.riskNote) lines.push(`- Risk: ${flow.riskNote}`);
+            lines.push('');
+        }
     }
 
     // Coverage Gaps
@@ -289,11 +329,5 @@ export function formatReviewMarkdown(report: ReviewReport): string {
  * Format the review report as a JSON-serializable object.
  */
 export function formatReviewJSON(report: ReviewReport): Record<string, unknown> {
-    return {
-        decision: report.decision,
-        impactedFlows: report.impactedFlows,
-        coverageGaps: report.coverageGaps,
-        riskAssessment: report.riskAssessment,
-        metrics: report.metrics,
-    };
+    return {...report};
 }

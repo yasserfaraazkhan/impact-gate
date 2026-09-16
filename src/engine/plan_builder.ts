@@ -262,18 +262,18 @@ function buildDecision(
         };
     }
 
+    const coveredCount = impact.impactedFeatures.filter((f) => f.coverageStatus === 'covered').length;
+    const partialCount = impact.impactedFeatures.filter((f) => f.coverageStatus === 'partial').length;
+    const uncoveredCount = impact.impactedFeatures.filter((f) => f.coverageStatus === 'uncovered').length;
+
     if (runSet === 'smoke' && confidence >= policy.safeMergeMinConfidence && impact.warnings.length === 0) {
         return {
             action: 'safe-to-merge',
             title: 'Safe to merge',
-            summary: 'No critical coverage gaps were detected and confidence is high.',
+            summary: `No critical coverage gaps were detected and confidence is high. Impacted features: ${coveredCount} mapped, ${partialCount} partial, ${uncoveredCount} uncovered.`,
         };
     }
 
-    const coveredCount = impact.impactedFeatures.filter((f) => f.coverageStatus !== 'uncovered').length;
-    const coveredSuffix = coveredCount > 0
-        ? ` All ${coveredCount} impacted feature(s) have test coverage.`
-        : '';
 
     // When files changed but no flows were mapped, be transparent about the gap
     if (impact.impactedFeatures.length === 0 && impact.changedFiles.length > 0) {
@@ -290,7 +290,7 @@ function buildDecision(
     return {
         action: 'run-now',
         title: 'Run now',
-        summary: `Impacted features are covered by existing tests.${coveredSuffix} Verify with the E2E suite before merge.`,
+        summary: `Impacted features: ${coveredCount} mapped, ${partialCount} partial, ${uncoveredCount} uncovered. Verify with the E2E suite before merge.`,
     };
 }
 
