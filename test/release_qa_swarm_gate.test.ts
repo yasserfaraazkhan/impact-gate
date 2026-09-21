@@ -1,7 +1,7 @@
 import {describe, it} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash, randomUUID} from 'node:crypto';
-import {mkdtempSync, readFileSync, writeFileSync, rmSync} from 'node:fs';
+import {mkdtempSync, readFileSync, writeFileSync, rmSync, symlinkSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -119,6 +119,21 @@ function rehashJson(f, ref, mutate) {
 }
 
 describe('release QA swarm evidence gate', () => {
+    it('runs the CLI through a symlinked parent directory and preserves JSON error output', async (t) => {
+        const f = fixture(t);
+        const alias = join(f.dir, 'artifacts');
+        symlinkSync(resolve('.'), alias, 'dir');
+        const aliasedScript = join(alias, 'scripts', 'release-qa-swarm-gate.mjs');
+        for (const flags of [[], ['--preserve-symlinks-main']]) {
+            const pass = spawnSync(process.execPath, [...flags, aliasedScript, 'validate', '--bundle', f.bundlePath], {encoding: 'utf8', cwd: tmpdir()});
+            assert.equal(pass.status, 0, pass.stdout + pass.stderr);
+            assert.equal(JSON.parse(pass.stdout).verdict, 'PASS');
+            const invalid = spawnSync(process.execPath, [...flags, aliasedScript], {encoding: 'utf8', cwd: tmpdir()});
+            assert.equal(invalid.status, 1);
+            assert.equal(JSON.parse(invalid.stdout).errors[0].code, 'USAGE');
+        }
+    });
+
     it('accepts generic dynamic identities and deterministic exact-byte evidence bindings', async (t) => {
         const f = fixture(t);
         const first = await result(f);

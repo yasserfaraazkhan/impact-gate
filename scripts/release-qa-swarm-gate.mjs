@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Deterministic, local invariant verification. Agents still perform semantic QA.
 import {createHash} from 'node:crypto';
-import {readFileSync, statSync} from 'node:fs';
+import {readFileSync, realpathSync, statSync} from 'node:fs';
 import {dirname, resolve} from 'node:path';
-import {pathToFileURL} from 'node:url';
+import {fileURLToPath} from 'node:url';
 
 export const LIMITATIONS = Object.freeze([
     'Hashes bind the supplied files to each other; no external immutable trust anchor or authenticated agent/run provenance is verified.',
@@ -404,6 +404,12 @@ export function main(args) {
     return result.verdict === 'PASS' ? 0 : 1;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+function isCliEntry() {
+    if (!process.argv[1]) return false;
+    try { return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); }
+    catch { return false; } // Imports may run under a host with a non-file argv[1].
+}
+
+if (isCliEntry()) {
     process.exitCode = main(process.argv.slice(2));
 }

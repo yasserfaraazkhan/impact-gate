@@ -1,10 +1,11 @@
 import {describe, it} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {mkdtempSync, readFileSync, writeFileSync, rmSync, chmodSync} from 'node:fs';
+import {mkdtempSync, readFileSync, writeFileSync, rmSync, chmodSync, symlinkSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
+import {spawnSync} from 'node:child_process';
 
 const load = new Function('url', 'return import(url)');
 const controller = load(pathToFileURL(resolve('scripts/release-qa-swarm.mjs')).href);
@@ -49,6 +50,79 @@ async function fixture(t: any, options: any = {}) {
 }
 
 describe('Cursor release QA native handoff controller', () => {
+    for (const mode of ['plan-and-execute', 'execute-plan', 'audit-existing']) {
+        it(`reserves downstream phase budgets in ${mode}`, async (t) => {
+            const sourceRoot = mkdtempSync(join(tmpdir(), 'swarm-budget-source-'));
+            t.after(() => rmSync(sourceRoot, {recursive: true, force: true}));
+            const source = join(sourceRoot, 'source.json');
+            writeFileSync(source, '{"testFixtureOnly":true}');
+            const request = {mode, ...(mode === 'execute-plan' ? {frozenPlan: source} : {}),
+                ...(mode === 'audit-existing' ? {sourceArtifactBundle: source} : {})};
+            const f = await fixture(t, {request});
+            const start = Date.parse(f.api.readRun(f.runDir).init.startedAt);
+            let now = start;
+            t.mock.method(Date, 'now', () => now);
+            const planner = f.api.nextJob(f.runDir);
+            // 30 total - 10 setup - (3 scenarios * 3 minutes) - 2 review.
+            assert.equal(planner.limits.timeoutSeconds, 9 * 60);
+            assert.equal(Date.parse(planner.deadlineAt), start + 9 * 60_000);
+            f.record(planner);
+            // Delayed handoff: reserve only the actual one-scenario plan, not maxScenarios.
+            now = start + 21 * 60_000;
+            const environment = f.api.nextJob(f.runDir);
+            assert.equal(environment.role, 'environment');
+            assert.equal(environment.limits.timeoutSeconds, 4 * 60);
+            assert.equal(Date.parse(environment.deadlineAt), start + 25 * 60_000);
+            f.record(environment);
+            now = Date.parse(environment.deadlineAt);
+            const executor = f.api.nextJob(f.runDir);
+            assert.equal(executor.limits.timeoutSeconds, 3 * 60);
+            assert.equal(Date.parse(executor.deadlineAt), start + 28 * 60_000);
+            f.record(executor);
+            now = Date.parse(executor.deadlineAt);
+            const reviewer = f.api.nextJob(f.runDir);
+            assert.equal(reviewer.limits.timeoutSeconds, 2 * 60);
+            assert.equal(Date.parse(reviewer.deadlineAt), start + 30 * 60_000);
+        });
+    }
+
+    it('gives plan-only the full budget without reserving setup, execution, or review', async (t) => {
+        const f = await fixture(t, {request: {mode: 'plan-only', limits: {maxMinutes: 1}}});
+        const start = Date.parse(f.api.readRun(f.runDir).init.startedAt);
+        t.mock.method(Date, 'now', () => start);
+        const planner = f.api.nextJob(f.runDir);
+        assert.equal(planner.limits.timeoutSeconds, 60);
+        assert.equal(Date.parse(planner.deadlineAt), start + 60_000);
+        f.record(planner);
+        assert.equal(f.api.nextJob(f.runDir).status, 'PLAN_ONLY_COMPLETE');
+        assert.equal(f.api.readRun(f.runDir).jobs.length, 1);
+    });
+
+    it('refuses impossible phase budgets and stops issuance when elapsed time consumes the reserve', async (t) => {
+        await assert.rejects(fixture(t, {request: {limits: {maxMinutes: 21}}}), /Total budget.*reserving setup, execution, and review/);
+        const f = await fixture(t);
+        const start = Date.parse(f.api.readRun(f.runDir).init.startedAt);
+        t.mock.method(Date, 'now', () => start + 10 * 60_000);
+        assert.equal(f.api.nextJob(f.runDir).status, 'BUDGET_EXHAUSTED');
+        assert.equal(f.api.nextJob(f.runDir).status, 'BUDGET_EXHAUSTED');
+        assert.equal(f.api.readRun(f.runDir).jobs.length, 0);
+    });
+
+    it('runs the CLI through a symlinked parent directory and preserves error exit codes', async (t) => {
+        const f = await fixture(t);
+        const alias = join(f.root, 'artifacts');
+        symlinkSync(resolve('.'), alias, 'dir');
+        const script = join(alias, 'scripts', 'release-qa-swarm.mjs');
+        for (const flags of [[], ['--preserve-symlinks-main']]) {
+            const status = spawnSync(process.execPath, [...flags, script, 'status', '--run-dir', f.runDir], {encoding: 'utf8', cwd: tmpdir()});
+            assert.equal(status.status, 0, status.stdout + status.stderr);
+            assert.equal(JSON.parse(status.stdout).runId, f.api.readRun(f.runDir).init.runId);
+            const invalid = spawnSync(process.execPath, [...flags, script], {encoding: 'utf8', cwd: tmpdir()});
+            assert.equal(invalid.status, 1);
+            assert.match(invalid.stderr, /Usage:/);
+        }
+    });
+
     it('HARNESS_ONLY accepts one complete native-record path through the real gate', async (t) => {
         const f = await fixture(t);
         const planner = f.api.nextJob(f.runDir);

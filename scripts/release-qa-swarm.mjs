@@ -3,7 +3,7 @@
 import {createHash, randomUUID} from 'node:crypto';
 import {existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync, unlinkSync} from 'node:fs';
 import {dirname, join, resolve} from 'node:path';
-import {fileURLToPath, pathToFileURL} from 'node:url';
+import {fileURLToPath} from 'node:url';
 import {validateBundle} from './release-qa-swarm-gate.mjs';
 
 const SOURCE = fileURLToPath(import.meta.url);
@@ -102,9 +102,11 @@ export function initRun({runDir, requestPath, orchestratorId, orchestratorRunId,
         if (!Number.isFinite(value) || value < (key === 'retries' ? 0 : Number.EPSILON)) fail(`Invalid limit: ${key}`);
         if (['maxScenarios', 'maxWorkers', 'retries', 'maxTokens'].includes(key) && !Number.isInteger(value)) fail(`${key} must be an integer`);
     }
-    if (limits.maxReviewMinutes >= limits.maxMinutes) fail('Total budget must leave time before review');
     const mode = request.mode ?? 'plan-and-execute';
     if (!['plan-only', 'plan-and-execute', 'execute-plan', 'audit-existing'].includes(mode)) fail('Unsupported mode');
+    if (mode !== 'plan-only' && limits.maxMinutes <= limits.maxSetupMinutes + limits.maxScenarioMinutes * limits.maxScenarios + limits.maxReviewMinutes) {
+        fail('Total budget must leave time for planning after reserving setup, execution, and review');
+    }
     if (mode === 'execute-plan' && !request.frozenPlan) fail('execute-plan requires frozenPlan inputs for the planner to verify without regeneration');
     if (mode === 'audit-existing') fileRef(nonempty(request.sourceArtifactBundle, 'audit-existing sourceArtifactBundle'));
     const capabilities = JSON.parse(readFileSync(capabilitiesPath, 'utf8'));
@@ -228,16 +230,23 @@ export function nextJob(runDir) {
         }
         const role = ROLES[run.jobs.length];
         const {limits} = run.init.request;
-        const remaining = limits.maxMinutes * 60 - (Date.now() - Date.parse(run.init.startedAt)) / 1000;
-        const usable = remaining - (role === 'reviewer' ? 0 : limits.maxReviewMinutes * 60);
-        if (usable <= 0) return {status: 'BUDGET_EXHAUSTED', qualification: 'INSUFFICIENT_EVIDENCE', reason: 'Stop dispatching; preserve results and report unexecuted work'};
+        const now = Date.now();
+        const remaining = limits.maxMinutes * 60 - (now - Date.parse(run.init.startedAt)) / 1000;
+        const executionReserve = limits.maxScenarioMinutes * (role === 'planner' ? limits.maxScenarios : plan.scenarios.length) * 60;
+        const reserved = run.init.request.mode === 'plan-only' || role === 'reviewer' ? 0
+            : limits.maxReviewMinutes * 60 + (role === 'planner' ? limits.maxSetupMinutes * 60 + executionReserve
+                : role === 'environment' ? executionReserve : 0);
+        const usable = remaining - reserved;
+        if (usable < 1) return {status: 'BUDGET_EXHAUSTED', qualification: 'INSUFFICIENT_EVIDENCE', reason: 'Remaining budget cannot fit this phase and the reserved downstream phases; preserve results and report unexecuted work'};
         const roleCap = role === 'environment' ? limits.maxSetupMinutes * 60 : role === 'reviewer' ? limits.maxReviewMinutes * 60 : role === 'executor' ? limits.maxScenarioMinutes * 60 * plan.scenarios.length : usable;
+        const timeoutSeconds = Math.floor(Math.min(usable, roleCap));
+        if (timeoutSeconds < 1) return {status: 'BUDGET_EXHAUSTED', qualification: 'INSUFFICIENT_EVIDENCE', reason: 'The configured phase budget is less than one second; preserve results and report unexecuted work'};
         const jobId = `${run.init.runId}-${role}`;
         const prerequisites = run.jobs.map((job) => ({jobId: job.jobId, role: job.role, agentId: job.completion.agentId, runId: job.completion.runId, artifacts: job.completion.artifacts}));
         const input = {
             schemaVersion: 1, runId: run.init.runId, jobId, role, executorKey: role === 'executor' ? 'executor' : null,
-            issuedAt: new Date().toISOString(), deadlineAt: new Date(Date.now() + Math.min(usable, roleCap) * 1000).toISOString(),
-            request: run.init.request, prerequisites, limits: {...limits, timeoutSeconds: Math.max(1, Math.floor(Math.min(usable, roleCap))), effectiveMaxConcurrency: 1},
+            issuedAt: new Date(now).toISOString(), deadlineAt: new Date(now + timeoutSeconds * 1000).toISOString(),
+            request: run.init.request, prerequisites, limits: {...limits, timeoutSeconds, effectiveMaxConcurrency: 1},
             sourceArtifactBundleRef: run.init.sourceArtifactBundleRef,
             runtime: {controllerRef: run.init.controllerRef, gateRef: run.init.gateRef, schemaRef: run.init.schemaRef},
             requiredOutputKeys: OUTPUTS[role], reviewerContractSha256: run.init.contracts.reviewer.sha256,
@@ -317,7 +326,13 @@ function cli(argv) {
     return {runId: run.init.runId, assignments: assignments(run), jobs: run.jobs.map(({role, jobId, promptSha256, receipts, completion}) => ({role, jobId, promptSha256, agentId: receipts.at(-1)?.agentId, status: completion?.status ?? (receipts.length ? 'running' : 'issued')})), provenance: PROVENANCE};
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+function isCliEntry() {
+    if (!process.argv[1]) return false;
+    try { return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); }
+    catch { return false; } // Imports may run under a host with a non-file argv[1].
+}
+
+if (isCliEntry()) {
     try { process.stdout.write(json(cli(process.argv.slice(2)))); }
     catch (error) { process.stderr.write(`${error.message}\n`); process.exitCode = 1; }
 }
