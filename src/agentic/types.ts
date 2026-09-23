@@ -35,8 +35,8 @@ export interface PlaywrightRunResult {
 export interface AgenticConfig {
     /** Max fix attempts before giving up (default: 3) */
     maxAttempts: number;
-    /** Playwright project to use (default: 'chrome') */
-    project: string;
+    /** Optional Playwright project; omission uses the projects in the test configuration. */
+    project?: string;
     /** Base URL for Playwright (e.g. http://localhost:8065) */
     baseUrl?: string;
     /** Timeout per test run in ms (default: 120000) */

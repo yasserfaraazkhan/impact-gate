@@ -112,6 +112,7 @@ const FLAGS: Record<string, FlagDef> = {
     '--tests-root':                    {key: 'testsRoot', type: 'string'},
     '--framework':                     {key: 'framework', type: 'string', transform: (v) => v as FrameworkType},
     '--scenarios':                     {key: 'generateScenarios', type: 'string'},
+    '--scenarios-output':              {key: 'scenariosOutput', type: 'string'},
     '--pipeline-output':               {key: 'pipelineOutput', type: 'string'},
     '--pipeline-base-url':             {key: 'pipelineBaseUrl', type: 'string'},
     '--pipeline-project':              {key: 'pipelineProject', type: 'string'},

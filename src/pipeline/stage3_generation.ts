@@ -138,6 +138,13 @@ export async function runGenerationStage(
             continue;
         }
         const original = existsSync(specPath) ? readFileSync(specPath) : undefined;
+        if (mode === 'create_spec' && original !== undefined) {
+            const verificationError = `Existing spec preserved: ${specPath}. Choose a new spec path and integrate generated tests after review.`;
+            generated.push({flowId: decision.flowId, specPath, mode, written: false, hallucinationWarnings: [], verified: false, verificationError});
+            warnings.push(verificationError);
+            skipped.push(`${decision.flowId}: destination already exists`);
+            continue;
+        }
 
         // Load existing spec content for add_scenarios mode
         let existingSpecContent: string | undefined;
@@ -170,7 +177,7 @@ export async function runGenerationStage(
                 systemPrompt: 'Return only TypeScript code. No explanations or markdown fences.',
             });
 
-            const parsed = parseGenerationResponse(response.text, specPath, mode, decision.flowId);
+            const parsed = parseGenerationResponse(response.text, specPath, mode, decision.flowId, config.profile);
             if (!parsed) {
                 warnings.push(`Generation agent returned invalid code for flow ${decision.flowId}`);
                 skipped.push(`${decision.flowId}: invalid code returned`);
@@ -237,7 +244,7 @@ export async function runGenerationStage(
                 }
 
                 generatedCode = Buffer.from(finalCode);
-                writeFileSync(specPath, generatedCode);
+                writeFileSync(specPath, generatedCode, {flag: mode === 'create_spec' ? 'wx' : 'w'});
                 written = true;
             }
 

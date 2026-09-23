@@ -137,15 +137,14 @@ Ordinary `plan --no-ai` writes these artifacts under `<testsRoot>/.e2e-ai-agents
     <li>power deeper exploratory or crew workflows</li>
   </ul>
   <p class="docs-panel__copy">
-    The generation path uses local API-surface grounding, prompt sanitization,
-    hallucination detection, quarantine into <code>generated-needs-review/</code>,
-    compile checks, and smoke-run verification.
+    The generation path uses local API context, prompt constraints,
+    quarantine, and explicit verification results. The current acceptance
+    path requires direct local-source mutation evidence; browser application
+    targets remain unverified. See the <a href="../../guides/ai-guardrails/">verification limits</a>.
   </p>
 </div>
 
 AI enters after the deterministic evidence is already established.
-
-The AI layer is used to:
 
 See [AI Guardrails](../../guides/ai-guardrails/) for the full safety model.
 

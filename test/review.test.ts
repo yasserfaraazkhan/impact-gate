@@ -7,6 +7,7 @@ import {execFileSync, spawnSync, spawn} from 'node:child_process';
 import {formatReviewJSON, formatReviewMarkdown} from '../dist/engine/review_formatter.js';
 import {resolveDefaults, detectTestsRoot} from '../dist/cli/defaults.js';
 import {findRelevantTests} from '../dist/engine/behavior_analyzer.js';
+import {buildScenariosFromReview} from '../dist/cli/commands/review.js';
 
 const cli = resolve('dist/cli.js');
 function fixture(t: any) {
@@ -31,6 +32,100 @@ function fixture(t: any) {
     const run = (...args: string[]) => spawnSync(process.execPath, [cli, 'review', '--path', repo, '--since', base, '--tests-root', join(inventory, 'e2e-tests/playwright'), '--json', ...args], {cwd: root, encoding: 'utf8', env: {PATH: process.env.PATH}, timeout: 30000});
     return {root, repo, put, git, base, inventory, run};
 }
+
+it('exports a deterministic editable scenario plan without credentials or changing the repository', (t) => {
+    const f = fixture(t);
+    const output = join(f.root, 'scenarios.json');
+    const manifestDir = join(f.inventory, 'e2e-tests/playwright/.e2e-ai-agents');
+    mkdirSync(manifestDir, {recursive: true});
+    writeFileSync(join(manifestDir, 'route-families.json'), JSON.stringify({families: [{
+        id: 'widget', routes: ['/widget'], webappPaths: ['src/widget.ts'],
+        specDirs: [], userFlows: ['Click the widget'], priority: 'P1',
+    }]}));
+    const before = f.git('status', '--porcelain');
+    const result = f.run('--scenarios-output', output);
+    assert.equal(result.status, 0, result.stderr);
+    const report = JSON.parse(result.stdout);
+    const scenarios = JSON.parse(readFileSync(output, 'utf8'));
+    assert.ok(scenarios.length > 0);
+    assert.deepEqual(scenarios, buildScenariosFromReview(report));
+    for (const scenario of scenarios) {
+        assert.ok(scenario.id && scenario.name && scenario.routeFamily);
+        assert.ok(scenario.scenarios.every((value: unknown) => typeof value === 'string' && value.length > 0));
+        assert.ok(['P0', 'P1', 'P2'].includes(scenario.priority));
+    }
+    assert.equal(f.git('status', '--porcelain'), before);
+    const original = readFileSync(output, 'utf8');
+    assert.equal(f.run('--scenarios-output', output).status, 0);
+    assert.equal(readFileSync(output, 'utf8'), original);
+    assert.equal(existsSync(join(f.inventory, 'e2e-tests/playwright/.e2e-ai-agents/review-generate-summary.json')), false);
+});
+
+it('exports empty plans explicitly and does not overwrite a plan after an invalid ref', (t) => {
+    const f = fixture(t);
+    const output = join(f.root, 'scenarios.json');
+    assert.equal(f.run('--since', 'HEAD', '--scenarios-output', output).status, 0);
+    assert.deepEqual(JSON.parse(readFileSync(output, 'utf8')), []);
+    writeFileSync(output, 'preserve existing plan');
+    const result = f.run('--since', 'nonexistent-ref', '--scenarios-output', output);
+    assert.notEqual(result.status, 0);
+    assert.equal(typeof JSON.parse(result.stdout).error, 'string');
+    assert.equal(readFileSync(output, 'utf8'), 'preserve existing plan');
+});
+
+it('retains unmatched core recommendations and excludes already-associated recommendations', () => {
+    const report: any = {impactedFlows: [], recommendations: [
+        {scenario: 'Reject an expired invitation', dimension: 'core-flow', priority: 'P0', rationale: 'Expiry logic changed'},
+        {scenario: 'Open an invitation', dimension: 'core-flow', priority: 'P1', alreadyCoveredBy: 'invitation.spec.ts'},
+    ]};
+    const scenarios = buildScenariosFromReview(report);
+    assert.deepEqual(scenarios.flatMap((scenario) => scenario.scenarios), ['Reject an expired invitation']);
+    assert.equal(scenarios[0].priority, 'P0');
+});
+
+it('exports uncovered manifest flows even when behavior heuristics find no specific recommendations', () => {
+    const report: any = {impactedFlows: [{id: 'checkout', name: 'Checkout', priority: 'P0', status: 'uncovered',
+        gaps: ['No E2E test coverage for this flow'], changedFiles: ['src/checkout.ts'], userFlows: ['Submit an order']}], recommendations: []};
+    const [scenario] = buildScenariosFromReview(report);
+    assert.deepEqual(scenario.scenarios, ['Verify Submit an order']);
+    assert.deepEqual(scenario.changedFiles, ['src/checkout.ts']);
+});
+
+it('generation rejects malformed scenario plans before accessing a provider', (t) => {
+    const f = fixture(t);
+    for (const input of [null, {}, [null], [{id: 'flow', name: 'Flow', routeFamily: 'flow', priority: 'P1', scenarios: [null]}]]) {
+        const result = spawnSync(process.execPath, [cli, 'generate', '--path', f.repo, '--since', f.base, '--scenarios', JSON.stringify(input), '--json'], {cwd: f.root, encoding: 'utf8', env: {PATH: process.env.PATH}, timeout: 30000});
+        assert.notEqual(result.status, 0);
+        assert.match(JSON.parse(result.stdout).error, /Invalid scenario|JSON array/);
+        assert.doesNotMatch(result.stderr, /TypeError|API key/);
+    }
+});
+
+it('CLI auto-detection preserves configured repository, test root and base ref while flags override them', (t) => {
+    const f = fixture(t);
+    const testsRoot = join(f.inventory, 'e2e-tests/playwright');
+    const manifestDir = join(testsRoot, '.e2e-ai-agents');
+    mkdirSync(manifestDir, {recursive: true});
+    writeFileSync(join(manifestDir, 'route-families.json'), JSON.stringify({families: [{
+        id: 'configured-widget', routes: ['/widget'], webappPaths: ['src/widget.ts'],
+        specDirs: [], userFlows: ['Click the widget'], priority: 'P1',
+    }]}));
+    const config = join(f.root, 'impact-gate.config.json');
+    writeFileSync(config, JSON.stringify({path: f.repo, testsRoot, git: {since: f.base, includeUncommitted: false}}));
+    const run = (...args: string[]) => {
+        const result = spawnSync(process.execPath, [cli, 'review', '--config', config, '--json', ...args], {
+            cwd: f.root, encoding: 'utf8', env: {PATH: process.env.PATH}, timeout: 30000,
+        });
+        assert.equal(result.status, 0, result.stderr);
+        return JSON.parse(result.stdout);
+    };
+    const configured = run();
+    assert.ok(configured.metrics.changedFiles > 0);
+    assert.ok(configured.impactedFlows.some((flow: {id: string}) => flow.id === 'configured-widget'));
+    assert.equal(run('--since', 'HEAD').metrics.changedFiles, 0);
+    const overridden = run('--tests-root', join(f.repo, 'e2e-tests/playwright'));
+    assert.ok(!overridden.impactedFlows.some((flow: {id: string}) => flow.id === 'configured-widget'));
+});
 
 for (const mode of ['success', 'empty', 'invalid', 'threshold', 'comment-error']) {
     it(`built review emits exactly one JSON object: ${mode}`, (t) => {

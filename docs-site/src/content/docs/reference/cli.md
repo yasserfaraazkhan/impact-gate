@@ -6,21 +6,21 @@ description: "Complete reference for all impact-gate CLI commands"
 <div class="doc-intro">
   <div class="doc-chip">Command reference</div>
   <p class="doc-lead">
-    The recommended entry point is <code>review</code>, which combines impact
-    analysis, behavior analysis, coverage planning, and defect prediction. Add
-    <code>--generate</code> to produce ready-to-run test files for uncovered flows.
+    The supported entry points are <code>review</code> for a diff report and
+    <code>gate</code> for a spec-mapping threshold. Generation, semantic
+    prediction, and the remaining commands are experimental.
   </p>
 </div>
 
 <div class="docs-grid docs-grid--two">
   <div class="docs-panel">
     <span class="docs-panel__eyebrow">Core mental model</span>
-    <h2 class="docs-panel__title">Review first, generate second</h2>
+    <h2 class="docs-panel__title">Review candidates and their provenance</h2>
     <p class="docs-panel__copy">
       Start with <code>review</code> to understand what changed and what's
-      missing. Add <code>--generate</code> when you want test code. The lower-level
-      <code>impact</code>, <code>plan</code>, and <code>gate</code> commands
-      are still available for granular CI pipelines.
+      missing. Export scenarios to inspect the proposed work before calling a
+      provider. Associated specs are candidates; measured source coverage and
+      release safety remain unavailable.
     </p>
   </div>
   <div class="docs-panel docs-panel--terminal">
@@ -28,8 +28,8 @@ description: "Complete reference for all impact-gate CLI commands"
     <h2 class="docs-panel__title">The commands most teams learn first</h2>
     <div class="docs-terminal">
       <code>npx impact-gate review --path . --since origin/main</code>
-      <code>npx impact-gate review --path . --since origin/main --generate</code>
-      <code>npx impact-gate gate --threshold 80 --path .</code>
+      <code>npx impact-gate review --path . --since origin/main --scenarios-output scenarios.json</code>
+      <code>npx impact-gate gate --threshold 80 --path . --since origin/main</code>
     </div>
   </div>
 </div>
@@ -45,13 +45,13 @@ description: "Complete reference for all impact-gate CLI commands"
   <a href="#global-flags">Global Flags</a>
 </div>
 
-All commands are invoked via `npx impact-gate <command>`. The `review` command is the recommended starting point. It combines all analysis into one report and optionally generates test code. Lower-level commands (`impact`, `plan`, `gate`) are available for granular CI pipelines.
+Examples use the installed binary, `npx impact-gate <command>`. These docs describe the current source; new recovery and launch options are not yet published. To use this checkout, [build it](../../getting-started/installation/) and replace `npx impact-gate` with `node /absolute/path/to/impact-gate/dist/cli.js`. Only static `review` and the ordinary `gate` are the supported product workflow. Other commands, `--generate`, and `--deep` remain experimental.
 
 ## Review
 
 ### `review`
 
-Unified PR review: behavior analysis, coverage gaps, defect risk, and test recommendations. Free tier (no LLM required).
+Unified PR review: behavior signals, spec-mapping gaps, heuristic defect risk, and test recommendations. Static review requires no provider.
 
 ```bash
 # Full review report
@@ -71,18 +71,24 @@ npx impact-gate review --path . --since origin/main --ci-comment-path comment.md
 
 # JSON output
 npx impact-gate review --path . --since origin/main --json
+
+# Export a scenario plan without invoking a provider
+npx impact-gate review --path . --since origin/main --scenarios-output scenarios.json
 ```
 
 | Flag | Description |
 |------|-------------|
 | `--generate` | Feed uncovered recommendations into agentic test generation (requires LLM) |
+| `--scenarios-output <path>` | Export review recommendations as JSON accepted by `generate --scenarios`; no provider required |
 | `--generate-output <dir>` | Custom output directory for generated test files |
 | `--deep` | Enable LLM-powered semantic risk analysis |
 | `--ci-comment-path <path>` | Write markdown report for PR comments |
 | `--predict-threshold <0-1>` | Exit 1 if defect risk exceeds threshold |
-| `--dry-run` | Generate test files without executing them |
+| `--dry-run` | Generate quarantined proposals without executing tests; provider calls still occur |
 | `--max-attempts <n>` | Max fix attempts per scenario (default: 3) |
 | `--json` | Output structured JSON |
+
+Generation results can be `passed`, `failed`, `skipped`, or `unverified`. The current verifier accepts only specs that directly import changed local source and pass clean/mutated/restored checks. Browser-served, remote, prebuilt targets and additions to existing specs remain unverified. Unaccepted proposals are quarantined as `.e2e-ai-agents/unverified/*.ts.unverified`; compilation or a smoke pass alone does not establish acceptance. See [AI guardrails](../../guides/ai-guardrails/).
 
 ## Core CI Workflow
 
@@ -140,7 +146,7 @@ npx impact-gate gate --threshold 80 --path .
 
 ### `predict`
 
-Research-backed defect risk scoring from a git diff. Works on any repo with zero config and no LLM cost.
+Experimental heuristic risk scoring from a Git diff. Metric selection draws on defect-prediction research; the score is not a validated probability that a particular PR introduces a defect. The default path needs no provider.
 
 ```bash
 npx impact-gate predict --path . --since origin/main
@@ -152,7 +158,7 @@ npx impact-gate predict --path . --since origin/main --json
 | Flag | Description |
 |------|-------------|
 | `--since <ref>` | Base git ref for the diff (default: `origin/main`) |
-| `--deep` | Enable LLM semantic analysis (~$0.02/PR) |
+| `--deep` | Enable LLM semantic analysis; cost depends on provider and input |
 | `--predict-threshold <0-1>` | Exit 1 if defect risk exceeds threshold |
 | `--train` | Retrain weights from labeled feedback data |
 | `--calibration-status` | Show calibration state and exit |
@@ -180,7 +186,7 @@ After 50+ labeled samples, run `impact-gate predict --train` to retrain weights 
 
 ## AI Test Generation
 
-The recommended way to generate tests is `review --generate` (see above). These standalone commands are available for advanced pipelines:
+All generation and maintenance commands are experimental. Use `review --scenarios-output` to inspect the authoring plan first, then pass it to `generate --scenarios`, or use `review --generate` for the integrated path. The local-source verification limitations above apply.
 
 ### `analyze`
 

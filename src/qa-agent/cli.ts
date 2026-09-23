@@ -22,14 +22,14 @@ Modes:
   pr        Test changed features from a PR
   hunt      Deep-dive into a specific area
   fix       Verify healed tests and side effects
-  release   Full regression + release readiness verdict
+  release   Broader browser exploration with a provisional QA verdict
 
 Options:
   --base-url <url>      Application URL (required)
   --since <ref>         Git ref for diff (default: origin/main)
   --phase <1|2|3>       Run only up to this phase
-  --time <minutes>      Time limit (default: 15)
-  --budget <usd>        LLM budget in USD (default: 2.00)
+  --time <minutes>      Exploration time limit (default: 15; release: 30)
+  --budget <usd>        Exploration LLM budget in USD (default: 2.00)
   --headed              Run browser in headed mode
   --tests-root <path>   Path to tests directory
   --project <name>      Playwright project name
@@ -38,6 +38,11 @@ Options:
   --no-fix              Skip the fix loop (Phase 2.5)
   --regression          Compare against previous baseline
   --help                Show this help
+
+Time and budget limits apply to exploration. Later fixes and test generation
+use separate bounded attempts. A QA verdict does not replace release criteria.
+Automatic test generation covers at most five findings, highest severity first.
+All scenarios are saved for manual retry; deferred IDs appear in the generation report.
 
 Examples:
   impact-gate-qa pr --since origin/main --base-url http://localhost:3000

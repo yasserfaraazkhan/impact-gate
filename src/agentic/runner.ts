@@ -12,6 +12,7 @@ import {parseGenerationResponse} from '../prompts/generation.js';
 import {formatApiSurfaceForPrompt} from '../knowledge/api_surface.js';
 import type {ApiSurfaceCatalog} from '../knowledge/api_surface.js';
 import type {GenerationProfile} from '../prompts/generation_profile.js';
+import {isMattermostProfile, resolveGenerationProfile} from '../prompts/generation_profile.js';
 import {sanitizeForPrompt} from '../crew/sanitize.js';
 
 export interface ScenarioInput {
@@ -20,7 +21,7 @@ export interface ScenarioInput {
     scenarios: string[];
     routeFamily: string;
     priority: string;
-    /** Existing spec to add scenarios to */
+    /** Requested output path; existing specs are preserved and require manual integration. */
     targetSpec?: string;
     /** Changed files for context */
     changedFiles?: string[];
@@ -37,15 +38,15 @@ export interface AgenticRunOptions {
     generationProfile?: GenerationProfile;
 }
 
-function buildGeneratePrompt(scenario: ScenarioInput, apiSurfaceHint: string, profile?: GenerationProfile): string {
-    const projectName = profile?.projectName || 'Mattermost';
-    const importSource = profile?.importStatement || '@mattermost/playwright-lib';
+function buildGeneratePrompt(scenario: ScenarioInput, apiSurfaceHint: string, profile: GenerationProfile): string {
+    const importSource = profile.importStatement;
+    const mattermost = isMattermostProfile(profile);
     const scenariosBlock = scenario.scenarios
         .map((s, i) => `  ${i + 1}. ${sanitizeForPrompt(s)}`)
         .join('\n');
 
     return [
-        `Generate a ${projectName} Playwright E2E test file.`,
+        `Generate a ${profile.projectName} Playwright E2E test file.`,
         '',
         `FLOW: ${sanitizeForPrompt(scenario.name)}`,
         `Route Family: ${scenario.routeFamily}`,
@@ -59,32 +60,29 @@ function buildGeneratePrompt(scenario: ScenarioInput, apiSurfaceHint: string, pr
         apiSurfaceHint || 'Use page.getByRole() or page.getByTestId() for selectors.',
         '',
         'MANDATORY RULES:',
-        `1. Import ONLY from "${importSource}" — no other test framework imports.`,
-        '2. Every test must call `await pw.initSetup()` first.',
-        '3. Use `await pw.testBrowser.login(user)` to log in — never hardcode credentials.',
-        '4. Use ONLY page object methods listed above. Do NOT invent methods.',
-        '5. If a method is not available, use `page.getByRole()` or `page.getByTestId()`.',
-        `6. Tag every test: {tag: '@${scenario.routeFamily}'}`,
-        '7. Write one test per scenario with a descriptive name.',
-        `8. Use \`expect\` from "${importSource}".`,
-        '9. Include the copyright header.',
-        '10. NEVER fabricate test IDs (MM-TXXXX). Use descriptive names only.',
+        ...profile.conventions,
+        `Import test and expect from "${importSource}".`,
+        'Use ONLY page object methods listed above. Do NOT invent methods.',
+        'If a method is not available, use `page.getByRole()` or `page.getByTestId()`.',
+        `Tag every test: {tag: '@${scenario.routeFamily}'}`,
+        'Write one test per scenario with a descriptive name and assertions for its expected outcome.',
+        'NEVER fabricate test IDs. Use descriptive names only.',
         '',
         'EXAMPLE STRUCTURE:',
         '```typescript',
-        '// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.',
-        '// See LICENSE.txt for license information.',
-        '',
+        ...(profile.copyrightHeader ? [profile.copyrightHeader, ''] : []),
         `import {expect, test} from '${importSource}';`,
         '',
         'test(',
-        "    'user can post a message in channel',",
+        "    'descriptive name of what the user does and what is verified',",
         `    {tag: '@${scenario.routeFamily}'},`,
-        '    async ({pw}) => {',
-        '        const {user} = await pw.initSetup();',
-        '        const {channelsPage} = await pw.testBrowser.login(user);',
-        '        await channelsPage.goto();',
-        '        await channelsPage.toBeVisible();',
+        ...(mattermost ? [
+            '    async ({pw}) => {',
+            '        const {user} = await pw.initSetup();',
+            '        const {channelsPage} = await pw.testBrowser.login(user);',
+            '        await channelsPage.goto();',
+            '        await channelsPage.toBeVisible();',
+        ] : ['    async ({page}) => {']),
         '        // test steps...',
         '    },',
         ');',
@@ -120,18 +118,18 @@ async function generateInitialSpec(
     scenario: ScenarioInput,
     specPath: string,
     apiSurfaceHint: string,
-    profile?: GenerationProfile,
+    profile: GenerationProfile,
 ): Promise<string | null> {
     const prompt = buildGeneratePrompt(scenario, apiSurfaceHint, profile);
     const response = await provider.generateText(prompt, {
         maxTokens: 8000,
         temperature: 0.1,
         timeout: 60000,
-        systemPrompt: `You are an expert Playwright test writer for ${profile?.projectName || 'Mattermost'}. Return only TypeScript code.`,
+        systemPrompt: `You are an expert Playwright test writer for ${profile.projectName}. Return only TypeScript code.`,
     });
 
     // Reuse existing parsing logic from prompts/generation.ts
-    const parsed = parseGenerationResponse(response.text, specPath, 'create_spec', scenario.id);
+    const parsed = parseGenerationResponse(response.text, specPath, 'create_spec', scenario.id, profile);
     return parsed?.code ?? null;
 }
 
@@ -142,7 +140,17 @@ async function runSingleScenario(
     const {config, provider} = options;
     const warnings: string[] = [];
     const specPath = safeArtifactPath(resolveSpecPath(scenario, config.testsRoot), config.testsRoot);
-    const original = existsSync(specPath) ? readFileSync(specPath) : undefined;
+    // Mutation verification proves the new artifact detects a change, not that it
+    // preserves every test in an existing file. Never replace existing coverage.
+    if (existsSync(specPath)) {
+        return {specPath, scenarioSource: scenario.id, status: 'unverified', attempts: 0,
+            warnings: [`Existing spec preserved: ${specPath}. Choose a new targetSpec or scenario id and integrate the generated tests after review.`]};
+    }
+    const profile = options.generationProfile || resolveGenerationProfile();
+    if (!profile.testFramework.toLowerCase().includes('playwright')) {
+        return {specPath, scenarioSource: scenario.id, status: 'failed', attempts: 0,
+            warnings: [`Agentic generation supports Playwright profiles only; received ${profile.testFramework}. No test was generated.`]};
+    }
 
     // Build API surface hint
     let apiHint = options.apiSurfaceHint || '';
@@ -154,7 +162,7 @@ async function runSingleScenario(
     // Step 1: Generate initial spec
     let specCode: string | null;
     try {
-        specCode = await generateInitialSpec(provider, scenario, specPath, apiHint, options.generationProfile);
+        specCode = await generateInitialSpec(provider, scenario, specPath, apiHint, profile);
     } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
         warnings.push(`Generation failed for ${scenario.id}: ${msg}`);
@@ -167,7 +175,7 @@ async function runSingleScenario(
     }
 
     safeArtifactPath(specPath, config.testsRoot);
-    if (original ? !existsSync(specPath) || !readFileSync(specPath).equals(original) : existsSync(specPath)) {
+    if (existsSync(specPath)) {
         return {specPath, scenarioSource: scenario.id, status: 'unverified', attempts: 0, warnings: ['Concurrent spec change; generated code was not written']};
     }
     let quarantinePath: string;
@@ -175,9 +183,14 @@ async function runSingleScenario(
         return {specPath, scenarioSource: scenario.id, status: 'unverified', attempts: 0,
             warnings: [`Quarantine unavailable; destination was not changed: ${String(error)}`]};
     }
-    mkdirSync(dirname(specPath), {recursive: true});
     let generated = Buffer.from(specCode);
-    writeFileSync(specPath, generated);
+    try {
+        mkdirSync(dirname(specPath), {recursive: true});
+        writeFileSync(specPath, generated, {flag: 'wx'});
+    } catch (error) {
+        return {specPath, scenarioSource: scenario.id, status: 'unverified', attempts: 0,
+            warnings: [`Could not create generated spec; existing bytes were not replaced: ${String(error)}`]};
+    }
     let lastRun: PlaywrightRunResult | undefined;
     let verification;
     let attempts = 0;
@@ -192,7 +205,7 @@ async function runSingleScenario(
                 }
                 // A clean but insensitive test is unverified; fixing it must not reuse old evidence.
                 if (!lastRun || isCleanRun(lastRun) || attempt === config.maxAttempts) break;
-                const fix = await generateFix(provider, {specCode: generated.toString('utf8'), failures: lastRun.failures, attempt, maxAttempts: config.maxAttempts, apiSurfaceHint: apiHint});
+                const fix = await generateFix(provider, {specCode: generated.toString('utf8'), failures: lastRun.failures, attempt, maxAttempts: config.maxAttempts, apiSurfaceHint: apiHint, profile});
                 safeArtifactPath(specPath, config.testsRoot);
                 if (!readFileSync(specPath).equals(generated)) throw new Error('Concurrent spec edit; fix was not written');
                 if (!fix.code) break;
@@ -205,7 +218,7 @@ async function runSingleScenario(
     }
     if (verification) warnings.push(verification.reason);
     let reviewPath = specPath;
-    try {reviewPath = quarantineSpec(specPath, config.testsRoot, original, generated, quarantinePath);} catch (error) {
+    try {reviewPath = quarantineSpec(specPath, config.testsRoot, undefined, generated, quarantinePath);} catch (error) {
         warnings.push(`Quarantine unavailable after rejected-spec cleanup: ${String(error)}`);
     }
     return {specPath: reviewPath, scenarioSource: scenario.id, status: config.dryRun ? 'skipped' : 'unverified', attempts, finalRun: lastRun, verification, warnings};

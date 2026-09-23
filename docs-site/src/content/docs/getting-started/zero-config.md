@@ -7,7 +7,7 @@ description: "How auto-detection works and when you need a config file"
   <div class="doc-chip">Auto-detection</div>
   <p class="doc-lead">
     The CLI can infer most of what it needs so you can start with the
-    deterministic <code>impact → plan --no-ai → gate</code> loop before writing a
+    deterministic <code>review → gate</code> loop before writing a
     config file.
   </p>
 </div>
@@ -17,7 +17,7 @@ description: "How auto-detection works and when you need a config file"
     <span class="docs-panel__eyebrow">Best fit</span>
     <h2 class="docs-panel__title">Zero-config shines in established test repos</h2>
     <p class="docs-panel__copy">
-      The most battle-tested path is still a Playwright or Cypress repo with a
+      The supported review workflow is intended for a Playwright or Cypress repo with a
       recognizable tests root and a normal git remote.
     </p>
   </div>
@@ -25,15 +25,15 @@ description: "How auto-detection works and when you need a config file"
     <span class="docs-panel__eyebrow">Typical first run</span>
     <h2 class="docs-panel__title">Let the CLI discover the shape of the repo</h2>
     <div class="docs-terminal">
-      <code>npx impact-gate impact --path . --since origin/main</code>
-      <code>npx impact-gate plan --no-ai --path . --since origin/main</code>
+      <code>npx impact-gate review --path . --since origin/main</code>
+      <code>npx impact-gate gate --path . --since origin/main --threshold 80</code>
     </div>
   </div>
 </div>
 
 <div class="docs-panel docs-panel--compact">
   <span class="docs-panel__eyebrow">Reality check</span>
-  <h3 class="docs-panel__title">Zero-config is great for first-pass orientation. The highest-confidence release decisions still come from a maintained route-families manifest in an app-shaped Playwright or Cypress repo.</h3>
+  <h3 class="docs-panel__title">Zero-config provides candidate advice. A maintained manifest can improve the associations, but neither establishes measured coverage or release safety. Keep the required regression suite.</h3>
 </div>
 
 ## What Gets Auto-Detected

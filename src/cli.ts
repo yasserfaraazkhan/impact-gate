@@ -44,7 +44,7 @@ async function main(): Promise<void> {
     if (args.advisory && !['plan', 'suggest', 'gate'].includes(args.command || '')) throw new Error('--advisory is supported only for plan, suggest and gate.');
 
     // Auto-detect defaults for commands that need them (when no config file found)
-    if (args.command && NEEDS_DEFAULTS_COMMANDS.has(args.command) && !SKIP_DEFAULTS_COMMANDS.has(args.command) && !args.advisory) {
+    if (!autoConfig && args.command && NEEDS_DEFAULTS_COMMANDS.has(args.command) && !SKIP_DEFAULTS_COMMANDS.has(args.command) && !args.advisory) {
         const defaults = resolveDefaults({
             path: args.path,
             testsRoot: args.testsRoot,

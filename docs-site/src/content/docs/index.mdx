@@ -1,9 +1,9 @@
 ---
 title: Documentation
 template: splash
-description: Shift QA left. Analyze your PR diff, identify affected user flows, and generate the exact E2E tests you need. One command takes you from git diff to a ready-to-run test file.
+description: Review Git diffs, inspect existing E2E test candidates, and prepare focused test scenarios.
 hero:
-  tagline: From git diff to ready-to-run E2E tests in one command.
+  tagline: Understand the diff. Inspect the test candidates. Write the checks that matter.
   actions:
     - text: Quick Start
       link: ./getting-started/quick-start/
@@ -23,23 +23,24 @@ hero:
       <span class="portal-card__eyebrow">Documentation Portal</span>
       <h2>Impact Gate starts with deterministic diff analysis.</h2>
       <div class="portal-copy">
-        Then turns that evidence into a release-ready E2E plan for pull
-        requests, release branches, hotfixes, and shipped tags before you layer
-        in optional AI generation or healing.
+        Review pull requests, release branches, hotfixes, and shipped tags.
+        Inspect existing spec associations and their provenance before choosing
+        which scenarios to author or run first.
       </div>
     </div>
 
     <a class="portal-card portal-card--workflow" href="./getting-started/quick-start/">
       <span class="portal-card__eyebrow">Primary workflow</span>
-      <h2>Review → Generate → Gate</h2>
+      <h2>Review → Inspect → Test</h2>
       <div class="workflow-terminal">
-        <span>npx impact-gate review --since origin/main</span>
-        <span>npx impact-gate review --since origin/main --generate</span>
-        <span>npx impact-gate gate --threshold 80</span>
+        <span>node dist/cli.js review --since origin/main</span>
+        <span>node dist/cli.js review --since origin/main --scenarios-output scenarios.json</span>
+        <span>node dist/cli.js gate --since origin/main --threshold 80</span>
       </div>
       <div class="portal-copy">
-        Review your PR, generate tests for uncovered flows, and gate
-        merges on coverage. One command from diff to test file.
+        Build the current source, export a reviewable scenario plan, and check
+        spec-mapping policy. A passing gate does not establish measured
+        coverage or release safety.
       </div>
     </a>
 
@@ -62,11 +63,11 @@ hero:
     </a>
 
     <a class="portal-card" href="./guides/release-readiness/">
-      <span class="portal-card__eyebrow">Release readiness</span>
-      <h3>Ship with confidence from one diff</h3>
+      <span class="portal-card__eyebrow">Release review</span>
+      <h3>Inspect the changes since the previous release</h3>
       <div class="portal-copy">
         Compare the current candidate to the last shipped tag and turn that
-        delta into a focused test plan before you ship.
+        delta into review context while retaining the required regression suite.
       </div>
     </a>
 
@@ -74,24 +75,23 @@ hero:
       <span class="portal-card__eyebrow">Hallucination guardrails</span>
       <h3>Ground generation against what your repo already knows</h3>
       <div class="portal-copy">
-        AI-generated specs are grounded against your local API surface and
-        suspicious methods are quarantined into
-        <code>generated-needs-review/</code>.
+        Review generation uses local API context. Unaccepted proposals stay in
+        quarantine; acceptance currently requires direct local-source mutation
+        evidence. Browser application tests remain unverified by that verifier.
       </div>
     </a>
 
     <a class="portal-card" href="./guides/qa-skill/">
-      <span class="portal-card__eyebrow">QA skill</span>
-      <h3>Use <code>/qa</code> from Codex or Claude as the front door</h3>
+      <span class="portal-card__eyebrow">Experimental browser QA</span>
+      <h3>Explore one running user journey</h3>
       <div class="portal-copy">
-        Give the agent a running app URL and a goal like “test this branch” or
-        “hunt checkout regressions,” then let the skill translate that into the
-        right <code>impact-gate-qa</code> run.
+        Give the agent a running app URL and a bounded goal. Inspect the
+        resulting findings and reproduction steps before authoring tests.
       </div>
     </a>
 
     <a class="portal-card" href="./reference/cli/">
-      <span class="portal-card__eyebrow">Optional AI</span>
+      <span class="portal-card__eyebrow">Experimental AI</span>
       <h3>Layer generation and healing on after the plan is useful</h3>
       <div class="portal-copy">
         Configure providers, inspect artifacts, and add autonomous workflows

@@ -8,6 +8,9 @@ import type {resolveConfig} from '../../agent/config.js';
 import {LLMProviderFactory} from '../../provider_factory.js';
 import {runAgenticGeneration, type ScenarioInput} from '../../agentic/runner.js';
 import {loadOrBuildApiSurface} from '../../knowledge/api_surface.js';
+import {loadKnowledgeGraph} from '../../knowledge/kg_bridge.js';
+import {loadGraphifyGraph} from '../../knowledge/graphify_bridge.js';
+import {resolveGenerationProfile} from '../../prompts/generation_profile.js';
 
 import type {ParsedArgs} from '../types.js';
 
@@ -25,13 +28,14 @@ export async function runGenerateCommand(args: ParsedArgs, config: ReturnType<ty
             raw = JSON.parse(args.generateScenarios);
         }
         if (!Array.isArray(raw)) {
-            console.error('--scenarios must be a JSON array of ScenarioInput objects.');
-            process.exit(1);
+            throw new Error('--scenarios must be a JSON array of ScenarioInput objects.');
         }
-        for (const item of raw as Record<string, unknown>[]) {
-            if (!item.id || !item.name || !Array.isArray(item.scenarios) || !item.routeFamily || !item.priority) {
-                console.error(`Invalid scenario: each must have id, name, scenarios[], routeFamily, priority.`);
-                process.exit(1);
+        for (const item of raw) {
+            const nonempty = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
+            if (!item || typeof item !== 'object' || !nonempty(item.id) || !nonempty(item.name) ||
+                !nonempty(item.routeFamily) || !['P0', 'P1', 'P2'].includes(item.priority) ||
+                !Array.isArray(item.scenarios) || item.scenarios.length === 0 || !item.scenarios.every(nonempty)) {
+                throw new Error('Invalid scenario: each must have nonempty id, name, routeFamily, scenarios[] and priority P0, P1 or P2.');
             }
         }
         scenarios = raw as ScenarioInput[];
@@ -67,6 +71,8 @@ export async function runGenerateCommand(args: ParsedArgs, config: ReturnType<ty
     }
 
     const provider = await LLMProviderFactory.createFromPreference(config.llm.provider);
+    const kg = loadGraphifyGraph(config.path) || loadKnowledgeGraph(config.path);
+    const generationProfile = resolveGenerationProfile({profile: config.profile}, kg);
 
     console.log(`Generating tests for ${scenarios.length} scenario(s)...`);
 
@@ -74,8 +80,8 @@ export async function runGenerateCommand(args: ParsedArgs, config: ReturnType<ty
         scenarios,
         config: {
             maxAttempts: args.maxAttempts || 3,
-            project: args.pipelineProject || 'chrome',
-            baseUrl: args.pipelineBaseUrl,
+            project: args.pipelineProject || config.pipeline.project || undefined,
+            baseUrl: args.pipelineBaseUrl || config.pipeline.baseUrl,
             testTimeoutMs: 120000,
             testsRoot: reportRoot,
             repositoryRoot: config.path,
@@ -84,6 +90,7 @@ export async function runGenerateCommand(args: ParsedArgs, config: ReturnType<ty
         },
         provider,
         apiSurface,
+        generationProfile,
     });
 
     console.log(`\nAgentic Generation Summary:`);

@@ -9,9 +9,9 @@
 
 import {spawnSync} from 'child_process';
 import {readFileSync, writeFileSync, existsSync, realpathSync} from 'fs';
-import {join, resolve, dirname} from 'path';
-import {fileURLToPath} from 'url';
+import {join, resolve} from 'path';
 import {globSync} from 'glob';
+import {getVersion} from './version.js';
 
 interface Tool {
     name: string;
@@ -534,20 +534,6 @@ export class E2EAgentsMCPServer {
 }
 
 /**
- * Read the package version at runtime so the MCP initialize response
- * always reflects the installed version.
- */
-function getPackageVersion(): string {
-    try {
-        const pkgPath = join(dirname(__dirname), 'package.json');
-        const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as {version?: string};
-        return pkg.version || '0.0.0';
-    } catch {
-        return '0.0.0';
-    }
-}
-
-/**
  * Encode a JSON-RPC message with Content-Length framing.
  * Exported for testability.
  */
@@ -605,7 +591,7 @@ export async function handleJsonRpcMessage(
     message: {id?: unknown; method?: string; params?: Record<string, unknown>},
 ): Promise<Record<string, unknown> | null> {
     const {id, method, params} = message;
-    const version = getPackageVersion();
+    const version = getVersion();
 
     if (method === 'initialize') {
         return {
@@ -724,7 +710,7 @@ export function startStdioServer(repoRoot: string = process.cwd()): void {
     });
 }
 
-if (require.main === module) {
+if (typeof require !== 'undefined' && require.main === module) {
     startStdioServer();
 }
 

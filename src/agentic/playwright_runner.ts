@@ -52,6 +52,10 @@ export function parsePlaywrightJsonReport(report: PlaywrightReport, specPath: st
     let passed = 0;
     let failed = 0;
     let assertionFailures = 0;
+    for (const error of report.errors || []) {
+        failed++;
+        failures.push({testTitle: '(compile)', specPath, error: (error.message || 'Playwright could not load the test').slice(0, 2000), stack: (error.stack || '').slice(0, 1000), line: error.location?.line});
+    }
     for (const spec of extractSpecs(report.suites)) {
         // A report for a different file must never certify the requested artifact.
         if (spec.file && resolve(report.config?.rootDir || '.', spec.file) !== resolve(specPath)) continue;
@@ -88,7 +92,9 @@ export function runPlaywrightSpec(specPath: string, testsRoot: string, options: 
     mkdirSync(reportDir, {recursive: true});
     const reportPath = join(reportDir, `report-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.json`);
     const startTime = Date.now();
-    const result = spawnSync('npx', ['--no-install', 'playwright', 'test', resolvedSpec.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), '--reporter', 'json', '--project', options.project || 'chrome', '--retries', '0', '--workers', '1'], {
+    const args = ['--no-install', 'playwright', 'test', resolvedSpec.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), '--reporter', 'json', '--retries', '0', '--workers', '1'];
+    if (options.project) args.push('--project', options.project);
+    const result = spawnSync('npx', args, {
         cwd: resolvedRoot, encoding: 'utf8', timeout: options.timeoutMs || 120000, maxBuffer: 4 * 1024 * 1024,
         env: {...process.env, PLAYWRIGHT_JSON_OUTPUT_NAME: reportPath},
     });

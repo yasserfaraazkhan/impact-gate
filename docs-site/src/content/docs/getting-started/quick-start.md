@@ -1,191 +1,90 @@
 ---
 title: "Quick Start"
-description: "Get from install to impact results and release-ready test planning in three steps"
+description: "Review a diff, inspect a test plan, and author focused Playwright tests"
 ---
 
-<div class="doc-intro">
-  <div class="doc-chip">Core workflow</div>
-  <p class="doc-lead">
-    Learn how to install Impact Gate, run diff-aware impact analysis, and turn
-    the result into a release-ready test plan in minutes. The same commands
-    work for pull requests, release branches, and previous shipped tags.
-  </p>
-</div>
+Impact Gate's supported entry points are `review` for diff analysis and `gate` for a spec-mapping threshold. Start with the workflow that matches your job:
 
-<div class="docs-grid">
-  <div class="docs-panel">
-    <span class="docs-panel__eyebrow">What this gets you</span>
-    <h2 class="docs-panel__title">Go from diff to test plan in one short loop</h2>
-    <p class="docs-panel__copy">
-      Review and gating require no API key. Optional test generation requires
-      an LLM provider. Use the same explicit Git base for each command.
-    </p>
-  </div>
-  <div class="docs-panel docs-panel--terminal">
-    <span class="docs-panel__eyebrow">Review, optional generation, gate</span>
-    <h2 class="docs-panel__title">Review your PR, then gate it</h2>
-    <div class="docs-terminal">
-      <code>npx impact-gate review --path . --since origin/main</code>
-      <code>npx impact-gate review --path . --since origin/main --generate</code>
-      <code>npx impact-gate gate --threshold 80 --path . --since origin/main</code>
-    </div>
-  </div>
-</div>
+| Audience | First action | Result |
+| --- | --- | --- |
+| Developer | Review the diff and export scenarios | Existing spec candidates and a reviewable authoring plan |
+| PR or release reviewer | Read the report and check mapping policy | Gaps and candidate provenance, with full-suite fallback where required |
+| Browser QA engineer | Explore one running user journey | Observations and reproduction steps to turn into tests; the browser agent is experimental |
 
-## Step 1: Install
+## Build the current source
 
-<div class="docs-step">
-  <div class="docs-step__index">01</div>
-  <div>
-    <h3 class="docs-step__title">Install the package into the repo</h3>
-    <p class="docs-step__copy">
-      Add the CLI as a dev dependency so impact analysis and planning run next
-      to the test suite.
-    </p>
-  </div>
-</div>
+Follow [installation](../installation/), then run these commands from the Impact Gate checkout. They describe source changes that have not been published as a new npm release. Replace `/path/to/app` and `origin/main` with your repository and an available base ref.
 
-```bash
-npm install -D @yasserkhanorg/impact-gate
+## 1. Review the diff
+
+```sh
+node dist/cli.js review --path /path/to/app --since origin/main
 ```
 
-## Step 2: Review Your PR
+The report shows impacted areas, associated existing specs, mapping gaps, heuristic risk scores, and recommendations. Inspect the named specs before deciding what to add. A filename or manifest association does not prove that a spec exercised the changed behavior.
 
-<div class="docs-step">
-  <div class="docs-step__index">02</div>
-  <div>
-    <h3 class="docs-step__title">See what changed, what's tested, and what's missing</h3>
-    <p class="docs-step__copy">
-      The review command combines impact analysis, behavior analysis, coverage
-      planning, and defect prediction into one report. No API key needed.
-    </p>
-  </div>
-</div>
+For a release comparison, use the previous shipped tag as `--since`. Keep the repository's required full suite; a review report does not authorize skipping it.
 
-Point the tool at your project and diff against your base branch:
+## 2. Export and inspect the authoring plan
 
-```bash
-npx impact-gate review --path . --since origin/main
+```sh
+node dist/cli.js review --path /path/to/app --since origin/main \
+  --scenarios-output ./scenarios.json
 ```
 
-This reports impacted flows, mapped existing specs, mapping gaps, heuristic risk scores and test recommendations. These signals do not establish measured behavior coverage.
+This exports scenario inputs without calling a provider. Review the JSON, remove duplicates, add the expected user-visible outcomes, and check fixtures and setup data. The format can be passed directly to the experimental generator:
 
-For release readiness, diff against the previous shipped tag:
-
-```bash
-npx impact-gate review --path . --since v2.1.0
+```sh
+node dist/cli.js generate --path /path/to/app --since origin/main \
+  --scenarios ./scenarios.json --dry-run
 ```
 
-## Step 3: Generate Missing Tests (Optional)
+Generation requires a configured provider. Here `--dry-run` still asks the provider for code and writes a quarantined proposal; it skips test execution. Alternatively, give the reviewed scenarios and an existing spec to your preferred coding agent.
 
-<div class="docs-step">
-  <div class="docs-step__index">03</div>
-  <div>
-    <h3 class="docs-step__title">Turn coverage gaps into ready-to-run test files</h3>
-    <p class="docs-step__copy">
-      Add <code>--generate</code> to produce E2E test files for uncovered flows.
-      Requires an LLM API key.
-    </p>
-  </div>
-</div>
+## 3. Author and verify one useful test
 
-```bash
-npx impact-gate review --path . --since origin/main --generate
+A practical Playwright authoring loop is:
+
+1. Define one user journey, its acceptance criteria, and its observable result.
+2. Read the relevant diff, existing specs, fixtures, page objects, and Playwright configuration.
+3. Explore the running feature and record the real controls and data needed to reproduce it.
+4. Write a small independent scenario with meaningful assertions and stable user-facing locators.
+5. Run it in the intended environment, demonstrate that it catches the regression, and repeat it to look for instability.
+6. Review the test diff and run the required suite before merging.
+
+One authoring agent can handle this process. An independent reviewer helps when the change is complex. Playwright also provides [planner, generator, and healer agents](https://playwright.dev/docs/test-agents); Impact Gate supplies diff context and candidate provenance for that work.
+
+## Optional generation and its limits
+
+```sh
+node dist/cli.js review --path /path/to/app --since origin/main --generate
 ```
 
-The generator uses your project's existing test patterns, page objects, and API surface to produce grounded test code. Generated files go through compile checks and smoke runs.
+The integrated path may execute generated code. It writes a generation summary under the test root's `.e2e-ai-agents` directory. Inspect each result:
 
-For CI PR comments, add `--ci-comment-path`:
+| Status | Meaning |
+| --- | --- |
+| `passed` | Accepted under the supported local-source verification conditions |
+| `failed` | Generation or another required step failed |
+| `skipped` | Execution was skipped; no passing result was established |
+| `unverified` | The proposal did not meet the acceptance conditions |
 
-```bash
-npx impact-gate review --path . --since origin/main --ci-comment-path comment.md
+Acceptance requires a clean Playwright run, an assertion failure caused by a supported mutation to changed local source, and a passing run after restoration. Only specs that directly import that changed source are supported. Browser-served, remote, prebuilt targets and additions to existing specs remain unverified. Unaccepted proposals are quarantined as `.e2e-ai-agents/unverified/*.ts.unverified`. Compilation or a smoke pass alone is insufficient. See [AI guardrails](../../guides/ai-guardrails/).
+
+## PR and release review
+
+```sh
+node dist/cli.js review --path /path/to/app --since origin/main --json > review.json
+node dist/cli.js review --path /path/to/app --since origin/main \
+  --ci-comment-path review-comment.md
+node dist/cli.js gate --path /path/to/app --since origin/main \
+  --threshold 80 --json > gate.json
 ```
 
-### Lower-level commands
+A gate passes when the configured percentage of impacted features has associated specs and no changed files remain unassessed. Partial mappings do not count as fully mapped. Invalid refs fail; valid empty diffs are reported separately. This measures mapping presence, not executed behavior coverage or release readiness.
 
-The `review` command combines `impact`, `plan`, and `predict`. You can still use them individually for granular CI pipelines:
+Use the [CI integration guide](../../guides/ci-integration/) for PR reports or the [Mattermost advisory guide](../../guides/mattermost-advisory/) for the isolated pilot that retains full-suite execution.
 
-```bash
-npx impact-gate impact --path . --since origin/main   # just impact analysis
-npx impact-gate plan --no-ai --path . --since origin/main  # plan + artifacts, no model calls
-npx impact-gate gate --threshold 80 --path . --since origin/main  # spec-mapping gate
-```
+## Browser QA
 
-The ordinary gate counts fully mapped features, excludes partial mappings from the numerator and fails when files remain unassessed. It does not measure executed test coverage. Invalid Git refs return errors; only a valid empty diff is treated as empty.
-
-For Mattermost shadow CI, follow the [advisory pilot guide](../../guides/mattermost-advisory/). That mode requires a reviewed source checkout, explicit suite configuration and `--suite`; it preserves full execution and reports unavailable coverage confidence.
-
-## Why The AI Path Is Safer Than Raw Generation
-
-<div class="docs-grid docs-grid--two">
-  <div class="docs-panel docs-panel--dense">
-    <span class="docs-panel__eyebrow">Deterministic first</span>
-    <h3 class="docs-panel__title">The plan exists before the model does</h3>
-    <p class="docs-panel__copy">
-      Diff analysis, impact mapping, and coverage planning happen before
-      generation enters the loop.
-    </p>
-  </div>
-  <div class="docs-panel docs-panel--dense">
-    <span class="docs-panel__eyebrow">Repo grounding</span>
-    <h3 class="docs-panel__title">Prompts are constrained by local API knowledge</h3>
-    <p class="docs-panel__copy">
-      Page objects, helpers, signatures, and inherited methods are discovered
-      before prompting.
-    </p>
-  </div>
-  <div class="docs-panel docs-panel--dense">
-    <span class="docs-panel__eyebrow">Detection</span>
-    <h3 class="docs-panel__title">Suspicious calls are flagged after generation</h3>
-    <p class="docs-panel__copy">
-      Invented methods and fabricated helpers are caught instead of silently
-      landing in the main suite.
-    </p>
-  </div>
-  <div class="docs-panel docs-panel--dense">
-    <span class="docs-panel__eyebrow">Verification</span>
-    <h3 class="docs-panel__title">Generated specs still need to earn trust</h3>
-    <p class="docs-panel__copy">
-      Compile checks and smoke runs are used before a generated spec counts as
-      verified.
-    </p>
-  </div>
-</div>
-
-When you later enable generation or healing, `impact-gate` does not just trust whatever the LLM writes.
-
-- The diff and coverage plan are established first with deterministic analysis
-- Generation prompts are grounded in your repository's discovered page objects and helpers
-- The generator is told to use only known methods and fall back to raw Playwright selectors when needed
-- Suspicious method calls are detected after generation and blocked into `generated-needs-review/`
-- Written specs are compile-checked and smoke-run before they count as verified
-
-## What Next?
-
-<div class="command-index">
-  <a href="../../guides/ci-integration/">CI Integration</a>
-  <a href="../../guides/release-readiness/">Release Readiness</a>
-  <a href="../../guides/ai-guardrails/">AI Guardrails</a>
-  <a href="../../reference/cli/">CLI Reference</a>
-</div>
-
-<div class="docs-grid docs-grid--two">
-  <div class="docs-panel">
-    <span class="docs-panel__eyebrow">Confidence</span>
-    <h2 class="docs-panel__title">Make the deterministic path trustworthy first</h2>
-    <ul>
-      <li>Run <code>train --no-enrich</code> to bootstrap route-family mappings, then review them</li>
-      <li>Add <code>gate --threshold 80</code> in CI once plan output looks trustworthy</li>
-      <li>Add a <a href="../../guides/ci-integration/">CI integration</a> to check spec-mapping thresholds</li>
-    </ul>
-  </div>
-  <div class="docs-panel">
-    <span class="docs-panel__eyebrow">Expansion</span>
-    <h2 class="docs-panel__title">Layer in graph bootstrap and optional AI later</h2>
-    <ul>
-      <li>If you already have an Understand-Anything knowledge graph, run <code>bootstrap</code> instead of <code>train</code></li>
-      <li>Try <code>crew --workflow quick-check</code> for strategy recommendations on top of the core CI loop</li>
-      <li>Set up <a href="../../guides/cost-management/">cost controls</a> before enabling AI features</li>
-    </ul>
-  </div>
-</div>
+Start with a single running feature, capture findings, and inspect them before authoring tests. The [experimental browser QA guide](../../guides/browser-qa/) explains exploration modes and generation limits. Browser observations, generated proposals, accepted tests, and a release decision are separate results.

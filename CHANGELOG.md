@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Reviewable Playwright workflow
+
+- Add `review --scenarios-output <path>` to export editable generation input without a provider. Preserve uncovered manifest flows and unmatched core recommendations.
+- Connect browser QA findings directly to the typed generator, retain reusable scenario and result artifacts, and exclude unverified proposals from accepted specs.
+- Preserve project-specific imports and conventions throughout generation and repair. Respect configured Playwright projects instead of forcing `chrome`, and reject unsupported generation frameworks before provider calls.
+- Preserve existing spec files during generation and keep evidence-based quarantine behavior. Include compiler errors in repair context and reject malformed scenario input early.
+- Repair the ESM MCP export and installed ESM package version lookup; add a packed-package consumer smoke test for CJS, ESM, MCP, and CLI entry points.
+- Align CLI help and documentation with supported review/gate behavior and experimental generation limits. No npm release is published by these changes.
+
 ### Mattermost advisory planning
 
 - Add `plan --advisory` (also `suggest` and `gate`) with complete Git changes, exact committed Cypress/Playwright spec paths, suite/project identity, declared mapping provenance and JSON-only stdout. The caller makes no model calls, executes no tests and writes no metrics or CI statuses.

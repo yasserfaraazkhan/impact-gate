@@ -95,6 +95,7 @@ export interface ParsedArgs {
     suite?: string;
     maxAttempts?: number;
     generateScenarios?: string;
+    scenariosOutput?: string;
 
     // Train command
     trainEnrich?: boolean;

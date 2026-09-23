@@ -1,10 +1,10 @@
 ---
 title: "QA Skill for Codex and Claude"
-description: "Use the /qa skill as a natural-language front door to impact-gate-qa"
+description: "Use the /qa skill with the experimental browser QA agent"
 ---
 
 <div class="doc-intro">
-  <div class="doc-chip">Agent workflow</div>
+  <div class="doc-chip">Experimental agent workflow</div>
   <p class="doc-lead">
     The <code>/qa</code> skill gives Codex and Claude a natural-language front
     door into <code>impact-gate-qa</code>. Instead of memorizing flags, you can
@@ -16,9 +16,9 @@ description: "Use the /qa skill as a natural-language front door to impact-gate-
 <div class="docs-panel docs-panel--compact">
   <span class="docs-panel__eyebrow">Full story</span>
   <p class="docs-panel__copy">
-    If you want the full product story from diff to browser exploration to
-    generated and healed specs, start with the
-    <a href="./browser-qa/">Autonomous Browser QA guide</a>.
+    Start with the <a href="../browser-qa/">experimental browser QA guide</a>
+    for setup and verification limits. Health scores and verdicts are advisory;
+    they do not replace the required regression suite or release criteria.
   </p>
 </div>
 
@@ -149,7 +149,7 @@ flow,” the skill typically maps that to <code>hunt</code>. If the request says
     <h2 class="docs-panel__title">Start with a report-only pass before you let the loop fix anything</h2>
     <div class="docs-terminal">
       <code>/qa test this app at http://localhost:3000 but do not apply fixes</code>
-      <code>→ impact-gate-qa pr --base-url http://localhost:3000 --no-fix</code>
+      <code>→ impact-gate-qa pr --base-url http://localhost:3000 --phase 2 --no-fix</code>
     </div>
   </div>
 </div>
@@ -157,7 +157,7 @@ flow,” the skill typically maps that to <code>hunt</code>. If the request says
 That gives you:
 
 - a health score
-- a GO / NO-GO / CONDITIONAL verdict
+- a provisional GO / NO-GO / CONDITIONAL verdict
 - categorized findings
 - screenshots and before/after evidence
 - a structured QA report in <code>.e2e-ai-agents/</code>

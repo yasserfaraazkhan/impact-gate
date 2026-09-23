@@ -52,6 +52,26 @@ node dist/cli.js review --path /path/to/repository --since origin/main --generat
 
 Verification currently supports only specs that directly import changed local source. Acceptance requires a clean Playwright run, an assertion failure caused by a supported changed-line mutation, and a passing run after source restoration. Missing repository/base context, absent qualifying mutation kills, and remote, browser-served, or prebuilt application targets remain unverified. Additions to existing specs are conservatively unverified. Compilation, process exit zero, or generated code alone is insufficient. The [W1 evidence](gates/w1.txt) used a deterministic provider fixture and real local Playwright execution; it did not test live-model quality or Mattermost browser behavior.
 
+## A practical Playwright workflow
+
+1. Start with one user journey and its expected result. Give the authoring agent the acceptance criteria, relevant code diff, test configuration, fixtures, and a representative existing spec.
+2. Run `review` to find affected areas and existing test candidates. Export recommendations with `--scenarios-output scenarios.json`, inspect them, and remove duplicates before adding coverage.
+3. Explore the running feature and reproduce the behavior. Capture the actual controls, setup data, and observable result before asking for test code.
+4. Write the smallest independent scenario with meaningful assertions. Reuse the project's fixtures and page objects, prefer user-facing locators, and avoid arbitrary sleeps.
+5. Run the spec in the intended environment. Check that it detects the regression, repeat it to look for instability, and investigate failures before changing assertions.
+6. Review the diff and evidence, then run the required suite before merging. Keep product bugs separate from broken test setup.
+
+One authoring agent can handle this loop; add an independent reviewer for a complex change. Impact Gate assists with diff review, candidate discovery, and optional proposals. Browser exploration, business expectations, and release approval still need evidence from the actual application. See the [quick start](docs-site/src/content/docs/getting-started/quick-start.md) for a worked command sequence.
+
+```sh
+# Deterministic scenario export; inspect the JSON before generation
+node dist/cli.js review --path /path/to/repository --since origin/main --scenarios-output scenarios.json
+# Experimental proposal generation; dry run still calls a provider and writes quarantine files
+node dist/cli.js generate --path /path/to/repository --since origin/main --scenarios scenarios.json --dry-run
+```
+
+For PR and release reviewers, use the report and mapping gate alongside the required CI suite. For browser QA engineers, start with [bounded exploration](docs-site/src/content/docs/guides/browser-qa.md) and review the findings before generating follow-up tests. The browser agent and generation modes remain experimental.
+
 ## Experimental capabilities
 
 The main CLI registers 21 command tokens: supported `review` and `gate`, plus these 19 experimental tokens. They remain callable but are not the supported review/gate product workflow:

@@ -1,7 +1,7 @@
 {
   "name": "@yasserkhanorg/impact-gate",
   "version": "2.4.0",
-  "description": "Shift QA left: analyze your PR diff, identify affected user flows, and generate the exact E2E tests you need.",
+  "description": "Review Git diffs, explain existing E2E test candidates, and enforce spec-mapping thresholds for Playwright and Cypress projects.",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
   "types": "dist/index.d.ts",

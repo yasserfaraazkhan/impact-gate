@@ -4,11 +4,11 @@ description: "Use impact-gate to compare releases and build a ship-focused test 
 ---
 
 <div class="doc-intro">
-  <div class="doc-chip">Ship with confidence</div>
+  <div class="doc-chip">Release review context</div>
   <p class="doc-lead">
     Compare the current candidate to the last shipped tag, review the changed
-    flows, and turn that delta into a ship-focused E2E plan. This keeps release
-    readiness grounded in evidence instead of prompt-only guesswork.
+    flows, and inspect candidate specs and mapping gaps. Use that context
+    alongside actual test execution and your existing release criteria.
   </p>
 </div>
 
@@ -17,8 +17,8 @@ description: "Use impact-gate to compare releases and build a ship-focused test 
     <span class="docs-panel__eyebrow">Typical release diff</span>
     <h2 class="docs-panel__title">Use the last shipped tag as the baseline</h2>
     <div class="docs-terminal">
-      <code>npx impact-gate impact --path . --since v2.1.0</code>
-      <code>npx impact-gate plan --no-ai --path . --since v2.1.0</code>
+      <code>npx impact-gate review --path . --since v2.1.0</code>
+      <code>npx impact-gate review --path . --since v2.1.0 --scenarios-output scenarios.json</code>
       <code>npx impact-gate gate --threshold 80 --path . --since v2.1.0</code>
     </div>
   </div>
@@ -28,7 +28,7 @@ description: "Use impact-gate to compare releases and build a ship-focused test 
     <ul>
       <li>Compare the current release candidate to the last shipped tag</li>
       <li>Determine which flows changed</li>
-      <li>Review which tests already cover those flows</li>
+      <li>Review which existing specs are associated with those flows</li>
       <li>See where more testing or manual validation is still needed</li>
     </ul>
   </div>
@@ -37,6 +37,8 @@ description: "Use impact-gate to compare releases and build a ship-focused test 
 These commands compare HEAD against its merge base with `v2.1.0`. When the tag is an ancestor, that is the tag itself. Invalid or ambiguous histories fail explicitly; the report must not be treated as an empty comparison.
 
 The gate enforces spec-mapping presence, not measured behavior coverage or release approval. Partial mappings are separate, and unassessed changes fail. The [Mattermost advisory pilot](../mattermost-advisory/) emits a nonblocking report and retains the existing full suite.
+
+These docs describe the current source; the new export and recovery changes have not been published as a new npm release. [Build the checkout](../../getting-started/installation/) and use `node /path/to/impact-gate/dist/cli.js` in place of `npx impact-gate` to use those changes. Lower-level `impact` and `plan` workflows below remain experimental.
 
 ## When Teams Use This
 

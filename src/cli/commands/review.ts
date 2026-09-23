@@ -8,8 +8,8 @@
  * and defect prediction into a single human-readable report.
  *
  * With --generate, the review pipeline feeds its uncovered recommendations
- * directly into the agentic test generator, producing ready-to-run E2E
- * test files — the shift-left QA workflow.
+ * directly into the agentic test generator. Unverified proposals remain
+ * quarantined for review.
  *
  * Usage:
  *   impact-gate review --path . --since origin/main
@@ -140,6 +140,12 @@ export async function runReviewCommand(
     // Step 5: Synthesize
     const report = synthesizeReview(impact, plan, prediction, kgImpact, behaviorAnalysis);
 
+    if (args.scenariosOutput) {
+        const scenarios = buildScenariosFromReview(report);
+        writeFileSync(args.scenariosOutput, JSON.stringify(scenarios, null, 2) + '\n', 'utf-8');
+        console.error(`Wrote ${scenarios.length} scenario group(s) to ${args.scenariosOutput}`);
+    }
+
     // Write markdown for CI comments if requested
     if (args.ciCommentPath) {
         const markdown = formatReviewMarkdown(report);
@@ -190,23 +196,8 @@ function tokenize(text: string): string[] {
  * Only uncovered (no alreadyCoveredBy) recommendations become scenarios.
  * Scenarios are grouped by the flow/family they relate to.
  */
-function buildScenariosFromReview(report: ReviewReport): ScenarioInput[] {
+export function buildScenariosFromReview(report: ReviewReport): ScenarioInput[] {
     const uncoveredRecs = (report.recommendations || []).filter((r) => !r.alreadyCoveredBy);
-
-    if (uncoveredRecs.length === 0) {
-        return [];
-    }
-
-    // Group recommendations by dimension or create a single scenario group
-    type Rec = NonNullable<ReviewReport['recommendations']>[number];
-    const groups = new Map<string, Rec[]>();
-    for (const rec of uncoveredRecs) {
-        const key = rec.dimension || 'core-flow';
-        if (!groups.has(key)) {
-            groups.set(key, []);
-        }
-        groups.get(key)!.push(rec);
-    }
 
     // Also collect uncovered flow IDs for context
     const uncoveredFlows = report.impactedFlows.filter((f) => f.status === 'uncovered' || f.status === 'partial');
@@ -225,10 +216,13 @@ function buildScenariosFromReview(report: ReviewReport): ScenarioInput[] {
         });
 
         // If we have specific recommendations for this flow, use them
+        const missingScenarios = flow.gaps.filter((gap) => gap.startsWith('Missing scenario:'));
         const scenarioDescriptions = flowRecs.length > 0
             ? flowRecs.map((r) => r.scenario)
-            : flow.gaps.length > 0
-                ? flow.gaps.map((g) => g.replace(/^Missing scenario:\s*/i, ''))
+            : missingScenarios.length > 0
+                ? missingScenarios.map((gap) => gap.replace(/^Missing scenario:\s*/i, ''))
+                : flow.userFlows.length > 0
+                    ? flow.userFlows.map((flow) => `Verify ${flow}`)
                 : [`Verify ${flow.name} core user flow`];
 
         scenarios.push({
@@ -242,9 +236,8 @@ function buildScenariosFromReview(report: ReviewReport): ScenarioInput[] {
         });
     }
 
-    // Strategy 2: Pick up dimension-expansion recommendations not tied to a specific flow
+    // Preserve recommendations not matched to a flow, including new core scenarios.
     const orphanRecs = uncoveredRecs.filter((r) => {
-        if (r.dimension === 'core-flow') return false;
         return !scenarios.some((s) => s.scenarios.includes(r.scenario));
     });
 
@@ -290,9 +283,7 @@ async function runReviewGenerate(
             : await LLMProviderFactory.createFromEnv();
     } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.error(`Cannot generate tests: LLM provider unavailable (${msg}).`);
-        console.error('Set ANTHROPIC_API_KEY or OPENAI_API_KEY, or use --llm-provider.');
-        return;
+        throw new Error(`Cannot generate tests: LLM provider unavailable (${msg}). Set ANTHROPIC_API_KEY or OPENAI_API_KEY, or use --llm-provider.`);
     }
 
     // Load API surface for better selector generation
@@ -316,8 +307,8 @@ async function runReviewGenerate(
         scenarios,
         config: {
             maxAttempts: args.maxAttempts || 3,
-            project: args.pipelineProject || 'chrome',
-            baseUrl: args.pipelineBaseUrl,
+            project: args.pipelineProject || config.pipeline.project || undefined,
+            baseUrl: args.pipelineBaseUrl || config.pipeline.baseUrl,
             testTimeoutMs: 120000,
             testsRoot: outputDir,
             repositoryRoot: config.path,
@@ -366,4 +357,5 @@ async function runReviewGenerate(
         ...summary,
     }, null, 2), 'utf-8');
     console.error(`\nReport: ${summaryPath}`);
+    if (summary.totalFailed > 0) process.exitCode = 1;
 }

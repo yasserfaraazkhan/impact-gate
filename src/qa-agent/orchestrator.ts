@@ -163,7 +163,7 @@ export async function runQAAgent(inputConfig: QAConfig): Promise<QAReport> {
     logger.info('=== Phase 3: Report & Verdict ===');
 
     // Generate specs for discovered bugs
-    const generatedSpecs = generateSpecsForFindings(phase2.findings, config);
+    const generatedSpecs = await generateSpecsForFindings(phase2.findings, config);
 
     // Compute verdict (now with health score)
     const verdict = computeVerdict(phase1, phase2, healthScore, phase25);

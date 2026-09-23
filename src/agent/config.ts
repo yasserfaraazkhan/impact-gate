@@ -307,7 +307,6 @@ const DEFAULT_CONFIG: AgentConfig = {
         scenarios: 3,
         outputDir: 'specs/functional/ai-assisted',
         heal: true,
-        project: 'chrome',
         mcp: false,
         mcpAllowFallback: false,
         mcpOnly: false,

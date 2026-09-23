@@ -9,7 +9,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'Impact Gate',
-      description: 'Diff-aware E2E impact analysis, release-ready test planning, coverage gating, and hallucination-resistant AI generation for Playwright/Cypress teams.',
+      description: 'Git diff review, explainable E2E test candidates, and spec-mapping thresholds for Playwright and Cypress projects.',
       logo: {
         dark: './src/assets/impact-gate-logo-dark.svg',
         light: './src/assets/impact-gate-logo-light.svg',

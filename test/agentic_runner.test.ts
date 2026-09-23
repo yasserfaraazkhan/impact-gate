@@ -4,6 +4,7 @@
 import {describe, it, mock} from 'node:test';
 import assert from 'node:assert/strict';
 import {runAgenticGeneration} from '../dist/agentic/runner.js';
+import {resolveGenerationProfile} from '../dist/prompts/generation_profile.js';
 
 // Mock provider
 function createMockProvider(responses) {
@@ -21,7 +22,7 @@ function createMockProvider(responses) {
 describe('runAgenticGeneration', () => {
     it('returns summary with results for dry run', async () => {
         const provider = createMockProvider([
-            "import {test} from '@mattermost/playwright-lib';\ntest('my test', async ({pw}) => { const {user} = await pw.initSetup(); });",
+            "import {test} from '@playwright/test';\ntest('my test', async ({page}) => { await page.goto('/'); });",
         ]);
 
         const summary = await runAgenticGeneration({
@@ -47,6 +48,9 @@ describe('runAgenticGeneration', () => {
         assert.ok(summary.results.length >= 1);
         // Dry run skips execution
         assert.equal(summary.results[0].status, 'skipped');
+        assert.match(provider.generateText.mock.calls[0].arguments[0], /async \(\{page\}\)/);
+        assert.doesNotMatch(provider.generateText.mock.calls[0].arguments[0], /Mattermost|pw\.initSetup/);
+        assert.doesNotMatch(readFileSync(summary.results[0].specPath, 'utf8'), /@mattermost\/playwright-lib/);
     });
 
     it('handles LLM returning invalid code', async () => {
@@ -73,6 +77,43 @@ describe('runAgenticGeneration', () => {
 
         assert.equal(summary.results[0].status, 'failed');
         assert.ok(summary.warnings.length > 0);
+    });
+
+    it('preserves Mattermost imports and conventions when the profile is explicit', async () => {
+        const testsRoot = mkdtempSync(join(tmpdir(), 'impact-profile-'));
+        try {
+            const provider = createMockProvider(["import {test, expect} from '@mattermost/playwright-lib';\ntest('profile', async ({pw}) => { await pw.initSetup(); });"]);
+            const summary = await runAgenticGeneration({
+                scenarios: [{id: 'profile', name: 'Profile', scenarios: ['Check profile'], routeFamily: 'profile', priority: 'P1'}],
+                config: {testsRoot, maxAttempts: 1, testTimeoutMs: 1000, dryRun: true},
+                generationProfile: resolveGenerationProfile({profile: 'mattermost'}),
+                provider,
+            });
+            const code = readFileSync(summary.results[0].specPath, 'utf8');
+            assert.equal(summary.results[0].status, 'skipped');
+            assert.match(provider.generateText.mock.calls[0].arguments[0], /pw\.initSetup/);
+            assert.doesNotMatch(code, /@playwright\/test/);
+            assert.equal(code.match(/import /g).length, 1);
+        } finally {rmSync(testsRoot, {recursive: true, force: true});}
+    });
+
+    it('rejects unsupported framework profiles before asking the provider for code', async () => {
+        const testsRoot = mkdtempSync(join(tmpdir(), 'impact-unsupported-profile-'));
+        try {
+            for (const testFramework of ['Cypress', 'Selenium', 'vitest + supertest', 'pytest']) {
+                const provider = createMockProvider(["test('unused', () => {});"]);
+                const summary = await runAgenticGeneration({
+                    scenarios: [{id: 'profile', name: 'Profile', scenarios: ['Check profile'], routeFamily: 'profile', priority: 'P1'}],
+                    config: {testsRoot, maxAttempts: 1, testTimeoutMs: 1000, dryRun: true},
+                    generationProfile: {...resolveGenerationProfile(), testFramework},
+                    provider,
+                });
+                assert.equal(summary.results[0].status, 'failed');
+                assert.equal(provider.generateText.mock.callCount(), 0);
+                assert.match(summary.warnings.join('\n'), /supports Playwright profiles only/);
+                assert.equal(existsSync(summary.results[0].specPath), false);
+            }
+        } finally {rmSync(testsRoot, {recursive: true, force: true});}
     });
 });
 
@@ -146,6 +187,37 @@ describe('real generated-test mutation acceptance', () => {
         assert.equal(summary.results[0].status, 'unverified');
         assert.equal(readFileSync(path, 'utf8'), '// preexisting bytes\n');
     });
+    it('does not replace existing coverage even when replacement would pass verification', async () => {
+        const fixture = generationFixture();
+        const path = join(fixture.testsRoot, 'specs/functional/ai-assisted/boundary.spec.ts');
+        mkdirSync(join(fixture.testsRoot, 'specs/functional/ai-assisted'), {recursive: true});
+        const original = `${goodSpec}\n// Existing coverage must survive generation.\n`;
+        writeFileSync(path, original);
+        const provider = createMockProvider([goodSpec]);
+        const summary = await runAgenticGeneration({
+            scenarios: [{id: 'boundary', name: 'Boundary', scenarios: ['Check boundary'], routeFamily: 'fixture', priority: 'P1', targetSpec: 'specs/functional/ai-assisted/boundary.spec.ts'}],
+            config: {testsRoot: fixture.testsRoot, repositoryRoot: fixture.repo, baseRef: fixture.baseRef, maxAttempts: 1, project: 'chrome', testTimeoutMs: 30000},
+            provider,
+        });
+        assert.equal(summary.results[0].status, 'unverified');
+        assert.equal(provider.generateText.mock.callCount(), 0);
+        assert.equal(readFileSync(path, 'utf8'), original);
+        assert.match(summary.warnings.join('\n'), /Existing spec preserved/);
+    });
+    it('repairs a generic Playwright test without introducing Mattermost fixtures', async () => {
+        const fixture = generationFixture();
+        const provider = createMockProvider([goodSpec.replace('expect(eligible(18)).toBe(true)', 'expect(eligible(18)).toBe(false)'), goodSpec]);
+        const summary = await runAgenticGeneration({
+            scenarios: [{id: 'boundary', name: 'Boundary', scenarios: ['Check boundary'], routeFamily: 'fixture', priority: 'P1'}],
+            config: {testsRoot: fixture.testsRoot, repositoryRoot: fixture.repo, baseRef: fixture.baseRef, maxAttempts: 2, project: 'chrome', testTimeoutMs: 30000},
+            provider,
+        });
+        assert.equal(summary.results[0].status, 'passed', summary.warnings.join('\n'));
+        assert.equal(summary.results[0].attempts, 2);
+        assert.equal(provider.generateText.mock.callCount(), 2);
+        assert.doesNotMatch(provider.generateText.mock.calls[1].arguments[0], /Mattermost|pw\.initSetup/);
+        assert.doesNotMatch(readFileSync(summary.results[0].specPath, 'utf8'), /@mattermost\/playwright-lib/);
+    });
 });
 
 import {runGenerationStage} from '../dist/pipeline/stage3_generation.js';
@@ -153,6 +225,37 @@ import {LLMProviderFactory} from '../dist/provider_factory.js';
 import {ExecutorAgent} from '../dist/agents/executor.js';
 
 describe('shared verification and preservation boundaries', () => {
+    it('stage 3 never replaces an existing create_spec destination', async () => {
+        const fixture = generationFixture();
+        const path = join(fixture.testsRoot, 'existing.spec.ts');
+        const original = '// preserve this existing suite\n';
+        writeFileSync(path, original);
+        const provider = createMockProvider([goodSpec]);
+        const factory = mock.method(LLMProviderFactory, 'createFromEnv', async () => provider);
+        try {
+            const result = await runGenerationStage([{flowId: 'boundary', flowName: 'Boundary', userActions: [], evidence: 'fixture', routeFamily: 'fixture', existingSpecs: [], action: 'create_spec', newSpecPath: 'existing.spec.ts'}], {pageObjects: []}, fixture.testsRoot, {repositoryRoot: fixture.repo, baseRef: fixture.baseRef});
+            assert.equal(provider.generateText.mock.callCount(), 0);
+            assert.equal(result.generatedCount, 0);
+            assert.equal(result.generated[0].written, false);
+            assert.equal(result.generated[0].verified, false);
+            assert.match(result.generated[0].verificationError, /Existing spec preserved/);
+            assert.equal(readFileSync(path, 'utf8'), original);
+        } finally {factory.mock.restore();}
+    });
+
+    it('stage 3 preserves the selected framework while parsing generated code', async () => {
+        const fixture = generationFixture();
+        const code = "import {test, expect} from '@mattermost/playwright-lib';\ntest('profile', () => { expect(true).toBe(true); });";
+        const factory = mock.method(LLMProviderFactory, 'createFromEnv', async () => createMockProvider([code]));
+        try {
+            const result = await runGenerationStage([{flowId: 'profile', flowName: 'Profile', userActions: [], evidence: 'fixture', routeFamily: 'fixture', existingSpecs: [], action: 'create_spec'}], {pageObjects: []}, fixture.testsRoot, {profile: resolveGenerationProfile({profile: 'mattermost'})});
+            assert.equal(result.generated.length, 1);
+            const generated = readFileSync(result.generated[0].specPath, 'utf8');
+            assert.match(generated, /@mattermost\/playwright-lib/);
+            assert.doesNotMatch(generated, /@playwright\/test/);
+        } finally {factory.mock.restore();}
+    });
+
     it('stage 3 verifies its actual generated artifact, and crew executes it without a provider', async () => {
         const fixture = generationFixture();
         const provider = createMockProvider([goodSpec]);
@@ -195,16 +298,44 @@ describe('shared verification and preservation boundaries', () => {
         writeFileSync(join(fixture.repo, 'eligibility.ts'), 'export const eligible = true;\n');
         assert.equal((await generateFixture(fixture, goodSpec)).results[0].status, 'unverified');
     });
-    it('does not overwrite concurrent edits while awaiting generation', async () => {
+    it('does not overwrite a spec created while awaiting generation', async () => {
         const fixture = generationFixture();
         const path = join(fixture.testsRoot, 'specs/functional/ai-assisted/boundary.spec.ts');
         mkdirSync(join(fixture.testsRoot, 'specs/functional/ai-assisted'), {recursive: true});
-        writeFileSync(path, '// original\n');
         const provider = createMockProvider([goodSpec]);
         provider.generateText = async () => {writeFileSync(path, '// concurrent edit\n'); return {text: goodSpec};};
         const result = await runAgenticGeneration({scenarios: [{id: 'boundary', name: 'Boundary', scenarios: [], routeFamily: 'fixture', priority: 'P1'}], config: {testsRoot: fixture.testsRoot, repositoryRoot: fixture.repo, baseRef: fixture.baseRef, maxAttempts: 1, project: 'chrome', testTimeoutMs: 30000}, provider});
         assert.equal(result.results[0].status, 'unverified');
         assert.equal(readFileSync(path, 'utf8'), '// concurrent edit\n');
+    });
+    it('continues the batch when another writer wins the exclusive-create race', async (t) => {
+        const fixture = generationFixture();
+        const outputDir = join(fixture.testsRoot, 'specs/functional/ai-assisted');
+        const contested = join(outputDir, 'first.spec.ts');
+        const fs = require('node:fs');
+        const mkdir = fs.mkdirSync;
+        let raced = false;
+        t.mock.method(fs, 'mkdirSync', (path, options) => {
+            const result = mkdir(path, options);
+            if (!raced && resolve(path) === outputDir) {
+                raced = true;
+                writeFileSync(contested, '// concurrent spec must survive\n');
+            }
+            return result;
+        });
+        const provider = createMockProvider([emptySpec]);
+        const summary = await runAgenticGeneration({
+            scenarios: ['first', 'second'].map((id) => ({id, name: id, scenarios: ['Check output'], routeFamily: 'fixture', priority: 'P1'})),
+            config: {testsRoot: fixture.testsRoot, maxAttempts: 1, testTimeoutMs: 1000, dryRun: true},
+            provider,
+        });
+        assert.equal(summary.results.length, 2);
+        assert.equal(summary.results[0].status, 'unverified');
+        assert.match(summary.results[0].warnings.join('\n'), /Could not create generated spec/);
+        assert.equal(readFileSync(contested, 'utf8'), '// concurrent spec must survive\n');
+        assert.equal(summary.results[1].status, 'skipped');
+        assert.equal(readFileSync(summary.results[1].specPath, 'utf8'), emptySpec);
+        assert.equal(provider.generateText.mock.callCount(), 2);
     });
     it('rejects symlink mutation targets without changing their destination', async () => {
         const fixture = generationFixture();

@@ -1,17 +1,19 @@
 ---
 title: "Crew Workflows"
-description: "Choose between quick-check, design-only, and full-qa workflows"
+description: "Experimental multi-agent workflows for analysis and test proposals"
 ---
 
-The Crew system orchestrates 10 specialized AI agents for deep test analysis. Three preset workflows control how many agents run and what artifacts they produce.
+The experimental Crew system coordinates existing analysis and generation agents. Three presets control the phases that run. Start with supported `review` and `gate` for diff reporting and spec-mapping policy; use Crew when the additional stages serve a concrete need. Agent count alone does not establish better tests.
 
 ## Workflows at a Glance
 
-| Workflow | Agents | Cost | Time | Output |
-|----------|--------|------|------|--------|
-| `quick-check` | 4 (understand + strategize) | ~$0.10 | ~1 min | Strategy recommendations |
-| `design-only` | 6 (+ design phase) | $0.50-2.00 | 5-40 min | Structured test designs |
-| `full-qa` | 10 (+ generate, execute, heal) | $2-5 | 10-60 min | Generated and healed specs |
+| Workflow | Stages | Intended output |
+| --- | --- | --- |
+| `quick-check` | Understand and strategize | Strategy recommendations |
+| `design-only` | Also design scenarios | Structured test designs |
+| `full-qa` | Also generate, execute, and attempt repair | Test proposals and execution results |
+
+Provider cost and duration depend on input size, selected models, and execution outcomes. These are experimental capabilities, not measured latency or cost guarantees.
 
 ## quick-check
 
@@ -33,7 +35,7 @@ npx impact-gate crew --workflow design-only \
 
 ## full-qa
 
-End-to-end: designs tests, generates Playwright specs, executes them, and heals any failures. Use this when you want the tool to produce runnable test code.
+Attempts test design, Playwright generation, execution, and repair. Inspect every result and its verification state. Generated artifacts carrying verification evidence bypass the later legacy healer to avoid invalidating that evidence. Missing evidence and browser-served application targets remain unverified; see [AI guardrails](../ai-guardrails/).
 
 ```bash
 npx impact-gate crew --workflow full-qa \
@@ -58,6 +60,6 @@ npx impact-gate cost-report --path .
 
 ## When to Use Each
 
-- **PR review gate**: `quick-check` -- fast, cheap, gives strategy guidance
+- **Analysis experiment**: `quick-check` gives strategy guidance; it is not a release gate
 - **Sprint planning**: `design-only` -- structured test cases for the team to review
-- **Automated test creation**: `full-qa` -- generates and validates runnable specs
+- **Test authoring experiment**: `full-qa` produces proposals with explicit verification limits

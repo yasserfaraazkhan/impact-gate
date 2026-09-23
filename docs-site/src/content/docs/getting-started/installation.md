@@ -1,113 +1,57 @@
 ---
 title: "Installation"
-description: "Install @yasserkhanorg/impact-gate and verify your setup"
+description: "Build the current source checkout and run a deterministic review"
 ---
 
-<div class="doc-intro">
-  <div class="doc-chip">Getting started</div>
-  <p class="doc-lead">
-    Install the CLI, verify the deterministic workflow first, then add an AI
-    provider only when you want generation, healing, or crew workflows.
-  </p>
-</div>
+Impact Gate requires Node.js 20 or newer and Git. Use a repository with an available Git base ref and existing Playwright or Cypress specs for useful test recommendations.
 
-<div class="docs-grid">
-  <div class="docs-panel docs-panel--compact">
-    <span class="docs-panel__eyebrow">Requirements</span>
-    <h2 class="docs-panel__title">What you need first</h2>
-    <ul>
-      <li><strong>Node.js &gt;= 20</strong> with an LTS runtime</li>
-      <li><strong>Git</strong> for diff-aware analysis</li>
-      <li>A repo with Playwright or Cypress tests already in place</li>
-    </ul>
-  </div>
-  <div class="docs-panel docs-panel--terminal docs-panel--feature">
-    <span class="docs-panel__eyebrow">First verification</span>
-    <h2 class="docs-panel__title">The safest first run is deterministic</h2>
-    <div class="docs-terminal">
-      <code>npx impact-gate impact --path . --since origin/main</code>
-      <code>npx impact-gate plan --path . --since origin/main</code>
-      <code>npx impact-gate gate --threshold 80 --path .</code>
-    </div>
-  </div>
-</div>
+## Current source checkout
 
-## Install
+These docs describe the current source. The recovery and launch changes have not been published as a new npm release, so build the checkout to try them:
 
-Add the package to your project when you want it versioned with the test suite:
+```sh
+git clone https://github.com/yasserfaraazkhan/impact-gate.git
+cd impact-gate
+npm ci
+npm run build
+node dist/cli.js --help
+```
 
-```bash
+From the Impact Gate checkout, review your application's diff:
+
+```sh
+node dist/cli.js review --path /absolute/path/to/your/app --since origin/main
+```
+
+Use a base ref that exists in the target repository. Static `review` and `gate` need no LLM provider. A gate checks spec-mapping policy; it does not run tests or certify a release.
+
+## Published package
+
+To install the published version into an application:
+
+```sh
 npm install -D @yasserkhanorg/impact-gate
-```
-
-Install globally only when you want ad hoc CLI access across many repositories:
-
-```bash
-npm install -g @yasserkhanorg/impact-gate
-```
-
-## Verify
-
-<div class="docs-steps">
-  <div class="docs-step">
-    <div class="docs-step__index">01</div>
-    <div>
-      <h3 class="docs-step__title">Confirm the CLI is available</h3>
-      <p class="docs-step__copy">
-        Start by checking that the binary resolves and the command surface is
-        visible from the current project.
-      </p>
-    </div>
-  </div>
-</div>
-
-```bash
 npx impact-gate --help
 ```
 
-You should see the core commands including `impact`, `plan`, `gate`, `train`,
-and the optional AI workflows. The best first run is still `impact`, then
-`plan`, then `gate`.
+Check the installed version's documentation before using options added in this source checkout. The package exposes CommonJS and ESM library entries as well as the CLI.
 
-## Optional: LLM Provider
+## Optional provider
 
-<div class="docs-grid docs-grid--two">
-  <div class="docs-panel">
-    <span class="docs-panel__eyebrow">Optional AI</span>
-    <h2 class="docs-panel__title">Add a provider only when you want it</h2>
-    <p class="docs-panel__copy">
-      Crew workflows, test generation, and healing need an LLM provider, but
-      the core CI commands do not.
-    </p>
-  </div>
-  <div class="docs-panel">
-    <span class="docs-panel__eyebrow">Free path</span>
-    <h2 class="docs-panel__title">Core commands work without any API key</h2>
-    <p class="docs-panel__copy">
-      <code>impact</code>, <code>plan</code>, <code>gate</code>,
-      <code>train --no-enrich</code>, <code>cost-report</code>, and
-      <code>feedback</code> all work on the deterministic path alone.
-    </p>
-  </div>
-</div>
+Experimental generation, semantic prediction, healing, and crew workflows use a provider. Configure the provider you intend to use, for example:
 
-Set one of these environment variables:
-
-```bash
-# Anthropic
-export ANTHROPIC_API_KEY=sk-ant-...
-
-# OpenAI
-export OPENAI_API_KEY=sk-...
-
-# Ollama (free, runs locally)
+```sh
+export ANTHROPIC_API_KEY=your-key
+# Or:
+export OPENAI_API_KEY=your-key
+# Or a local Ollama service:
 export OLLAMA_BASE_URL=http://localhost:11434
 ```
 
-## Verify Provider Connectivity
+Use `--llm-provider anthropic`, `--llm-provider openai`, or `--llm-provider ollama` when you want an explicit provider choice. Provider-backed requests can incur cost and require a running provider service.
 
-```bash
-npx impact-gate llm-health
+```sh
+node dist/cli.js llm-health
 ```
 
-This probes the configured provider, or the auto-detected provider if you rely on environment discovery, and reports whether it can accept requests and return responses.
+The experimental browser QA binary also requires `agent-browser` and a running application. Follow the [browser QA guide](../../guides/browser-qa/) after the [quick start](../quick-start/).

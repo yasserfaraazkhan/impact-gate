@@ -98,15 +98,31 @@ describe('verification report evidence', () => {
     it('does not treat report-level compile errors as executed passes', () => {
         const result = parsePlaywrightJsonReport(reportFor('expected', {status: 'passed', duration: 1}, {errors: [{message: 'SyntaxError'}]}), 'test.spec.ts');
         assert.equal(result.compiled, false);
+        assert.equal(result.failed, 1);
+        assert.equal(result.failures[0].testTitle, '(compile)');
+        assert.equal(result.failures[0].error, 'SyntaxError');
     });
 });
 
 import {runPlaywrightSpec, isCleanRun} from '../dist/agentic/playwright_runner.js';
-import {mkdtempSync, writeFileSync, symlinkSync, realpathSync} from 'node:fs';
+import {mkdtempSync, writeFileSync, symlinkSync, realpathSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 
 describe('real Playwright execution negatives', () => {
+    it('uses the configured default project when no project is requested', () => {
+        const root = realpathSync(mkdtempSync(join(tmpdir(), 'impact-default-project-')));
+        try {
+            symlinkSync(realpathSync(resolve('node_modules')), join(root, 'node_modules'), 'dir');
+            writeFileSync(join(root, 'playwright.config.ts'), `export default {testDir: '.'};`);
+            const path = join(root, 'default.spec.ts');
+            writeFileSync(path, `import {test, expect} from '@playwright/test'; test('default project', () => {expect(1).toBe(1)});`);
+            const result = runPlaywrightSpec(path, root, {timeoutMs: 30000});
+            assert.equal(isCleanRun(result), true, result.stdout);
+            assert.equal(result.passed, 1);
+        } finally {rmSync(root, {recursive: true, force: true});}
+    });
+
     it('rejects zero/skipped tests, load errors, runtime failures, timeouts, and exit without a report', () => {
         const root = realpathSync(mkdtempSync(join(tmpdir(), 'impact-report-fixture-')));
         symlinkSync(realpathSync(resolve('node_modules')), join(root, 'node_modules'), 'dir');
@@ -125,6 +141,10 @@ describe('real Playwright execution negatives', () => {
             const result = runPlaywrightSpec(path, root, {project: 'chrome', timeoutMs: 10000});
             assert.equal(isCleanRun(result), false, body);
             assert.equal(result.assertionFailures, 0, body);
+            if (index === 2) {
+                assert.equal(result.failures[0].testTitle, '(compile)');
+                assert.match(result.failures[0].error, /missing-module/);
+            }
         }
         console.log(`REAL_PLAYWRIGHT_NEGATIVE_FIXTURE=${root}`);
     });
