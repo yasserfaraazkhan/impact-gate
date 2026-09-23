@@ -76,6 +76,33 @@ function summary(results = []) {
 }
 
 describe('browser findings to generated specs', () => {
+    it('keeps the expected outcome in the actual prompt when reproduction steps exceed the prompt limit', async (t) => {
+        const f = fixture(t);
+        const expected = 'The saved display name remains visible after reload';
+        const lastStep = 'LAST_REPRODUCTION_STEP';
+        const longFinding = finding({evidence: {
+            url: 'http://localhost:3000/settings',
+            expectedBehavior: expected,
+            reproSteps: ['Change the display name', 'Repeat a long setup step. '.repeat(150), lastStep],
+        }});
+        let prompt = '';
+        t.mock.method(LLMProviderFactory, 'createFromPreference', async () => ({
+            name: 'fixture', generateText: async (input) => {
+                prompt = input;
+                return {text: "import {test} from '@playwright/test';\ntest('profile persists', async () => {});"};
+            },
+        }));
+        t.mock.method(verification, 'verifyGeneratedSpec', () => ({verified: false, reason: 'Fixture has no verification evidence'}));
+
+        await generateSpecsForFindings([longFinding], f.config);
+
+        assert.ok(prompt.includes(`Expected: ${expected}`));
+        assert.ok(prompt.indexOf(`Expected: ${expected}`) < prompt.indexOf('1. Change the display name'));
+        assert.ok(!prompt.includes(lastStep), 'fixture must exercise real scenario prompt truncation');
+        const exported = JSON.parse(readFileSync(join(f.outputDir, 'qa-findings-scenarios.json'), 'utf8'));
+        assert.ok(exported[0].scenarios[0].includes(lastStep), 'export retains the full reproduction for replay');
+    });
+
     it('preserves complete reproductions and exports scenarios accepted by the generate CLI', async (t) => {
         const f = fixture(t);
         const provider = t.mock.method(LLMProviderFactory, 'createFromPreference', async () => ({name: 'fixture'}));

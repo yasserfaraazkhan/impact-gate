@@ -309,7 +309,8 @@ describe('impact_engine', () => {
         assert.equal(byType('snapshot').length, 1);
         assert.equal(byType('playwright').length, 1);
         assert.equal(byType('cypress').length, 1);
-        assert.equal(byType('unit').length, 2); // .test.tsx + _test.go
+        assert.equal(byType('unit').length, 1); // .test.tsx
+        assert.equal(byType('go').length, 1); // _test.go declarations are separate evidence
     });
 });
 

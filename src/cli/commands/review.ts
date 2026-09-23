@@ -45,6 +45,14 @@ import {loadOrBuildApiSurface} from '../../knowledge/api_surface.js';
 import {resolveGenerationProfile} from '../../prompts/generation_profile.js';
 
 import type {ParsedArgs} from '../types.js';
+import {classifyError} from '../errors.js';
+
+interface ReviewGenerationOutcome {
+    status: 'completed' | 'failed' | 'skipped';
+    error?: string;
+    summaryPath?: string;
+    totalFailed?: number;
+}
 
 export async function runReviewCommand(
     args: ParsedArgs,
@@ -155,12 +163,23 @@ export async function runReviewCommand(
     }
 
     // --generate: feed uncovered recommendations into agentic test generation
+    let generation: ReviewGenerationOutcome | undefined;
     if (args.analyzeGenerate) {
-        await runReviewGenerate(args, config, report, reportRoot);
+        try {
+            generation = await runReviewGenerate(args, config, report, reportRoot);
+            if (generation.status === 'failed') process.exitCode = 1;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            generation = {status: 'failed', error: message};
+            console.error(`Test generation failed: ${message}`);
+            process.exitCode = classifyError(error);
+        }
     }
 
-    // Emit once, after all requested work that can throw. The CLI catch owns error JSON.
-    console.log(args.jsonOutput ? JSON.stringify(formatReviewJSON(report), null, 2) : formatReviewText(report));
+    // Optional generation must not discard the completed provider-free review.
+    const jsonReport = {...formatReviewJSON(report), ...(generation ? {generation} : {})};
+    console.log(args.jsonOutput ? JSON.stringify(jsonReport, null, 2) : formatReviewText(report));
+    if (generation?.error !== undefined) return;
 
     // Exit code based on enforcement
     if (plan.enforcement.shouldFail) {
@@ -200,7 +219,12 @@ export function buildScenariosFromReview(report: ReviewReport): ScenarioInput[] 
     const uncoveredRecs = (report.recommendations || []).filter((r) => !r.alreadyCoveredBy);
 
     // Also collect uncovered flow IDs for context
-    const uncoveredFlows = report.impactedFlows.filter((f) => f.status === 'uncovered' || f.status === 'partial');
+    const uncoveredFlows = report.impactedFlows.filter((f) =>
+        f.status === 'uncovered' || f.status === 'partial' ||
+        // An unverified association may still have a known coverage gap. The
+        // absence of newly added PR scenarios alone is not such a gap.
+        (f.status === 'associated' && f.gaps.some((gap) =>
+            gap.trim().length > 0 && !/^no new scenarios? (?:were )?added\b/i.test(gap.trim()))));
 
     const scenarios: ScenarioInput[] = [];
 
@@ -260,7 +284,7 @@ async function runReviewGenerate(
     config: ReturnType<typeof resolveConfig>['config'],
     report: ReviewReport,
     reportRoot: string,
-): Promise<void> {
+): Promise<ReviewGenerationOutcome> {
     console.error('');
     console.error('─── Test Generation ───');
 
@@ -268,7 +292,7 @@ async function runReviewGenerate(
 
     if (scenarios.length === 0) {
         console.error('All recommendations are already covered. No tests to generate.');
-        return;
+        return {status: 'skipped'};
     }
 
     const totalScenarios = scenarios.reduce((sum, s) => sum + s.scenarios.length, 0);
@@ -357,5 +381,5 @@ async function runReviewGenerate(
         ...summary,
     }, null, 2), 'utf-8');
     console.error(`\nReport: ${summaryPath}`);
-    if (summary.totalFailed > 0) process.exitCode = 1;
+    return {status: summary.totalFailed > 0 ? 'failed' : 'completed', summaryPath, totalFailed: summary.totalFailed};
 }

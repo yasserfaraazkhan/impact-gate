@@ -57,6 +57,8 @@ export interface AgenticConfig {
 export interface AgenticResult {
     specPath: string;
     scenarioSource: string;
+    /** True when this run created a new spec or quarantined proposal. */
+    generated?: boolean;
     status: 'passed' | 'failed' | 'max-attempts' | 'compile-error' | 'skipped' | 'unverified';
     attempts: number;
     finalRun?: PlaywrightRunResult;

@@ -112,8 +112,9 @@ export function isRelevantFile(file: string): boolean {
 }
 
 export interface GitChangeResult {
-    /** Complete repository-relative changed-file set. Never filtered. */
+    /** Complete tracked diff plus local changes, except untracked tool artifacts. */
     files: string[];
+    ignoredUntrackedFiles?: string[];
     relevantFiles?: string[];
     repositoryRoot?: string;
     requestedBaseSha?: string;
@@ -127,6 +128,16 @@ export interface GitChangeResult {
 
 export interface GitChangeOptions {
     includeUncommitted?: boolean;
+}
+
+// Only untracked files are omitted. Committed, staged and modified config or
+// manifest files remain part of the complete diff for conservative assessment.
+function isUntrackedToolArtifact(file: string): boolean {
+    const segments = file.split('/');
+    return segments.includes('.e2e-ai-agents') || [
+        'impact-gate.config.json', '.impact-gate.config.json',
+        'e2e-ai-agents.config.json', '.e2e-ai-agents.config.json',
+    ].includes(segments[segments.length - 1]);
 }
 
 export function runGitRaw(args: string[], cwd: string): string | null {
@@ -178,14 +189,20 @@ export function getChangedFiles(appRoot: string, since: string, options?: GitCha
         // NUL-delimited output preserves spaces, newlines and non-ASCII names.
         // Disabling rename detection retains both the removed and added paths.
         const files = new Set(git(['diff', '--name-only', '--no-renames', '--ignore-submodules=none', '-z', baseRef, headSha, '--'], repositoryRoot).split('\0').filter(Boolean));
+        const ignoredUntrackedFiles: string[] = [];
         if (options?.includeUncommitted) {
-            for (const args of [['diff', '--name-only', '--no-renames', '--ignore-submodules=none', '-z', '--cached'], ['diff', '--name-only', '--no-renames', '--ignore-submodules=none', '-z'], ['ls-files', '--others', '--exclude-standard', '-z']]) {
+            for (const args of [['diff', '--name-only', '--no-renames', '--ignore-submodules=none', '-z', '--cached'], ['diff', '--name-only', '--no-renames', '--ignore-submodules=none', '-z']]) {
                 git(args, repositoryRoot).split('\0').filter(Boolean).forEach((file) => files.add(file));
+            }
+            for (const file of git(['ls-files', '--others', '--exclude-standard', '-z'], repositoryRoot).split('\0').filter(Boolean)) {
+                if (isUntrackedToolArtifact(file)) ignoredUntrackedFiles.push(file);
+                else files.add(file);
             }
         }
         const allFiles = [...files].sort();
         return {
             files: allFiles,
+            ignoredUntrackedFiles: ignoredUntrackedFiles.sort(),
             relevantFiles: allFiles.filter(isRelevantFile),
             filteredTestFiles: allFiles.filter(isTestFile),
             repositoryRoot, requestedBaseSha, headSha, baseRef, baseStrategy: 'merge-base',

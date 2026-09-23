@@ -20,3 +20,12 @@ const directoryShim = "import {fileURLToPath} from 'node:url';\nconst __dirname 
 if (!versionSource.startsWith(directoryShim)) {
   fs.writeFileSync(versionPath, directoryShim + versionSource);
 }
+
+// Anchor resolution at the named package root, outside dist/esm's type-only
+// package scope, so the skill installer can use the package's own exports.
+const installSkillPath = path.join(esmDir, 'cli', 'commands', 'install_skill.js');
+const installSkillSource = fs.readFileSync(installSkillPath, 'utf8');
+const requireShim = "import {createRequire} from 'node:module';\nconst require = createRequire(new URL('../../../../package.json', import.meta.url));\n";
+if (!installSkillSource.startsWith(requireShim)) {
+  fs.writeFileSync(installSkillPath, requireShim + installSkillSource);
+}

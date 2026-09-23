@@ -61,16 +61,16 @@ export async function runPredictCommand(args: ParsedArgs): Promise<void> {
         return;
     }
 
-    console.log(`Analyzing defect risk: ${baseRef}...${headRef}`);
-    console.log(`Repository: ${repoRoot}`);
+    console.error(`Analyzing defect risk: ${baseRef}...${headRef}`);
+    console.error(`Repository: ${repoRoot}`);
 
     // Determine if we need the LLM for --deep
     const useDeep = args.deep === true;
     let prediction: DefectPrediction;
 
     if (useDeep) {
-        console.log('Mode: deep (LLM semantic analysis enabled)');
-        console.log('');
+        console.error('Mode: deep (LLM semantic analysis enabled)');
+        console.error('');
 
         try {
             const provider = args.llmProvider
@@ -86,12 +86,12 @@ export async function runPredictCommand(args: ParsedArgs): Promise<void> {
             });
         } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
-            console.log(`LLM unavailable (${msg}). Falling back to deterministic analysis.`);
-            console.log('');
+            console.error(`LLM unavailable (${msg}). Falling back to deterministic analysis.`);
+            console.error('');
             prediction = predictSync(repoRoot, baseRef, headRef);
         }
     } else {
-        console.log('');
+        console.error('');
         prediction = await predict(repoRoot, baseRef, headRef, {
             projectRoot: repoRoot,
             record: true,
@@ -148,9 +148,9 @@ export async function runPredictCommand(args: ParsedArgs): Promise<void> {
     // Gate: exit 1 if score exceeds threshold
     const threshold = args.threshold ?? args.gateThreshold;
     if (typeof threshold === 'number' && prediction.score > threshold) {
-        console.log('');
-        console.log(`GATE FAILED: defect risk ${prediction.score.toFixed(2)} exceeds threshold ${threshold}`);
-        process.exit(1);
+        console.error('');
+        console.error(`GATE FAILED: defect risk ${prediction.score.toFixed(2)} exceeds threshold ${threshold}`);
+        process.exitCode = 1;
     }
 }
 

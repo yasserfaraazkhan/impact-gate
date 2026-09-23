@@ -43,7 +43,7 @@ export interface ImpactedFeature {
     coverageStatus: CoverageStatus;
 }
 
-export type PrTestFileType = 'playwright' | 'cypress' | 'unit' | 'snapshot';
+export type PrTestFileType = 'playwright' | 'cypress' | 'go' | 'unit' | 'snapshot';
 
 export interface PrTestFile {
     file: string;
@@ -104,19 +104,26 @@ function scanDirForSpecs(baseDir: string, specDir: string, pattern: RegExp): str
 // Playwright uses test() and test.describe(); Cypress uses describe(), context(), it().
 const PLAYWRIGHT_SCENARIO_RE = /(?:test\.describe|test)\(\s*['"`]([^'"`]+)['"`]/g;
 const CYPRESS_SCENARIO_RE = /(?:describe|context|it)\(\s*['"`]([^'"`]+)['"`]/g;
+const GO_SCENARIO_RE = /^func\s+(Test(?:[A-Z0-9_]\w*)?)\s*\(\s*\w+\s+\*testing\.T\s*\)/gm;
 
 /**
  * Extract describe/test/it titles from a spec file using regex.
  * Returns an empty array if the file cannot be read.
  */
-export function extractScenarios(filePath: string, framework: 'playwright' | 'cypress'): string[] {
+export function extractScenarios(filePath: string, framework: 'playwright' | 'cypress' | 'go'): string[] {
     let content: string;
     try {
         content = readFileSync(filePath, 'utf-8');
     } catch {
         return [];
     }
-    const re = framework === 'playwright' ? PLAYWRIGHT_SCENARIO_RE : CYPRESS_SCENARIO_RE;
+    if (framework === 'go') {
+        // Ignore declarations inside comments or quoted examples. Names alone
+        // are inventory evidence; this scanner never executes Go tests.
+        content = content.replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`[^`]*`/g,
+            (match) => match.replace(/[^\n]/g, ' '));
+    }
+    const re = framework === 'playwright' ? PLAYWRIGHT_SCENARIO_RE : framework === 'go' ? GO_SCENARIO_RE : CYPRESS_SCENARIO_RE;
     const scenarios: string[] = [];
     let match: RegExpExecArray | null;
     // Reset lastIndex in case the regex was used before
@@ -204,6 +211,9 @@ function classifyPrTestFiles(allFiles: string[], sourceFiles: string[]): PrTestF
         .filter((f) => !sourceSet.has(f))
         .map((f) => {
             const n = f.replace(/\\/g, '/');
+            if (/_test\.go$/.test(n)) {
+                return {file: f, type: 'go' as const};
+            }
             if (/\.snap$/.test(n) || n.includes('__snapshots__/')) {
                 return {file: f, type: 'snapshot' as const};
             }

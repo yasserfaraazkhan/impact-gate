@@ -4,10 +4,139 @@ import {mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync}
 import {tmpdir} from 'node:os';
 import {join, resolve, dirname} from 'node:path';
 import {execFileSync, spawnSync, spawn} from 'node:child_process';
-import {formatReviewJSON, formatReviewMarkdown} from '../dist/engine/review_formatter.js';
+import {formatReviewJSON, formatReviewMarkdown, formatReviewText} from '../dist/engine/review_formatter.js';
 import {resolveDefaults, detectTestsRoot} from '../dist/cli/defaults.js';
-import {findRelevantTests} from '../dist/engine/behavior_analyzer.js';
+import {findRelevantTests, extractBehaviorSignals, generateRecommendations, analyzeBehavior} from '../dist/engine/behavior_analyzer.js';
+import {analyzeImpact, extractScenarios} from '../dist/engine/impact_engine.js';
+import {synthesizeReview} from '../dist/engine/review_synthesizer.js';
+import {buildPlanFromImpact} from '../dist/engine/plan_builder.js';
+import {appendPlanMetrics} from '../dist/agent/plan.js';
 import {buildScenariosFromReview} from '../dist/cli/commands/review.js';
+
+const lowRiskPrediction: any = {score: 0.1, level: 'low', factors: [], recommendation: 'Review', metrics: {complexity: {test_ratio: 0, cognitive_delta: 0}}};
+
+it('filesystem permission errors do not create authorization or cross-role recommendations', () => {
+    for (const expression of ['errors.Is(err, os.ErrPermission)', 'return ErrPermission', 'return filePermission', 'return PermissionManage']) {
+        const signals = extractBehaviorSignals(new Map([['server/config/file.go', `+${expression}\n`]]));
+        assert.ok(!signals.some((signal) => signal.type === 'permission-change'), expression);
+        assert.ok(!generateRecommendations(signals, [], []).some((recommendation) => /roles|admin|access restrictions/.test(recommendation.scenario)), expression);
+    }
+    for (const expression of ['HasPermission(session, permission)', 'SessionHasPermission(session, permission)', 'SessionHasPermissionTo(session, permission)', 'SessionHasPermissionToChannel(session, channel, permission)']) {
+        const signals = extractBehaviorSignals(new Map([['server/app/auth.go', `+if !a.${expression} {\n`]]));
+        assert.ok(signals.some((signal) => signal.type === 'permission-change'), expression);
+        assert.ok(generateRecommendations(signals, [], []).some((recommendation) => recommendation.dimension === 'cross-role'), expression);
+    }
+});
+
+it('scanner associations keep measured confidence unavailable in plans, review JSON and human output', (t) => {
+    const f = fixture(t);
+    const testsRoot = join(f.inventory, 'e2e-tests/playwright');
+    writeFileSync(join(testsRoot, 'specs/file_upload.spec.ts'), "test('file upload', () => {});\n");
+    const impact = analyzeImpact(['server/config/file.go'], {testsRoot, sourceRoot: f.repo});
+    assert.equal(impact.mappingProvenance[0].kind, 'scanner-heuristic');
+    assert.ok(impact.impactedFeatures[0].playwrightSpecs.length > 0);
+    const plan = buildPlanFromImpact(impact);
+    assert.equal(plan.confidence, null);
+    assert.equal(plan.confidenceKind, 'unavailable');
+    // A stale caller's numeric heuristic must not become measured confidence.
+    const report = synthesizeReview(impact, {...plan, confidence: 95, confidenceKind: 'heuristic'}, lowRiskPrediction);
+    assert.equal(report.metrics.confidence, null);
+    assert.equal(report.metrics.confidenceKind, 'unavailable');
+    assert.equal(report.metrics.coveredFlows, 0);
+    assert.equal(report.metrics.associatedFlows, 1);
+    assert.equal(report.impactedFlows[0].status, 'associated');
+    assert.equal((formatReviewJSON(report).metrics as any).confidence, null);
+    for (const output of [formatReviewText(report), formatReviewMarkdown(report)]) {
+        assert.match(output, /Confidence: unavailable \(kind: unavailable\)/);
+        assert.match(output, /associated/);
+        assert.doesNotMatch(output, /95%|null%|Confidence: 0%/);
+    }
+    const unknown = synthesizeReview({...impact, evidence: undefined, mappingProvenance: undefined}, {...plan, confidence: null, confidenceKind: 'unavailable'}, lowRiskPrediction);
+    assert.equal(unknown.metrics.confidence, null, 'unavailable plan confidence must not turn into zero');
+});
+
+it('Go PR test declarations are visible, not executed, and cannot satisfy E2E recommendations or gaps', (t) => {
+    const f = fixture(t);
+    const names = ['TestReadConfigDenied', 'TestWriteConfigReadOnly', 'TestConfigEmpty', 'TestConfigMalformed'];
+    f.put('server/config/file.go', 'package config\nfunc readConfig() error { return os.ErrPermission }\n');
+    f.put('server/config/file_test.go', [
+        'package config', 'import "testing"',
+        ...names.map((name) => `func ${name}(t *testing.T) {}`),
+        'func TestMain(m *testing.M) {}',
+        'func TestHelper() {}',
+        'func Testlowercase(t *testing.T) {}',
+        '// func TestComment(t *testing.T) {}',
+        '/*', 'func TestBlockComment(t *testing.T) {}', '*/',
+        'var example = `', 'func TestStringExample(t *testing.T) {}', '`',
+    ].join('\n'));
+    assert.deepEqual(extractScenarios(join(f.repo, 'server/config/file_test.go'), 'go'), names);
+    f.git('add', '.'); f.git('commit', '-m', 'Go error regression tests');
+    const result = f.run();
+    assert.equal(result.status, 0, result.stderr);
+    const report = JSON.parse(result.stdout);
+    const goTest = report.prIncludedTestSummary.tests.find((test) => test.file === 'server/config/file_test.go');
+    assert.deepEqual(goTest, {file: 'server/config/file_test.go', type: 'go', scenarios: names, execution: 'not-executed'});
+    assert.equal(report.prIncludedTestSummary.execution, 'not-executed');
+    for (const output of [formatReviewText(report), formatReviewMarkdown(report)]) {
+        assert.match(output, /not executed/);
+        for (const name of names) assert.ok(output.includes(name), name);
+        assert.doesNotMatch(output, /TestMain|TestHelper|TestComment|TestBlockComment|TestStringExample/);
+    }
+
+    const gapImpact: any = {
+        changedFiles: ['server/config/file.go', 'server/config/file_test.go'], expandedFiles: [], unboundFiles: [], warnings: [],
+        evidence: {coverage: 'unavailable', measuredCoverageEdges: 0},
+        prIncludedTestFiles: [{file: 'server/config/file_test.go', type: 'go'}],
+        impactedFeatures: [{familyId: 'config', priority: 'P0', changedFiles: ['server/config/file.go'], coverageStatus: 'uncovered',
+            playwrightSpecs: [], cypressSpecs: [], playwrightSpecDetails: [], cypressSpecDetails: [], userFlows: []}],
+    };
+    const diffs = new Map([['server/config/file.go', '+if !a.SessionHasPermissionTo(session, permission) {\n']]);
+    const behavior = analyzeBehavior(diffs, gapImpact, null, f.repo);
+    const plan = buildPlanFromImpact(gapImpact);
+    assert.equal(plan.decision.action, 'must-add-tests');
+    const withGoEvidence = synthesizeReview(gapImpact, plan, lowRiskPrediction, undefined, behavior);
+    assert.equal(withGoEvidence.decision.action, 'must-add-tests', 'unexecuted Go declarations must not soften E2E gaps');
+    const recommendations = generateRecommendations(extractBehaviorSignals(diffs), [{
+        file: 'server/config/file_test.go', type: 'go', scenarios: ['TestPermissionRolesAdmin'], matchReason: 'pr-included', relevanceScore: 1,
+    }], []);
+    assert.ok(recommendations.some((recommendation) => recommendation.dimension === 'cross-role'));
+});
+
+it('plan metrics preserve unavailable confidence and average only numeric heuristic samples', (t) => {
+    const f = fixture(t);
+    const impact = analyzeImpact(['src/widget.ts'], {testsRoot: join(f.inventory, 'e2e-tests/playwright')});
+    const plan = buildPlanFromImpact(impact);
+    const paths = appendPlanMetrics(f.root, plan);
+    let events = readFileSync(paths.eventsPath, 'utf8').trim().split('\n').map((line) => JSON.parse(line));
+    assert.equal(events[0].confidence, null);
+    assert.equal(events[0].confidenceKind, 'unavailable');
+    let metrics = JSON.parse(readFileSync(paths.summaryPath, 'utf8'));
+    assert.equal(metrics.averageConfidence, null);
+    assert.equal(metrics.confidenceSamples, 0);
+    appendPlanMetrics(f.root, {...plan, runId: 'numeric-score', confidence: 80, confidenceKind: 'heuristic'});
+    appendPlanMetrics(f.root, {...plan, runId: 'zero-score', confidence: 0, confidenceKind: 'heuristic'});
+    metrics = JSON.parse(readFileSync(paths.summaryPath, 'utf8'));
+    assert.equal(metrics.totalRuns, 3);
+    assert.equal(metrics.confidenceSamples, 2);
+    assert.equal(metrics.averageConfidence, 40, 'unknown values must not dilute real numeric scores');
+});
+
+it('plan CLI renders unavailable confidence without inventing a numeric score', (t) => {
+    const f = fixture(t);
+    const githubOutput = join(f.root, 'github-output');
+    const result = spawnSync(process.execPath, [cli, 'plan', '--path', f.repo, '--since', f.base, '--tests-root', join(f.inventory, 'e2e-tests/playwright'), '--no-ai', '--json', '--github-output', githubOutput], {
+        cwd: f.root, encoding: 'utf8', env: {PATH: process.env.PATH}, timeout: 30000,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const plan = JSON.parse(result.stdout);
+    assert.equal(plan.confidence, null);
+    assert.equal(plan.confidenceKind, 'unavailable');
+    assert.match(result.stderr, /confidence unavailable/);
+    assert.doesNotMatch(result.stderr, /heuristic score null/);
+    const outputs = readFileSync(githubOutput, 'utf8');
+    assert.match(outputs, /^confidence=unavailable$/m);
+    assert.match(outputs, /^confidence_kind=unavailable$/m);
+});
 
 const cli = resolve('dist/cli.js');
 function fixture(t: any) {

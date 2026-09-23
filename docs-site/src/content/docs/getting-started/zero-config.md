@@ -66,7 +66,11 @@ The CLI reads your project files and `package.json` dependencies to detect:
     <h2 class="docs-panel__title">Diff base is discovered from the remote</h2>
     <p class="docs-panel__copy">
       The CLI queries <code>git remote show origin</code> for the default HEAD
-      branch and falls back to the current branch when needed.
+      branch. If that fails, it uses <code>origin/main</code> or
+      <code>origin/master</code> when on that branch, otherwise
+      <code>origin/main</code>. An explicit <code>--since</code> wins over
+      config <code>git.since</code>; detection still runs when a config file
+      exists but does not specify a base.
     </p>
   </div>
 </div>
@@ -95,6 +99,12 @@ Create `impact-gate.config.json` in your project root when you need to:
 If auto-detection gets it wrong, prefer explicit flags or a config file over guessing.
 
 The CLI searches for `impact-gate.config.json` or `.impact-gate.config.json` starting from the current directory and walking upward.
+
+With `git.includeUncommitted` enabled, new application files are included in the
+diff. Untracked `.e2e-ai-agents/` artifacts and conventional Impact Gate config
+files are omitted so repeated local runs do not analyze their own outputs.
+Staged, committed, or modified tracked config and manifest files remain in the
+diff and can require conservative assessment.
 
 The [Mattermost advisory pilot](../../guides/mattermost-advisory/) requires explicit configuration and `--suite`. `plan --advisory` uses configured suite roots and static spec patterns, validates them against a clean committed checkout and retains full fallback for nonempty diffs. A policy setting named `advisory` alone does not activate this isolated mode.
 

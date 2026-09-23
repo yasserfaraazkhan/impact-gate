@@ -143,7 +143,7 @@ async function runSingleScenario(
     // Mutation verification proves the new artifact detects a change, not that it
     // preserves every test in an existing file. Never replace existing coverage.
     if (existsSync(specPath)) {
-        return {specPath, scenarioSource: scenario.id, status: 'unverified', attempts: 0,
+        return {specPath, scenarioSource: scenario.id, status: 'skipped', attempts: 0,
             warnings: [`Existing spec preserved: ${specPath}. Choose a new targetSpec or scenario id and integrate the generated tests after review.`]};
     }
     const profile = options.generationProfile || resolveGenerationProfile();
@@ -201,7 +201,7 @@ async function runSingleScenario(
                 verification = verifyGeneratedSpec(specPath, {...config, timeoutMs: config.testTimeoutMs});
                 lastRun = verification.baseline;
                 if (verification.verified) {
-                    return {specPath, scenarioSource: scenario.id, status: 'passed', attempts, finalRun: lastRun, verification, warnings};
+                    return {specPath, scenarioSource: scenario.id, generated: true, status: 'passed', attempts, finalRun: lastRun, verification, warnings};
                 }
                 // A clean but insensitive test is unverified; fixing it must not reuse old evidence.
                 if (!lastRun || isCleanRun(lastRun) || attempt === config.maxAttempts) break;
@@ -221,7 +221,7 @@ async function runSingleScenario(
     try {reviewPath = quarantineSpec(specPath, config.testsRoot, undefined, generated, quarantinePath);} catch (error) {
         warnings.push(`Quarantine unavailable after rejected-spec cleanup: ${String(error)}`);
     }
-    return {specPath: reviewPath, scenarioSource: scenario.id, status: config.dryRun ? 'skipped' : 'unverified', attempts, finalRun: lastRun, verification, warnings};
+    return {specPath: reviewPath, scenarioSource: scenario.id, generated: true, status: config.dryRun ? 'skipped' : 'unverified', attempts, finalRun: lastRun, verification, warnings};
 
 }
 
@@ -242,7 +242,7 @@ export async function runAgenticGeneration(options: AgenticRunOptions): Promise<
 
     return {
         results,
-        totalGenerated: results.length,
+        totalGenerated: results.filter((result) => result.generated === true).length,
         totalPassed,
         totalFailed,
         totalAttempts,

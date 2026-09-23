@@ -40,8 +40,8 @@ export async function generateSpecsForFindings(
         scenarios: [[
             `Verify: ${f.summary}`,
             `URL: ${f.evidence.url || config.baseUrl}`,
-            ...f.evidence.reproSteps.map((step, index) => `${index + 1}. ${step}`),
             `Expected: ${f.evidence.expectedBehavior || `The issue "${f.summary}" should not occur`}`,
+            ...f.evidence.reproSteps.map((step, index) => `${index + 1}. ${step}`),
         ].join('\n')],
         evidence: f.evidence.actualBehavior || f.summary,
         priority: f.severity === 'critical' || f.severity === 'high' ? 'P0' : 'P1',

@@ -21,7 +21,7 @@ import {basename, dirname} from 'path';
 import {existsSync, readdirSync} from 'fs';
 
 import {extractScenarios} from './impact_engine.js';
-import type {ImpactResult, ImpactedFeature, PrTestFile} from './impact_engine.js';
+import type {ImpactResult, ImpactedFeature, PrTestFile, PrTestFileType} from './impact_engine.js';
 import {camelCaseToFlow, componentNameToFlow, isSimilarFlow} from '../training/flow_inferrer.js';
 import type {RouteFamilyManifest} from '../knowledge/route_families.js';
 
@@ -52,6 +52,8 @@ export interface RelevantTest {
     scenarios: string[];
     matchReason: 'manifest' | 'title-match' | 'adjacency' | 'pr-included';
     relevanceScore: number;
+    type?: PrTestFileType;
+    execution?: 'not-executed';
 }
 
 export interface TestRecommendation {
@@ -179,7 +181,7 @@ const BEHAVIOR_RULES: BehaviorRule[] = [
     // Permission/role changes
     {
         filePattern: /\.go$/,
-        diffPattern: /^\+.*(?:Permission|HasPermission|SessionHasPermission|PermissionManage)/m,
+        diffPattern: /^\+.*\b(?:HasPermission|SessionHasPermission)(?:To(?:Channel|Team|User)?)?\s*\(/m,
         type: 'permission-change',
         descriptionFn: () => 'Permission or authorization logic changed',
         confidence: 0.8,
@@ -197,7 +199,14 @@ const BEHAVIOR_RULES: BehaviorRule[] = [
     },
     // New test files
     {
-        filePattern: /\.(spec|test)\.(ts|tsx|js|jsx|go)$/,
+        filePattern: /_test\.go$/,
+        diffPattern: /^\+func\s+Test(?:[A-Z0-9_]\w*)?\s*\(/m,
+        type: 'test-added',
+        descriptionFn: (file) => `Go test declarations added: ${basename(file)}`,
+        confidence: 1.0,
+    },
+    {
+        filePattern: /\.(spec|test)\.(ts|tsx|js|jsx)$/,
         diffPattern: /^\+.*(?:test\(|it\(|describe\(|func Test)/m,
         type: 'test-added',
         descriptionFn: (file) => {
@@ -318,14 +327,16 @@ export function findRelevantTests(
 
     // Source 1: PR-included test files (from impact engine's filteredTestFiles)
     for (const prTest of impact.prIncludedTestFiles) {
-        if (prTest.type === 'playwright' || prTest.type === 'cypress') {
+        if (prTest.type === 'playwright' || prTest.type === 'cypress' || prTest.type === 'go') {
             const absPath = prTest.file.startsWith('/') ? prTest.file : `${repositoryRoot}/${prTest.file}`;
-            const scenarios = extractScenarios(absPath, prTest.type === 'playwright' ? 'playwright' : 'cypress');
+            const scenarios = extractScenarios(absPath, prTest.type);
             prIncluded.push({
                 file: prTest.file,
                 scenarios,
                 matchReason: 'pr-included',
                 relevanceScore: 1.0,
+                type: prTest.type,
+                execution: 'not-executed',
             });
             seen.add(prTest.file);
         }
@@ -410,7 +421,9 @@ export function generateRecommendations(
     existingTests: RelevantTest[],
 ): TestRecommendation[] {
     const recommendations: TestRecommendation[] = [];
-    const allTestScenarios = [...prTests, ...existingTests]
+    // Go declarations are PR evidence, not an E2E association or execution result.
+    const candidateTests = [...prTests, ...existingTests].filter((test) => test.type !== 'go');
+    const allTestScenarios = candidateTests
         .flatMap((t) => t.scenarios)
         .map((s) => s.toLowerCase());
 
@@ -430,7 +443,7 @@ export function generateRecommendations(
         // Check if already covered
         const covered = allTestScenarios.some((s) => isSimilarFlow(s, scenario));
         const coveredBy = covered
-            ? [...prTests, ...existingTests].find((t) => t.scenarios.some((s) => isSimilarFlow(s.toLowerCase(), scenario.toLowerCase())))?.file
+            ? candidateTests.find((t) => t.scenarios.some((s) => isSimilarFlow(s.toLowerCase(), scenario.toLowerCase())))?.file
             : undefined;
 
         if (!recommendations.some((r) => isSimilarFlow(r.scenario, scenario))) {

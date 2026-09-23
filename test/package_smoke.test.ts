@@ -44,6 +44,12 @@ it('packed package supports CJS, ESM, MCP imports and installed CLI symlinks', (
     }
     assert.match(run([join(binDir, 'impact-gate'), '--help']), /impact-gate <command>/);
     assert.match(run([join(binDir, 'impact-gate-qa'), '--help']), /Usage:/);
+    assert.match(run([join(installed, 'dist/esm/cli.js'), 'install-skill', 'qa']), /Installed \/qa/);
+    assert.equal(
+        readFileSync(join(consumer, '.claude/skills/qa/SKILL.md'), 'utf8'),
+        readFileSync(join(installed, 'skills/qa/SKILL.md'), 'utf8'),
+        'ESM CLI must copy the packaged skill into the caller directory',
+    );
     const mcpBin = spawnSync(process.execPath, [join(binDir, 'impact-gate-mcp')], {cwd: consumer, input: '', encoding: 'utf8', timeout: 5000});
     assert.equal(mcpBin.status, 0, mcpBin.stderr);
 });

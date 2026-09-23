@@ -99,7 +99,8 @@ export async function runPlanCommand(args: ParsedArgs, autoConfig: string | unde
     if (ghaOutput) {
         appendFileSync(ghaOutput, `run_set=${planReport.runSet}\n`);
         appendFileSync(ghaOutput, `action=${planReport.decision.action}\n`);
-        appendFileSync(ghaOutput, `confidence=${planReport.confidence}\n`);
+        appendFileSync(ghaOutput, `confidence=${planReport.confidence === null ? 'unavailable' : planReport.confidence}\n`);
+        appendFileSync(ghaOutput, `confidence_kind=${planReport.confidenceKind || (planReport.confidence === null ? 'unavailable' : 'heuristic')}\n`);
         appendFileSync(ghaOutput, `enforcement_mode=${planReport.enforcement.mode}\n`);
         appendFileSync(ghaOutput, `enforcement_should_fail=${planReport.enforcement.shouldFail}\n`);
         appendFileSync(ghaOutput, `recommended_tests_count=${planReport.recommendedTests.length}\n`);
@@ -118,7 +119,8 @@ export async function runPlanCommand(args: ParsedArgs, autoConfig: string | unde
         appendFileSync(ghaOutput, `crew_test_designs=${planReport.crew?.summary.testDesigns || 0}\n`);
     }
     if (args.jsonOutput) console.log(JSON.stringify(planReport, null, 2));
-    progress(`Suggested run set: ${planReport.runSet} (heuristic score ${planReport.confidence})`);
+    const confidenceLabel = planReport.confidence === null ? 'confidence unavailable' : `${planReport.confidenceKind || 'heuristic'} confidence ${planReport.confidence}`;
+    progress(`Suggested run set: ${planReport.runSet} (${confidenceLabel})`);
     progress(`Decision: ${planReport.decision.action} - ${planReport.decision.summary}`);
     progress(`Enforcement: ${planReport.enforcement.mode} (shouldFail=${planReport.enforcement.shouldFail})`);
     progress(`Plan data: ${planPath}`);

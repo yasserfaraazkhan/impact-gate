@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Review corrections
+
+- Preserve default-branch detection when a config omits `git.since`, without overriding configured test roots. Exclude only untracked tool artifacts from local change collection; retain staged and tracked configuration changes.
+- Separate heuristic spec associations from coverage in reviews and report unavailable confidence explicitly. Recognize named authorization calls without treating filesystem permission errors as role changes.
+- Include changed Go test files and declared test names as unexecuted PR evidence, without treating their presence as verified coverage.
+- Preserve static review output and report generation failures with a nonzero exit. Mark preserved existing specs as skipped and keep expected outcomes ahead of lengthy QA reproduction steps.
+- Keep prediction JSON stdout parseable, honor absolute CI comment paths, and support skill installation through the ESM CLI.
+
 ### Reviewable Playwright workflow
 
 - Add `review --scenarios-output <path>` to export editable generation input without a provider. Preserve uncovered manifest flows and unmatched core recommendations.

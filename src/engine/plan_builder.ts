@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {mkdirSync, writeFileSync} from 'fs';
-import {dirname, join} from 'path';
+import {dirname, join, resolve} from 'path';
 import {minimatch} from 'minimatch';
 
 import type {PolicyConfig} from '../agent/config.js';
@@ -542,8 +542,8 @@ export function buildPlanFromImpact(
         generatedAt: new Date().toISOString(),
         source: planSource,
         runSet: runSetResult.runSet,
-        confidence,
-        confidenceKind: 'heuristic',
+        confidence: impact.evidence?.coverage === 'unavailable' ? null : confidence,
+        confidenceKind: impact.evidence?.coverage === 'unavailable' ? 'unavailable' : 'heuristic',
         mappingProvenance: impact.mappingProvenance,
         evidence: impact.evidence,
         reasons: runSetResult.reasons,
@@ -729,8 +729,8 @@ export function renderCiSummaryMarkdown(plan: PlanReport): string {
     return lines.join('\n');
 }
 
-export function writeCiSummary(appRoot: string, markdown: string, relativePath = '.e2e-ai-agents/ci-summary.md'): string {
-    const fullPath = join(appRoot, relativePath);
+export function writeCiSummary(appRoot: string, markdown: string, outputPath = '.e2e-ai-agents/ci-summary.md'): string {
+    const fullPath = resolve(appRoot, outputPath);
     const dir = dirname(fullPath);
     mkdirSync(dir, {recursive: true});
     writeFileSync(fullPath, markdown, 'utf-8');

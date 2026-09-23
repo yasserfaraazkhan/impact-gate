@@ -67,11 +67,17 @@ export function synthesizeReview(
             report.prIncludedTestSummary = {
                 files: behaviorAnalysis.prIncludedTests.map((t) => t.file),
                 scenarioCount: behaviorAnalysis.prIncludedTests.reduce((sum, t) => sum + t.scenarios.length, 0),
+                execution: 'not-executed',
+                tests: behaviorAnalysis.prIncludedTests.map((test) => ({
+                    file: test.file, type: test.type || 'unit', scenarios: test.scenarios, execution: 'not-executed',
+                })),
             };
         }
 
-        // Upgrade decision when PR includes tests that cover the gaps
-        if (report.prIncludedTestSummary && report.prIncludedTestSummary.scenarioCount > 0
+        // Go declarations are evidence only; they cannot satisfy an E2E gap.
+        const includesE2EScenarios = behaviorAnalysis.prIncludedTests.some((test) =>
+            (test.type === 'playwright' || test.type === 'cypress') && test.scenarios.length > 0);
+        if (includesE2EScenarios
             && report.decision.action === 'must-add-tests') {
             report.decision = {
                 ...report.decision,
@@ -125,15 +131,17 @@ function buildReviewedFlows(
         }
 
         if (feature.coverageStatus === 'uncovered' && gaps.length === 0) {
-            gaps.push('No E2E test coverage for this flow');
+            gaps.push('No associated E2E specs for this flow');
         }
 
         const riskNote = buildRiskNoteForFlow(feature, prediction);
+        const associationOnly = impact.evidence?.coverage === 'unavailable' ||
+            impact.mappingProvenance?.some((mapping) => feature.changedFiles.includes(mapping.file) && mapping.evidence === 'unverified');
 
         flows.push({
             id,
             name,
-            status: feature.coverageStatus,
+            status: associationOnly && existingTests.length > 0 ? 'associated' : feature.coverageStatus,
             priority: feature.priority,
             changedFiles: feature.changedFiles,
             existingTests,
@@ -145,7 +153,7 @@ function buildReviewedFlows(
 
     // Sort: uncovered first, then by priority (P0 > P1 > P2)
     flows.sort((a, b) => {
-        const statusOrder = {uncovered: 0, partial: 1, covered: 2};
+        const statusOrder = {uncovered: 0, partial: 1, associated: 2, covered: 3};
         const priorityOrder = {P0: 0, P1: 1, P2: 2};
         const aStatus = statusOrder[a.status] ?? 2;
         const bStatus = statusOrder[b.status] ?? 2;
@@ -170,7 +178,7 @@ function buildRiskNoteForFlow(feature: ImpactedFeature, prediction: DefectPredic
     const parts: string[] = [];
 
     if (feature.coverageStatus === 'uncovered') {
-        parts.push('no test coverage');
+        parts.push('no associated test specs');
     }
 
     // Check if this flow's files are in high-traffic areas
@@ -335,14 +343,18 @@ function buildMetrics(
     prediction: DefectPrediction,
     flows: ReviewedFlow[],
 ): ReviewMetrics {
+    const confidenceUnavailable = impact.evidence?.coverage === 'unavailable' || plan.confidence == null ||
+        impact.mappingProvenance?.some((mapping) => mapping.evidence === 'unverified');
     return {
         changedFiles: impact.changedFiles.length,
         impactedFlows: flows.length,
         coveredFlows: flows.filter((f) => f.status === 'covered').length,
+        associatedFlows: flows.filter((f) => f.status === 'associated').length,
         uncoveredFlows: flows.filter((f) => f.status === 'uncovered').length,
         partialFlows: flows.filter((f) => f.status === 'partial').length,
         coverageGaps: plan.gapDetails.length,
         defectRiskScore: prediction.score,
-        confidence: plan.confidence ?? 0,
+        confidence: confidenceUnavailable ? null : plan.confidence,
+        confidenceKind: confidenceUnavailable ? 'unavailable' : plan.confidenceKind || 'heuristic',
     };
 }

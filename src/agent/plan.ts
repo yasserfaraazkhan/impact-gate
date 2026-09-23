@@ -158,7 +158,8 @@ export interface PlanMetricEvent {
     sourceRunId?: string;
     action: CiAction;
     runSet: RecommendedRunSet;
-    confidence: number;
+    confidence: number | null;
+    confidenceKind?: 'heuristic' | 'unavailable';
     changedFiles: number;
     impactedFlows: number;
     uncoveredP0P1Flows: number;
@@ -171,7 +172,8 @@ export interface PlanMetricsSummary {
     schemaVersion: '1.0.0';
     generatedAt: string;
     totalRuns: number;
-    averageConfidence: number;
+    averageConfidence: number | null;
+    confidenceSamples: number;
     byAction: Record<CiAction, number>;
     byRunSet: Record<RecommendedRunSet, number>;
     blockingRecommendations: number;
@@ -210,7 +212,8 @@ export function appendPlanMetrics(appRoot: string, plan: PlanReport): {eventsPat
         sourceRunId: plan.sourceRunId,
         action: plan.decision.action,
         runSet: plan.runSet,
-        confidence: plan.confidence ?? 0,
+        confidence: plan.confidence,
+        confidenceKind: plan.confidence === null ? 'unavailable' : plan.confidenceKind || 'heuristic',
         changedFiles: plan.metrics.changedFiles,
         impactedFlows: plan.metrics.impactedFlows,
         uncoveredP0P1Flows: plan.metrics.uncoveredP0P1Flows,
@@ -239,11 +242,15 @@ export function appendPlanMetrics(appRoot: string, plan: PlanReport): {eventsPat
         full: 0,
     };
     let totalConfidence = 0;
+    let confidenceSamples = 0;
     let blockingRecommendations = 0;
     for (const metricEvent of allEvents) {
         byAction[metricEvent.action] += 1;
         byRunSet[metricEvent.runSet] += 1;
-        totalConfidence += metricEvent.confidence;
+        if (typeof metricEvent.confidence === 'number' && Number.isFinite(metricEvent.confidence) && metricEvent.confidenceKind !== 'unavailable') {
+            totalConfidence += metricEvent.confidence;
+            confidenceSamples++;
+        }
         if (metricEvent.enforcementShouldFail) {
             blockingRecommendations += 1;
         }
@@ -254,7 +261,8 @@ export function appendPlanMetrics(appRoot: string, plan: PlanReport): {eventsPat
         schemaVersion: '1.0.0',
         generatedAt: new Date().toISOString(),
         totalRuns,
-        averageConfidence: totalRuns > 0 ? Number((totalConfidence / totalRuns).toFixed(2)) : 0,
+        averageConfidence: confidenceSamples > 0 ? Number((totalConfidence / confidenceSamples).toFixed(2)) : null,
+        confidenceSamples,
         byAction,
         byRunSet,
         blockingRecommendations,

@@ -5,7 +5,7 @@
 import {logger} from './logger.js';
 import {resolveConfig} from './agent/config.js';
 import {parseArgs, resolveAutoConfig} from './cli/parse_args.js';
-import {resolveDefaults} from './cli/defaults.js';
+import {detectGitDefaultBranch, resolveDefaults} from './cli/defaults.js';
 import {printUsage} from './cli/usage.js';
 import {runLlmHealth} from './cli/commands/llm_health.js';
 import {runAnalyzeCommand} from './cli/commands/analyze.js';
@@ -34,7 +34,7 @@ const SKIP_DEFAULTS_COMMANDS = new Set(['init', 'llm-health', 'cost-report', 'bo
 const NEEDS_DEFAULTS_COMMANDS = new Set([
     'impact', 'plan', 'suggest', 'crew', 'generate', 'heal', 'analyze', 'train',
     'feedback', 'traceability-capture', 'traceability-ingest', 'finalize-generated-tests',
-    'review',
+    'review', 'gate',
 ]);
 
 async function main(): Promise<void> {
@@ -43,18 +43,28 @@ async function main(): Promise<void> {
     const autoConfig = resolveAutoConfig(args);
     if (args.advisory && !['plan', 'suggest', 'gate'].includes(args.command || '')) throw new Error('--advisory is supported only for plan, suggest and gate.');
 
-    // Auto-detect defaults for commands that need them (when no config file found)
-    if (!autoConfig && args.command && NEEDS_DEFAULTS_COMMANDS.has(args.command) && !SKIP_DEFAULTS_COMMANDS.has(args.command) && !args.advisory) {
-        const defaults = resolveDefaults({
-            path: args.path,
-            testsRoot: args.testsRoot,
-            framework: args.framework,
-            gitSince: args.gitSince,
-        });
-        args.path = args.path || defaults.path;
-        args.testsRoot = args.testsRoot || defaults.testsRoot;
-        args.framework = args.framework || defaults.framework;
-        args.gitSince = args.gitSince || defaults.since;
+    // Configured roots/frameworks take precedence; a missing diff base still
+    // needs detection so a multi-commit PR cannot silently shrink to HEAD~1.
+    if (args.command && NEEDS_DEFAULTS_COMMANDS.has(args.command) && !SKIP_DEFAULTS_COMMANDS.has(args.command) && !args.advisory) {
+        if (autoConfig) {
+            if (!args.gitSince) {
+                const {config, configuredGitSince} = resolveConfig(process.cwd(), autoConfig, {
+                    path: args.path, profile: args.profile, llmProvider: args.llmProvider,
+                });
+                args.gitSince = configuredGitSince || detectGitDefaultBranch(config.path);
+            }
+        } else {
+            const defaults = resolveDefaults({
+                path: args.path,
+                testsRoot: args.testsRoot,
+                framework: args.framework,
+                gitSince: args.gitSince,
+            });
+            args.path = args.path || defaults.path;
+            args.testsRoot = args.testsRoot || defaults.testsRoot;
+            args.framework = args.framework || defaults.framework;
+            args.gitSince = args.gitSince || defaults.since;
+        }
     }
 
     if (args.command === 'init') {

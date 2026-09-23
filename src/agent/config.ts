@@ -209,6 +209,8 @@ export interface ResolvedConfig {
     config: AgentConfig;
     configPath?: string;
     rootDir: string;
+    /** Explicit file setting, before the compatibility HEAD~1 default is applied. */
+    configuredGitSince?: string;
 }
 
 const DEFAULT_CONFIG: AgentConfig = {
@@ -1185,5 +1187,8 @@ export function resolveConfig(cwd: string, configPath?: string, overrides?: Conf
         config,
         configPath: resolvedConfigPath,
         rootDir: resolvedRoot,
+        configuredGitSince: typeof (rawConfig?.git as GitConfig | undefined)?.since === 'string'
+            ? (rawConfig!.git as GitConfig).since || undefined
+            : undefined,
     };
 }

@@ -25,6 +25,7 @@ export function formatReviewText(report: ReviewReport): string {
 
     lines.push('PR Impact Review');
     lines.push('================');
+    lines.push(`Confidence: ${formatConfidence(report)}`);
     lines.push('');
 
     // Section 0: What this PR changes (behavior-aware)
@@ -40,7 +41,7 @@ export function formatReviewText(report: ReviewReport): string {
     if (report.relevantExistingTests && report.relevantExistingTests.length > 0) {
         lines.push('Associated existing specs:');
         for (const test of report.relevantExistingTests.slice(0, 5)) {
-            lines.push(`  ✅ ${shortPath(test.file)} (${test.matchReason})`);
+            lines.push(`  - ${shortPath(test.file)} (${test.matchReason}; unverified association)`);
         }
         if (report.relevantExistingTests.length > 5) {
             lines.push(`  ... and ${report.relevantExistingTests.length - 5} more`);
@@ -50,12 +51,14 @@ export function formatReviewText(report: ReviewReport): string {
 
     // Section 0.7: Tests included in this PR
     if (report.prIncludedTestSummary) {
-        lines.push('Tests included in this PR:');
+        lines.push('Tests included in this PR (not executed):');
         for (const file of report.prIncludedTestSummary.files) {
-            lines.push(`  ✅ ${shortPath(file)}`);
+            const test = report.prIncludedTestSummary.tests?.find((entry) => entry.file === file);
+            lines.push(`  - ${shortPath(file)}${test?.type === 'go' ? ' [Go]' : ''} — not executed`);
+            for (const scenario of test?.scenarios || []) lines.push(`      - ${scenario}`);
         }
         if (report.prIncludedTestSummary.scenarioCount > 0) {
-            lines.push(`  (${report.prIncludedTestSummary.scenarioCount} test scenarios)`);
+            lines.push(`  (${report.prIncludedTestSummary.scenarioCount} declared test names/scenarios; no execution results)`);
         }
         lines.push('');
     }
@@ -103,7 +106,7 @@ export function formatReviewText(report: ReviewReport): string {
         const tested = report.affectedFunctions.filter((f) => f.testedBy.length > 0);
 
         if (untested.length > 0) {
-            lines.push('Untested Functions (need coverage):');
+            lines.push('Functions without test associations:');
             for (const af of untested.slice(0, 10)) {
                 const loc = af.node.filePath ? ` (${shortPath(af.node.filePath)})` : '';
                 const callers = af.calledBy.length > 0
@@ -118,13 +121,13 @@ export function formatReviewText(report: ReviewReport): string {
         }
 
         if (tested.length > 0) {
-            lines.push('Tested Functions:');
+            lines.push('Functions with test associations (not execution evidence):');
             for (const af of tested.slice(0, 5)) {
                 const tests = af.testedBy.slice(0, 2).map((t) => t.name).join(', ');
-                lines.push(`  ✅ ${af.node.name} -- tested by: ${tests}`);
+                lines.push(`  - ${af.node.name} -- associated tests: ${tests}`);
             }
             if (tested.length > 5) {
-                lines.push(`  ... and ${tested.length - 5} more tested functions`);
+                lines.push(`  ... and ${tested.length - 5} more functions with test associations`);
             }
             lines.push('');
         }
@@ -157,7 +160,7 @@ export function formatReviewText(report: ReviewReport): string {
         if (covered.length > 0) {
             lines.push('Associated PR tests:');
             for (const r of covered.slice(0, 3)) {
-                lines.push(`  ✅ ${r.scenario} -- ${shortPath(r.alreadyCoveredBy!)}`);
+                lines.push(`  - ${r.scenario} -- ${shortPath(r.alreadyCoveredBy!)} (not executed)`);
             }
             lines.push('');
         }
@@ -183,17 +186,25 @@ export function formatReviewText(report: ReviewReport): string {
 function formatFlowLine(flow: ReviewedFlow): string {
     const statusIcon = {
         covered: '✅',
+        associated: '🔎',
         partial: '⚠️',
         uncovered: '❌',
     };
     const icon = statusIcon[flow.status];
-    const statusLabel = flow.status === 'covered'
-        ? `associated with ${flow.existingTests.length} test${flow.existingTests.length !== 1 ? 's' : ''}`
+    const statusLabel = flow.status === 'associated'
+        ? `${flow.existingTests.length} associated test${flow.existingTests.length !== 1 ? 's' : ''}; coverage unverified`
+        : flow.status === 'covered'
+            ? `covered by ${flow.existingTests.length} test${flow.existingTests.length !== 1 ? 's' : ''}`
         : flow.status === 'partial'
             ? 'Cypress specs associated'
             : 'no existing tests';
 
     return `  ${icon} [${flow.priority}] ${flow.name} (${statusLabel})`;
+}
+
+function formatConfidence(report: ReviewReport): string {
+    const {confidence, confidenceKind} = report.metrics;
+    return confidence == null ? 'unavailable (kind: unavailable)' : `${confidence}% (kind: ${confidenceKind || 'heuristic'})`;
 }
 
 function summarizeFiles(files: string[]): string {
@@ -259,8 +270,12 @@ export function formatReviewMarkdown(report: ReviewReport): string {
         lines.push('');
     }
     if (report.prIncludedTestSummary) {
-        lines.push(`### Tests included in this PR (${report.prIncludedTestSummary.scenarioCount} scenarios)`, '');
-        for (const file of report.prIncludedTestSummary.files) lines.push(`- ${file}`);
+        lines.push(`### Tests included in this PR (${report.prIncludedTestSummary.scenarioCount} declared test names/scenarios; not executed)`, '');
+        for (const file of report.prIncludedTestSummary.files) {
+            const test = report.prIncludedTestSummary.tests?.find((entry) => entry.file === file);
+            lines.push(`- ${file}${test?.type === 'go' ? ' [Go]' : ''} — not executed`);
+            for (const scenario of test?.scenarios || []) lines.push(`  - ${scenario}`);
+        }
         lines.push('');
     }
     if (report.affectedFunctions?.length) {
@@ -268,7 +283,7 @@ export function formatReviewMarkdown(report: ReviewReport): string {
         for (const f of report.affectedFunctions) {
             lines.push(`- ${f.node.name} (${f.node.id}, ${f.node.kind}${f.node.filePath ? `, ${f.node.filePath}` : ''}) — ${f.impact}, depth ${f.depth}`);
             for (const caller of f.calledBy) lines.push(`  - Called by: ${caller.name}${caller.filePath ? ` (${caller.filePath})` : ''}`);
-            for (const test of f.testedBy) lines.push(`  - Tested by: ${test.name}${test.filePath ? ` (${test.filePath})` : ''}`);
+            for (const test of f.testedBy) lines.push(`  - Associated test: ${test.name}${test.filePath ? ` (${test.filePath})` : ''} (not execution evidence)`);
         }
         lines.push('');
     }
@@ -280,10 +295,11 @@ export function formatReviewMarkdown(report: ReviewReport): string {
         lines.push('| Status | Priority | Flow | Tests | Gaps |');
         lines.push('|--------|----------|------|-------|------|');
         for (const flow of report.impactedFlows) {
-            const statusIcon = flow.status === 'covered' ? '✅' : flow.status === 'partial' ? '⚠️' : '❌';
+            const statusIcon = flow.status === 'associated' ? '🔎' : flow.status === 'covered' ? '✅' : flow.status === 'partial' ? '⚠️' : '❌';
             const testCount = flow.existingTests.length > 0 ? `${flow.existingTests.length} test${flow.existingTests.length !== 1 ? 's' : ''}` : 'none';
             const gapText = flow.gaps.length > 0 ? flow.gaps.join('; ') : '-';
-            lines.push(`| ${statusIcon} ${flow.status === 'covered' ? 'Playwright associated' : flow.status === 'partial' ? 'Cypress associated' : 'no specs'} | ${flow.priority} | ${escapeTableCell(flow.name)} | ${testCount} | ${escapeTableCell(gapText)} |`);
+            const status = flow.status === 'associated' ? 'associated (unverified)' : flow.status === 'covered' ? 'covered' : flow.status === 'partial' ? 'partial' : 'no associated specs';
+            lines.push(`| ${statusIcon} ${status} | ${flow.priority} | ${escapeTableCell(flow.name)} | ${testCount} | ${escapeTableCell(gapText)} |`);
         }
         lines.push('');
         for (const flow of report.impactedFlows) {
@@ -321,9 +337,9 @@ export function formatReviewMarkdown(report: ReviewReport): string {
     lines.push(`<details><summary>Metrics</summary>`);
     lines.push('');
     lines.push(`- Changed files: ${m.changedFiles}`);
-    lines.push(`- Impacted flows: ${m.impactedFlows} (${m.coveredFlows} Playwright associated, ${m.partialFlows} Cypress associated, ${m.uncoveredFlows} without specs)`);
+    lines.push(`- Impacted flows: ${m.impactedFlows} (${m.associatedFlows || 0} associated, ${m.coveredFlows} covered, ${m.partialFlows} partial, ${m.uncoveredFlows} without associated specs)`);
     lines.push(`- Coverage gaps: ${m.coverageGaps}`);
-    lines.push(`- Confidence: ${m.confidence}%`);
+    lines.push(`- Confidence: ${formatConfidence(report)}`);
     lines.push('');
     lines.push('</details>');
     lines.push('');

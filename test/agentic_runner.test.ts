@@ -44,10 +44,11 @@ describe('runAgenticGeneration', () => {
             apiSurfaceHint: 'ChannelsPage: goto(), toBeVisible()',
         });
 
-        assert.ok(summary.totalGenerated >= 1);
+        assert.equal(summary.totalGenerated, 1);
         assert.ok(summary.results.length >= 1);
         // Dry run skips execution
         assert.equal(summary.results[0].status, 'skipped');
+        assert.equal(summary.results[0].generated, true);
         assert.match(provider.generateText.mock.calls[0].arguments[0], /async \(\{page\}\)/);
         assert.doesNotMatch(provider.generateText.mock.calls[0].arguments[0], /Mattermost|pw\.initSetup/);
         assert.doesNotMatch(readFileSync(summary.results[0].specPath, 'utf8'), /@mattermost\/playwright-lib/);
@@ -184,7 +185,7 @@ describe('real generated-test mutation acceptance', () => {
         mkdirSync(join(fixture.testsRoot, 'specs/functional/ai-assisted'), {recursive: true});
         writeFileSync(path, '// preexisting bytes\n');
         const summary = await generateFixture(fixture, emptySpec, {baseRef: undefined});
-        assert.equal(summary.results[0].status, 'unverified');
+        assert.equal(summary.results[0].status, 'skipped');
         assert.equal(readFileSync(path, 'utf8'), '// preexisting bytes\n');
     });
     it('does not replace existing coverage even when replacement would pass verification', async () => {
@@ -199,7 +200,12 @@ describe('real generated-test mutation acceptance', () => {
             config: {testsRoot: fixture.testsRoot, repositoryRoot: fixture.repo, baseRef: fixture.baseRef, maxAttempts: 1, project: 'chrome', testTimeoutMs: 30000},
             provider,
         });
-        assert.equal(summary.results[0].status, 'unverified');
+        assert.equal(summary.results[0].status, 'skipped');
+        assert.equal(summary.totalGenerated, 0);
+        assert.notEqual(summary.results[0].generated, true);
+        assert.equal(summary.totalFailed, 0);
+        assert.equal(summary.totalPassed, 0);
+        assert.equal(summary.totalAttempts, 0);
         assert.equal(provider.generateText.mock.callCount(), 0);
         assert.equal(readFileSync(path, 'utf8'), original);
         assert.match(summary.warnings.join('\n'), /Existing spec preserved/);
@@ -393,7 +399,7 @@ describe('W1 independent-review regressions', () => {
             symlinkSync(fixture.repo, join(fixture.testsRoot, '.e2e-ai-agents'));
             if (!stage3) {
                 const result = await generateFixture(fixture, emptySpec, {baseRef: undefined});
-                assert.equal(result.results[0].status, 'unverified');
+                assert.equal(result.results[0].status, existing ? 'skipped' : 'unverified');
             } else {
                 const factory = mock.method(LLMProviderFactory, 'createFromEnv', async () => createMockProvider([emptySpec]));
                 try {

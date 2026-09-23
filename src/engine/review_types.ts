@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type {ImpactResult} from './impact_engine.js';
+import type {ImpactResult, PrTestFileType} from './impact_engine.js';
 
 /**
  * Types for the unified PR review report.
@@ -18,8 +18,8 @@ export interface ReviewedFlow {
     /** Human-readable name (from route family or heuristic) */
     name: string;
 
-    /** Coverage status */
-    status: 'covered' | 'partial' | 'uncovered';
+    /** Association status does not establish measured coverage. */
+    status: 'covered' | 'partial' | 'uncovered' | 'associated';
 
     /** Priority from the manifest */
     priority: 'P0' | 'P1' | 'P2';
@@ -27,7 +27,7 @@ export interface ReviewedFlow {
     /** Files changed that affect this flow */
     changedFiles: string[];
 
-    /** Existing test files that cover this flow */
+    /** Existing test files associated with this flow */
     existingTests: string[];
 
     /** What's missing (human-readable gap descriptions) */
@@ -90,11 +90,13 @@ export interface ReviewMetrics {
     changedFiles: number;
     impactedFlows: number;
     coveredFlows: number;
+    associatedFlows: number;
     uncoveredFlows: number;
     partialFlows: number;
     coverageGaps: number;
     defectRiskScore: number;
-    confidence: number;
+    confidence: number | null;
+    confidenceKind: 'heuristic' | 'unavailable';
 }
 
 /** The complete review report */
@@ -121,6 +123,13 @@ export interface ReviewReport {
     prIncludedTestSummary?: {
         files: string[];
         scenarioCount: number;
+        execution: 'not-executed';
+        tests: Array<{
+            file: string;
+            type: PrTestFileType;
+            scenarios: string[];
+            execution: 'not-executed';
+        }>;
     };
     recommendations?: Array<{
         scenario: string;
